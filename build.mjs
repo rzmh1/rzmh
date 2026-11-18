@@ -1,7 +1,6 @@
 import { build } from "esbuild";
 await build({
-  entryPoints: ["client/editor.mjs"],
-  bundle: true,
+  entryPoints: ["editor.mjs"],  bundle: true,
   format: "esm",
   target: ["safari16", "chrome110"],
   outfile: "dist/assets/editor.bundle.js",
