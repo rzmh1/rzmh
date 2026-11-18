@@ -12,7 +12,7 @@
     "start": "node --env-file-if-exists=.env server/index.mjs",
     "setup:admin": "node --env-file-if-exists=.env scripts/setup-admin.mjs",
     "backup": "node --env-file-if-exists=.env scripts/backup.mjs",
-    "build": "node scripts/build.mjs",
+    "build": "node build.mjs",
     "check": "node --test --test-isolation=none tests/*.test.mjs",
     "setup": "node scripts/setup.mjs"
   },
