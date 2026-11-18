@@ -1,0 +1,13 @@
+services:
+  ruzmah:
+    build: .
+    env_file: .env
+    restart: unless-stopped
+    init: true
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - ruzmah-data:/app/runtime
+    stop_grace_period: 30s
+volumes:
+  ruzmah-data:

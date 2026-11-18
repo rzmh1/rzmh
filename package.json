@@ -1,0 +1,34 @@
+{
+  "name": "ruzmah",
+  "version": "3.1.0",
+  "private": true,
+  "type": "module",
+  "description": "رُزمة — منصة متعددة المصادر مع رحلة طالب وجدولة حسب مدد المحتوى",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "dev": "node --env-file-if-exists=.env server/index.mjs",
+    "start": "node --env-file-if-exists=.env server/index.mjs",
+    "setup:admin": "node --env-file-if-exists=.env scripts/setup-admin.mjs",
+    "backup": "node --env-file-if-exists=.env scripts/backup.mjs",
+    "build": "node scripts/build.mjs",
+    "check": "node --test --test-isolation=none tests/*.test.mjs",
+    "setup": "node scripts/setup.mjs"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "3.1169.0",
+    "@aws-sdk/s3-request-presigner": "3.1169.0"
+  },
+  "devDependencies": {
+    "@codemirror/commands": "6.10.0",
+    "@codemirror/lang-css": "6.3.1",
+    "@codemirror/lang-html": "6.4.11",
+    "@codemirror/lang-javascript": "6.2.4",
+    "@codemirror/language": "6.13.1",
+    "@codemirror/search": "6.5.11",
+    "@codemirror/state": "6.5.2",
+    "@codemirror/view": "6.38.6",
+    "esbuild": "0.25.12"
+  }
+}

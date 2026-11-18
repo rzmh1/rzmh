@@ -1,0 +1,35 @@
+Ruzmah 3.1 — final storefront changes
+Compared with local baseline 3df7a65.
+
+README.md
+client/design-review.mjs
+dist/admin.js
+dist/api.js
+dist/app.js
+dist/course-policy.js
+dist/index.html
+dist/live-pages.js
+dist/pages.js
+dist/store-admin.js
+dist/store-catalog.js
+dist/store-config.js
+dist/storefront-final.css
+dist/storefront.js
+dist/ui.js
+docs/STOREFRONT-FINAL-CHANGES.txt
+docs/STOREFRONT-FINAL-TESTS.txt
+docs/STOREFRONT-FINAL.md
+docs/UPGRADE-3.md
+package-lock.json
+package.json
+scripts/export-design-review.mjs
+server/database.mjs
+server/index.mjs
+server/learning.mjs
+server/storage.mjs
+server/store-validation.mjs
+tests/frontend.test.mjs
+tests/learning-frontend.test.mjs
+tests/storefront-access.test.mjs
+tests/storefront-final.test.mjs
+tests/storefront.test.mjs
