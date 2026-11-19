@@ -1,5 +1,7 @@
 # دليل رفع وتشغيل رُزمة 3
 
+لدليل Northflank والقرص الدائم والمنفذ والفحوص راجع [NORTHFLANK.md](NORTHFLANK.md). نتائج التحقق الحالية في [PRODUCTION-READINESS.md](PRODUCTION-READINESS.md).
+
 ## ما تحتاجه
 
 - استضافة تدعم Node.js 24 أو Docker، وقرصًا دائمًا. لا تكفي استضافة HTML أو PHP فقط.

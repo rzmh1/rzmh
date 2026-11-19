@@ -75,11 +75,15 @@ export async function jsonBody(req, limit = 2 * 1024 * 1024) {
     chunks.push(chunk);
   }
   const raw = Buffer.concat(chunks);
+  let value;
   try {
-    return raw.length ? JSON.parse(raw) : {};
+    value = raw.length ? JSON.parse(raw) : {};
   } catch {
     fail(400, "صيغة JSON غير صحيحة");
   }
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    fail(400, "يتطلب الطلب كائن JSON");
+  return value;
 }
 export async function rawBody(req, limit = 1024 * 1024) {
   const chunks = [];

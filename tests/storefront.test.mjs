@@ -24,9 +24,9 @@ test("storefront uses actual content, honest update states and fixed arithmetic 
     const home = storefrontHome();
     for (const price of ["19.99", "39.99", "59.99", "99.99"])
       assert(home.includes(price));
-    // أدوات الطالب لا تُشرح في المتجر؛ تبقى داخل منصة الطالب.
-    assert(!home.includes("ورقة المسودة"));
-    assert(!home.includes("دفتر الأخطاء"));
+    // The current storefront describes included tools without opening student routes.
+    for (const route of ["#/scratch", "#/mistakes", "#/journey", "#/bank"])
+      assert(!home.includes(`href="${route}"`));
     assert(home.includes("why-card"));
     assert(!home.includes("بدايات صغيرة"));
     const annual = db.plans.find((p) => p.months === 12);
