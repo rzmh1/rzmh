@@ -56,6 +56,6 @@ html = html
   .replace('<script src="theme.js"></script>', "<script>" + theme + "</script>")
   .replace('<script type="module" src="app.js"></script>', "");
 const js = outputFiles[0].text.replace(/<\/script/gi, "<\\/script");
-html = html.replace("</body>", "<script>" + js + "</script></body>");
+html = html.replace("</body>", () => "<script>" + js + "</script></body>");
 await writeFile(output, html);
 console.log("Actual storefront review exported:", output);

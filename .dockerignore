@@ -1,0 +1,17 @@
+.git
+.agents
+.codex
+.aws
+node_modules
+.env
+.env.*
+!.env.example
+runtime
+**/*.sqlite
+**/*.sqlite-*
+**/*.db
+**/*.db-*
+test-results
+playwright-report
+coverage
+*.log

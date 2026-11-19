@@ -1044,7 +1044,13 @@ export function createApp(cfg = config()) {
       return;
     }
     if (!["GET", "HEAD"].includes(method)) fail(405, "طريقة الطلب غير مسموحة");
-    const requested = decodeURIComponent(path);
+    let requested;
+    try {
+      requested = decodeURIComponent(path);
+    } catch {
+      fail(400, "مسار غير صالح");
+    }
+    if (requested.includes("\0")) fail(400, "مسار غير صالح");
     let file = resolve(staticRoot, "." + requested);
     if (
       file !== resolve(staticRoot) &&
@@ -1129,17 +1135,33 @@ export function createApp(cfg = config()) {
   backupTimer.unref();
   server.on("close", () => {
     clearInterval(backupTimer);
-    store.close();
+    // Let an in-flight transcode finish its database updates before closing SQLite.
+    storage.drain().then(() => store.close());
   });
   return { server, store };
+}
+export function startServer(cfg = config()) {
+  const app = createApp(cfg);
+  let stopping = false;
+  const shutdown = () => {
+    if (stopping) return;
+    stopping = true;
+    console.log("Stopping رُزمة; draining requests and media processing.");
+    app.server.close();
+    app.server.closeIdleConnections();
+    // Stay within the container's 30-second termination grace period.
+    setTimeout(() => process.exit(1), 25000).unref();
+  };
+  process.once("SIGTERM", shutdown);
+  process.once("SIGINT", shutdown);
+  app.server.listen(cfg.port, cfg.host, () =>
+    console.log(`رُزمة: ${cfg.origin} — Admin: ${cfg.origin}/#/admin`),
+  );
+  return app;
 }
 if (
   process.argv[1] &&
   resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 ) {
-  const cfg = config(),
-    { server } = createApp(cfg);
-  server.listen(cfg.port, cfg.host, () =>
-    console.log(`رُزمة: ${cfg.origin} — Admin: ${cfg.origin}/#/admin`),
-  );
+  startServer();
 }

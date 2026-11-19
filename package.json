@@ -12,9 +12,11 @@
     "start": "node --env-file-if-exists=.env server/index.mjs",
     "setup:admin": "node --env-file-if-exists=.env scripts/setup-admin.mjs",
     "backup": "node --env-file-if-exists=.env scripts/backup.mjs",
-    "build": "node build.mjs",
-    "check": "node --test --test-isolation=none tests/*.test.mjs",
-    "setup": "node scripts/setup.mjs"
+    "build": "node scripts/build.mjs",
+    "check": "node scripts/check.mjs",
+    "setup": "node scripts/setup.mjs",
+    "test": "npm run check",
+    "test:browser": "playwright test"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1169.0",
@@ -29,6 +31,7 @@
     "@codemirror/search": "6.5.11",
     "@codemirror/state": "6.5.2",
     "@codemirror/view": "6.38.6",
+    "@playwright/test": "1.65.1",
     "esbuild": "0.25.12"
   }
 }

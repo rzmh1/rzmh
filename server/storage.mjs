@@ -217,6 +217,10 @@ export function storageService(store) {
   }
   const queue = [];
   let busy = false;
+  let drained = [];
+  function drain() {
+    return busy ? new Promise((resolve) => drained.push(resolve)) : Promise.resolve();
+  }
   function invalidateMediaPlans(id) {
     if (
       store
@@ -242,6 +246,8 @@ export function storageService(store) {
       }
     }
     busy = false;
+    for (const resolve of drained) resolve();
+    drained = [];
   }
   async function transcode(asset) {
     await mkdir(temp, { recursive: true, mode: 0o700 });
@@ -517,5 +523,6 @@ export function storageService(store) {
     test,
     resume,
     probe,
+    drain,
   };
 }
