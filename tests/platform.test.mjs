@@ -483,3 +483,137 @@ test("secrets use authenticated encryption and custom frames isolate scripts", a
   assert(out.csp.includes("default-src 'none'"));
   assert(out.html.includes("nonce="));
 });
+
+
+test("student reports stay private until moderator review and publish only redacted copy", async () => {
+  const f = await fixture();
+  try {
+    const owner = await browser(f),
+      student = await browser(f),
+      guest = await browser(f);
+    await owner.request("/api/auth/login", {
+      method: "POST",
+      body: {
+        email: "owner@example.test",
+        password: "a-very-long-test-password",
+      },
+    });
+    const registration = await student.request("/api/auth/register", {
+      method: "POST",
+      body: {
+        email: "reports@example.test",
+        name: "طالب تجريبي",
+        password: "a-long-student-password",
+      },
+    });
+    assert.equal(registration.status, 200);
+    assert.equal((await guest.request("/api/leaks")).status, 401);
+    assert.equal(
+      (
+        await student.request("/api/leaks", {
+          method: "POST",
+          body: {
+            track: "qudrat",
+            subject: "quantitative",
+            topic: "النسب",
+            description: "أتذكر أن الفكرة كانت عن التناسب العكسي وتغير الكميات.",
+            rightsConfirmed: true,
+          },
+        })
+      ).status,
+      403,
+    );
+    const userId = registration.data.user.id;
+    assert.equal(
+      (
+        await owner.request("/api/admin/subscriptions", {
+          method: "POST",
+          body: { userId, planId: "month", days: 30 },
+        })
+      ).status,
+      200,
+    );
+    const submission = await student.request("/api/leaks", {
+      method: "POST",
+      body: {
+        track: "qudrat",
+        subject: "quantitative",
+        topic: "النسب",
+        description: "أتذكر أن الفكرة كانت عن التناسب العكسي وتغير الكميات.",
+        examDate: "2026-11-20",
+        rightsConfirmed: true,
+      },
+    });
+    assert.equal(submission.status, 201);
+    assert.equal(submission.data.status, "pending");
+    assert.equal((await student.request("/api/leaks")).data.items.length, 0);
+    const pending = await owner.request("/api/admin/leaks");
+    assert.equal(pending.data.length, 1);
+    assert.equal(pending.data[0].status, "pending");
+    assert.equal(pending.data[0].submitter, "طالب تجريبي");
+    assert.equal(
+      (
+        await owner.request("/api/admin/leaks/" + submission.data.id + "/review", {
+          method: "POST",
+          body: { status: "approved" },
+        })
+      ).status,
+      400,
+    );
+    assert.equal(
+      (
+        await owner.request("/api/admin/leaks/" + submission.data.id + "/review", {
+          method: "POST",
+          body: {
+            status: "approved",
+            publicTopic: "التناسب العكسي",
+            publicDescription: "تجربة طالب حول مهارة التناسب العكسي وتغير الكميات.",
+          },
+        })
+      ).status,
+      200,
+    );
+    const published = await student.request("/api/leaks");
+    assert.equal(published.data.items.length, 1);
+    assert.equal(published.data.items[0].topic, "التناسب العكسي");
+    assert.equal(
+      published.data.items[0].description,
+      "تجربة طالب حول مهارة التناسب العكسي وتغير الكميات.",
+    );
+    assert.equal(
+      (
+        await student.request("/api/leaks/" + submission.data.id + "/report", {
+          method: "POST",
+          body: { reason: "inaccurate" },
+        })
+      ).status,
+      200,
+    );
+    assert.equal(
+      (
+        await student.request("/api/leaks/" + submission.data.id + "/report", {
+          method: "POST",
+          body: { reason: "inaccurate" },
+        })
+      ).status,
+      409,
+    );
+    assert.equal(
+      (
+        await student.request("/api/leaks", {
+          method: "POST",
+          body: {
+            track: "qudrat",
+            subject: "quantitative",
+            topic: "موضوع آخر",
+            description: "وصف واضح لتجربة الطالب مع موضوع تدريبي مختلف.",
+            rightsConfirmed: false,
+          },
+        })
+      ).status,
+      400,
+    );
+  } finally {
+    await f.close();
+  }
+});
