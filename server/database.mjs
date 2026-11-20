@@ -50,6 +50,7 @@ export function openDatabase(cfg) {
   subject TEXT NOT NULL,
   topic TEXT NOT NULL,
   description TEXT NOT NULL,
+  public_description TEXT,
   exam_date TEXT,
   status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','approved','rejected','needs_changes','hidden')),
   rights_confirmed INTEGER NOT NULL DEFAULT 0,
@@ -69,6 +70,8 @@ export function openDatabase(cfg) {
  );
 
  `);
+  const leakColumns = new Set(db.prepare("PRAGMA table_info(leak_reports)").all().map((column) => column.name));
+  if (!leakColumns.has("public_description")) db.exec("ALTER TABLE leak_reports ADD COLUMN public_description TEXT");
   if (!db.prepare("SELECT id FROM content").get()) {
     const data = structuredClone(defaults);
     data.tests = [
