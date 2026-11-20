@@ -17,6 +17,7 @@ export const studentRoutes = [
   "plan",
   "progress",
   "tutor",
+  "leaks",
   "scratch",
   "lesson",
   "subscription",
@@ -43,6 +44,7 @@ const groups = [
       ["bank", "target", "بنك الأسئلة"],
       ["tests", "clock", "الاختبارات"],
       ["mistakes", "error", "دفتر الأخطاء"],
+      ["leaks", "file", "التسريبات"],
     ],
   ],
   [
@@ -59,9 +61,9 @@ const groups = [
 const tabs = [
   ["dashboard", "shapes", "اليوم"],
   ["choose", "book", "دوراتي"],
-  ["bank", "target", "تدريب"],
-  ["tests", "clock", "اختبارات"],
   ["tutor", "spark", "المدرّس"],
+  ["leaks", "file", "التسريبات"],
+  ["subscription", "user", "حسابي"],
 ];
 
 const activeOf = (route) =>
