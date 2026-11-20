@@ -220,11 +220,12 @@ export function createApp(cfg = config()) {
     );
     return sessionResponse(user, { csrf });
   }
+  const codeHash = (code) => hash((cfg.key || "local-only") + ":" + code);
   async function sendCode(table, user, purpose) {
     const code = String(randomInt(100000, 1000000));
     db.prepare(
       `INSERT INTO ${table}(user_id,code_hash,expires,attempts,created_at) VALUES(?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET code_hash=excluded.code_hash,expires=excluded.expires,attempts=0,created_at=excluded.created_at`,
-    ).run(user.id, hash(code), Date.now() + 10 * 60000, 0, now());
+    ).run(user.id, codeHash(code), Date.now() + 10 * 60000, 0, now());
     try {
       await sendEmail(cfg, {
         to: user.email,
@@ -345,7 +346,7 @@ export function createApp(cfg = config()) {
           db.prepare("DELETE FROM email_verification_codes WHERE user_id=?").run(u.id);
           fail(400, "انتهت صلاحية الرمز. اطلب رمزًا جديدًا.");
         }
-        if (!equal(hash(code), record.code_hash)) {
+        if (!equal(codeHash(code), record.code_hash)) {
           if (record.attempts + 1 >= 5)
             db.prepare("DELETE FROM email_verification_codes WHERE user_id=?").run(u.id);
           else
