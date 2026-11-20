@@ -33,6 +33,9 @@ import {
   loadPaymentStatus,
   tutorLive,
   mountTutor,
+  verifyEmailLive,
+  forgotPasswordLive,
+  resetPasswordLive,
 } from "./live-pages.js";
 const app = document.querySelector("#app");
 let trackedPage = null;
@@ -117,6 +120,9 @@ export function render(scroll = true) {
     leaks: "التسريبات",
     login: "تسجيل الدخول",
     signup: "إنشاء حساب",
+    "verify-email": "تأكيد البريد",
+    "forgot-password": "استعادة كلمة المرور",
+    "reset-password": "كلمة مرور جديدة",
   };
   document.title = `رُزمة — ${titles[r] || "مساحة لطموحك"}`;
   const trackKey = route().join("/") || "home";
@@ -285,6 +291,15 @@ export function render(scroll = true) {
           break;
         case "signup":
           content = authLive(true);
+          break;
+        case "verify-email":
+          content = verifyEmailLive();
+          break;
+        case "forgot-password":
+          content = forgotPasswordLive();
+          break;
+        case "reset-password":
+          content = resetPasswordLive();
           break;
         case "subscription":
           content = reviewOrder(id);
@@ -645,25 +660,93 @@ document.addEventListener("submit", async (ev) => {
   }
   if (form.id === "auth-form") {
     ev.preventDefault();
-    const button = form.querySelector("button[type=submit]");
+    const button = form.querySelector("button[type=submit]"),
+      values = Object.fromEntries(new FormData(form)),
+      next = new URLSearchParams(location.hash.split("?")[1] || "").get("next");
     button.disabled = true;
-    const values = Object.fromEntries(new FormData(form));
     try {
-      await api(
+      const result = await api(
         form.dataset.signup === "true"
           ? "/api/auth/register"
           : "/api/auth/login",
         { method: "POST", body: values },
       );
+      if (result.verificationRequired) {
+        const params = new URLSearchParams({ email: result.email });
+        if (next) params.set("next", next);
+        location.hash = "#/verify-email?" + params.toString();
+        toast("أرسلنا رمز التحقق إلى بريدك الإلكتروني.");
+        return;
+      }
       await initialize();
-      location.hash = afterAuthRoute(
-        account,
-        new URLSearchParams(location.hash.split("?")[1] || "").get("next"),
-      );
+      location.hash = afterAuthRoute(account, next);
       render();
       toast("أهلًا بك في رُزمة");
     } catch (err) {
       document.querySelector("#form-error").textContent = err.message;
+    } finally {
+      button.disabled = false;
+    }
+  }
+  if (form.id === "verify-email-form") {
+    ev.preventDefault();
+    const button = form.querySelector("button[type=submit]"),
+      values = Object.fromEntries(new FormData(form)),
+      next = new URLSearchParams(location.hash.split("?")[1] || "").get("next");
+    button.disabled = true;
+    try {
+      await api("/api/auth/verify-email", { method: "POST", body: values });
+      await initialize();
+      location.hash = afterAuthRoute(account, next);
+      render();
+      toast("تم تأكيد بريدك. أهلًا بك في رُزمة.");
+    } catch (err) {
+      document.querySelector("#verify-error").textContent = err.message;
+    } finally {
+      button.disabled = false;
+    }
+  }
+  if (form.id === "verify-resend-form") {
+    ev.preventDefault();
+    const button = form.querySelector("button[type=submit]"),
+      status = document.querySelector("#verify-resend-status"),
+      values = Object.fromEntries(new FormData(form));
+    button.disabled = true;
+    try {
+      const result = await api("/api/auth/resend-verification", { method: "POST", body: values });
+      status.textContent = result.message;
+    } catch (err) {
+      status.textContent = err.message;
+    } finally {
+      button.disabled = false;
+    }
+  }
+  if (form.id === "forgot-password-form") {
+    ev.preventDefault();
+    const button = form.querySelector("button[type=submit]"),
+      values = Object.fromEntries(new FormData(form));
+    button.disabled = true;
+    try {
+      const result = await api("/api/auth/forgot-password", { method: "POST", body: values });
+      location.hash = "#/reset-password?email=" + encodeURIComponent(values.email);
+      toast(result.message);
+    } catch (err) {
+      document.querySelector("#forgot-error").textContent = err.message;
+    } finally {
+      button.disabled = false;
+    }
+  }
+  if (form.id === "reset-password-form") {
+    ev.preventDefault();
+    const button = form.querySelector("button[type=submit]"),
+      values = Object.fromEntries(new FormData(form));
+    button.disabled = true;
+    try {
+      await api("/api/auth/reset-password", { method: "POST", body: values });
+      location.hash = "#/login";
+      toast("تم تغيير كلمة المرور. سجّل الدخول بكلمتك الجديدة.");
+    } catch (err) {
+      document.querySelector("#reset-error").textContent = err.message;
     } finally {
       button.disabled = false;
     }
