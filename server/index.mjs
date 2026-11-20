@@ -685,7 +685,7 @@ export function createApp(cfg = config()) {
           await tutor(
             store,
             user,
-            await jsonBody(req, 20000),
+            await jsonBody(req, 6 * 1024 * 1024),
             learning.permittedContext(user),
           ),
         );
