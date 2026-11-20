@@ -282,6 +282,33 @@ export function mountAdminLive(tab, toast, render) {
       const b = ev.target.closest("button");
       if (!b) return;
       const d = b.dataset;
+      if (b.hasAttribute("data-broadcast-preview")) {
+        const form = document.querySelector("#broadcast-form");
+        if (!form) return;
+        const preview = document.querySelector("#broadcast-preview"),
+          sendButton = document.querySelector("#broadcast-send"),
+          values = Object.fromEntries(new FormData(form));
+        values.serviceOnly = form.elements.serviceOnly.checked;
+        b.disabled = true;
+        sendButton.disabled = true;
+        try {
+          const result = await api("/api/admin/broadcasts/preview", {
+            method: "POST",
+            body: values,
+          });
+          form.dataset.recipientCount = String(result.recipientCount);
+          preview.textContent = result.recipientCount
+            ? "سيتم إرسال «" + result.subject + "» إلى " + result.recipientCount + " مشتركًا نشطًا ببريد مؤكد."
+            : "لا يوجد مشتركون مؤهلون حاليًا. لم يتم إرسال أي رسالة.";
+          sendButton.disabled = !result.recipientCount || !values.serviceOnly;
+        } catch (err) {
+          delete form.dataset.recipientCount;
+          preview.textContent = err.message;
+        } finally {
+          b.disabled = false;
+        }
+        return;
+      }
       if (d.leakReview) {
         const card = b.closest("[data-leak-card]");
         if (!card) return;
