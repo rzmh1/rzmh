@@ -623,7 +623,7 @@ export function createApp(cfg = config()) {
           fail(403, "قسم التسريبات متاح ضمن اشتراك رُزمة");
         const rows = db
           .prepare(
-            "SELECT id,track,subject,public_topic AS topic,public_description AS description,exam_date,created_at,(SELECT count(*) FROM leak_flags f WHERE f.leak_id=leak_reports.id) AS report_count FROM leak_reports WHERE status='approved' AND public_topic IS NOT NULL AND public_description IS NOT NULL ORDER BY created_at DESC LIMIT 200",
+            "SELECT id,track,subject,public_topic AS topic,public_description AS description,exam_date,created_at FROM leak_reports WHERE status='approved' AND public_topic IS NOT NULL AND public_description IS NOT NULL ORDER BY created_at DESC LIMIT 200",
           )
           .all();
         const counts = new Map();
