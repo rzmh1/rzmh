@@ -628,14 +628,14 @@ export function createApp(cfg = config()) {
           .all();
         const counts = new Map();
         for (const row of rows) {
-          const key = [row.track, row.subject, row.topic.trim().toLocaleLowerCase()].join("\\u0000");
+          const key = [row.track, row.subject, row.topic.trim().toLocaleLowerCase()].join("\u0000");
           counts.set(key, (counts.get(key) || 0) + 1);
         }
         return send({
           items: rows.map((row) => ({
             ...row,
             similarCount: counts.get(
-              [row.track, row.subject, row.topic.trim().toLocaleLowerCase()].join("\\u0000"),
+              [row.track, row.subject, row.topic.trim().toLocaleLowerCase()].join("\u0000"),
             ) || 1,
           })),
         });
@@ -670,7 +670,7 @@ export function createApp(cfg = config()) {
         store.audit(user.id, "leak.submit", id, { track, subject });
         return send({ id, status: "pending" }, 201);
       }
-      const leakFlagMatch = /^\\/api\\/leaks\\/([\\w-]+)\\/report$/.exec(path);
+      const leakFlagMatch = /^\/api\/leaks\/([\w-]+)\/report$/.exec(path);
       if (leakFlagMatch && method === "POST") {
         required(user);
         if (user.role !== "admin" && !store.entitled(user))
@@ -700,7 +700,7 @@ export function createApp(cfg = config()) {
           ).all(),
         );
       }
-      const leakReviewMatch = /^\\/api\\/admin\\/leaks\\/([\\w-]+)\\/review$/.exec(path);
+      const leakReviewMatch = /^\/api\/admin\/leaks\/([\w-]+)\/review$/.exec(path);
       if (leakReviewMatch && method === "POST") {
         const b = await jsonBody(req, 4000),
           status = cleanText(b.status, 20),
