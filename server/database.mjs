@@ -71,6 +71,25 @@ export function openDatabase(cfg) {
  );
 
  `);
+  const userColumns = new Set(db.prepare("PRAGMA table_info(users)").all().map((column) => column.name));
+  if (!userColumns.has("email_verified"))
+    db.exec("ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 1");
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS email_verification_codes(
+      user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      code_hash TEXT NOT NULL,
+      expires INTEGER NOT NULL,
+      attempts INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS password_reset_codes(
+      user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      code_hash TEXT NOT NULL,
+      expires INTEGER NOT NULL,
+      attempts INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL
+    );
+  `);
   const leakColumns = new Set(db.prepare("PRAGMA table_info(leak_reports)").all().map((column) => column.name));
   if (!leakColumns.has("public_description")) db.exec("ALTER TABLE leak_reports ADD COLUMN public_description TEXT");
   if (!leakColumns.has("public_topic")) db.exec("ALTER TABLE leak_reports ADD COLUMN public_topic TEXT");
