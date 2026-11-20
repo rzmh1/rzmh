@@ -711,6 +711,7 @@ document.addEventListener("submit", async (ev) => {
     const button = form.querySelector("button[type=submit]"),
       status = document.querySelector("#verify-resend-status"),
       values = Object.fromEntries(new FormData(form));
+    values.email = document.querySelector("#verify-email")?.value || values.email;
     button.disabled = true;
     try {
       const result = await api("/api/auth/resend-verification", { method: "POST", body: values });
