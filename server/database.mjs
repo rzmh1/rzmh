@@ -49,6 +49,7 @@ export function openDatabase(cfg) {
   track TEXT NOT NULL,
   subject TEXT NOT NULL,
   topic TEXT NOT NULL,
+  public_topic TEXT,
   description TEXT NOT NULL,
   public_description TEXT,
   exam_date TEXT,
@@ -72,6 +73,7 @@ export function openDatabase(cfg) {
  `);
   const leakColumns = new Set(db.prepare("PRAGMA table_info(leak_reports)").all().map((column) => column.name));
   if (!leakColumns.has("public_description")) db.exec("ALTER TABLE leak_reports ADD COLUMN public_description TEXT");
+  if (!leakColumns.has("public_topic")) db.exec("ALTER TABLE leak_reports ADD COLUMN public_topic TEXT");
   if (!db.prepare("SELECT id FROM content").get()) {
     const data = structuredClone(defaults);
     data.tests = [
