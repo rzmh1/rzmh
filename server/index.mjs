@@ -9,7 +9,7 @@ import http from "node:http";
 import { readFile, stat, mkdir, readdir, unlink } from "node:fs/promises";
 import { resolve, extname, join, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { randomUUID, randomBytes } from "node:crypto";
+import { randomUUID, randomBytes, randomInt } from "node:crypto";
 import { config } from "./config.mjs";
 import { openDatabase, saveContent, PLANS } from "./database.mjs";
 import {
@@ -28,6 +28,7 @@ import { checkout, handleStripeWebhook, testPayment } from "./payments.mjs";
 import { testAI, tutor } from "./ai.mjs";
 import { storageService } from "./storage.mjs";
 import { frame, codeInput, saveCode } from "./custom.mjs";
+import { sendEmail, verificationMessage, resetMessage } from "./email.mjs";
 const staticRoot = fileURLToPath(new URL("../dist/", import.meta.url));
 const safeUser = (u) =>
   u ? { id: u.id, name: u.name, email: u.email, role: u.role } : null;
@@ -202,6 +203,39 @@ export function createApp(cfg = config()) {
       learning: user ? learning.me(user) : null,
     };
   }
+  function createSession(user, res) {
+    db.prepare("DELETE FROM sessions WHERE expires<?").run(Date.now());
+    const t = token(),
+      csrf = token(),
+      expires = Date.now() + 7 * 86400000;
+    db.prepare("INSERT INTO sessions VALUES(?,?,?,?)").run(
+      hash(t),
+      user.id,
+      csrf,
+      expires,
+    );
+    res.setHeader(
+      "Set-Cookie",
+      `ruzmah_session=${t}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800${cfg.production ? "; Secure" : ""}`,
+    );
+    return sessionResponse(user, { csrf });
+  }
+  async function sendCode(table, user, purpose) {
+    const code = String(randomInt(100000, 1000000));
+    db.prepare(
+      `INSERT INTO ${table}(user_id,code_hash,expires,attempts,created_at) VALUES(?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET code_hash=excluded.code_hash,expires=excluded.expires,attempts=0,created_at=excluded.created_at`,
+    ).run(user.id, hash(code), Date.now() + 10 * 60000, 0, now());
+    try {
+      await sendEmail(cfg, {
+        to: user.email,
+        subject: purpose === "verify" ? "رمز التحقق من بريدك — رُزمة" : "رمز استعادة كلمة المرور — رُزمة",
+        text: purpose === "verify" ? verificationMessage(code) : resetMessage(code),
+      });
+    } catch (err) {
+      db.prepare(`DELETE FROM ${table} WHERE user_id=?`).run(user.id);
+      throw err;
+    }
+  }
   async function route(req, res) {
     const url = new URL(req.url, cfg.origin),
       path = url.pathname,
@@ -251,50 +285,131 @@ export function createApp(cfg = config()) {
         return send(sessionResponse(user, session));
       if (path === "/api/content" && method === "GET")
         return send(contentFor(user));
-      if (
-        ["/api/auth/login", "/api/auth/register"].includes(path) &&
-        method === "POST"
-      ) {
+      if (path === "/api/auth/register" && method === "POST") {
         rate("auth:" + clientIp, 12, 900000);
         const b = await jsonBody(req, 16000),
-          mail = email(b.email);
-        let u;
-        if (path.endsWith("register")) {
-          const name = cleanText(b.name, 80);
-          if (!name) fail(400, "أدخل اسم العرض");
-          const pass = await passwordHash(b.password);
+          mail = email(b.email),
+          name = cleanText(b.name, 80);
+        if (!name) fail(400, "أدخل اسم العرض");
+        if (cfg.requireEmailVerification && (!cfg.mail?.apiKey || !cfg.mail?.from))
+          fail(503, "التسجيل يحتاج إعداد خدمة البريد أولًا. لم يُنشأ الحساب؛ تواصل مع إدارة رُزمة.");
+        const pass = await passwordHash(b.password),
+          id = randomUUID(),
+          verified = cfg.requireEmailVerification ? 0 : 1;
+        try {
+          db.prepare(
+            "INSERT INTO users(id,email,name,password_hash,role,created_at,email_verified) VALUES(?,?,?,?,?,?,?)",
+          ).run(id, mail, name, pass, "student", now(), verified);
+        } catch {
+          fail(400, "تعذر إنشاء الحساب بهذا البريد. جرّب تسجيل الدخول.");
+        }
+        const u = db.prepare("SELECT * FROM users WHERE id=?").get(id);
+        if (cfg.requireEmailVerification) {
           try {
-            db.prepare(
-              "INSERT INTO users(id,email,name,password_hash,role,created_at) VALUES(?,?,?,?,?,?)",
-            ).run(randomUUID(), mail, name, pass, "student", now());
-          } catch {
-            fail(400, "تعذر إنشاء الحساب بهذا البريد. جرّب تسجيل الدخول.");
+            await sendCode("email_verification_codes", u, "verify");
+          } catch (err) {
+            db.prepare("DELETE FROM users WHERE id=? AND email_verified=0").run(id);
+            throw err;
           }
-          u = db.prepare("SELECT * FROM users WHERE email=?").get(mail);
-          store.audit(u.id, "auth.register", u.id);
-        } else {
+          store.audit(u.id, "auth.register.pending", u.id);
+          return send({ verificationRequired: true, email: mail }, 201);
+        }
+        store.audit(u.id, "auth.register", u.id);
+        return send(createSession(u, res), 201);
+      }
+      if (path === "/api/auth/login" && method === "POST") {
+        rate("auth:" + clientIp, 12, 900000);
+        const b = await jsonBody(req, 16000),
+          mail = email(b.email),
           u = db
             .prepare("SELECT * FROM users WHERE email=? AND disabled=0")
             .get(mail);
-          if (!u || !(await passwordVerify(b.password, u.password_hash)))
-            fail(401, "البريد الإلكتروني أو كلمة المرور غير صحيحة");
-          store.audit(u.id, "auth.login", u.id);
+        if (!u || !(await passwordVerify(b.password, u.password_hash)))
+          fail(401, "البريد الإلكتروني أو كلمة المرور غير صحيحة");
+        if (!u.email_verified)
+          fail(403, "تحقق من بريدك الإلكتروني أولًا، ثم سجّل الدخول.");
+        store.audit(u.id, "auth.login", u.id);
+        return send(createSession(u, res));
+      }
+      if (path === "/api/auth/verify-email" && method === "POST") {
+        rate("verify-ip:" + clientIp, 20, 900000);
+        const b = await jsonBody(req, 2000),
+          mail = email(b.email),
+          code = cleanText(b.code, 6);
+        rate("verify-email:" + mail, 8, 900000);
+        if (!/^\\d{6}$/.test(code)) fail(400, "أدخل رمز التحقق المكوّن من ٦ أرقام.");
+        const u = db.prepare("SELECT * FROM users WHERE email=? AND disabled=0").get(mail),
+          record = u && db.prepare("SELECT * FROM email_verification_codes WHERE user_id=?").get(u.id);
+        if (!u || u.email_verified || !record) fail(400, "الرمز غير صالح أو انتهت صلاحيته. اطلب رمزًا جديدًا.");
+        if (record.expires <= Date.now()) {
+          db.prepare("DELETE FROM email_verification_codes WHERE user_id=?").run(u.id);
+          fail(400, "انتهت صلاحية الرمز. اطلب رمزًا جديدًا.");
         }
-        db.prepare("DELETE FROM sessions WHERE expires<?").run(Date.now());
-        const t = token(),
-          csrf = token(),
-          expires = Date.now() + 7 * 86400000;
-        db.prepare("INSERT INTO sessions VALUES(?,?,?,?)").run(
-          hash(t),
-          u.id,
-          csrf,
-          expires,
-        );
-        res.setHeader(
-          "Set-Cookie",
-          `ruzmah_session=${t}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800${cfg.production ? "; Secure" : ""}`,
-        );
-        return send(sessionResponse(u, { csrf }));
+        if (!equal(hash(code), record.code_hash)) {
+          if (record.attempts + 1 >= 5)
+            db.prepare("DELETE FROM email_verification_codes WHERE user_id=?").run(u.id);
+          else
+            db.prepare("UPDATE email_verification_codes SET attempts=attempts+1 WHERE user_id=?").run(u.id);
+          fail(400, "رمز التحقق غير صحيح.");
+        }
+        db.prepare("UPDATE users SET email_verified=1 WHERE id=?").run(u.id);
+        db.prepare("DELETE FROM email_verification_codes WHERE user_id=?").run(u.id);
+        store.audit(u.id, "auth.email_verified", u.id);
+        const verifiedUser = db.prepare("SELECT * FROM users WHERE id=?").get(u.id);
+        return send(createSession(verifiedUser, res));
+      }
+      if (path === "/api/auth/resend-verification" && method === "POST") {
+        rate("verify-resend-ip:" + clientIp, 5, 900000);
+        const b = await jsonBody(req, 1000), mail = email(b.email);
+        rate("verify-resend-email:" + mail, 3, 900000);
+        const u = db.prepare("SELECT * FROM users WHERE email=? AND disabled=0 AND email_verified=0").get(mail);
+        if (u && cfg.mail?.apiKey && cfg.mail?.from)
+          await sendCode("email_verification_codes", u, "verify");
+        return send({ ok: true, message: "إذا كان الحساب يحتاج تحققًا، فسيصلك رمز جديد." });
+      }
+      if (path === "/api/auth/forgot-password" && method === "POST") {
+        rate("forgot-ip:" + clientIp, 8, 900000);
+        const b = await jsonBody(req, 1000), mail = email(b.email);
+        rate("forgot-email:" + mail, 3, 900000);
+        const u = db.prepare("SELECT * FROM users WHERE email=? AND disabled=0 AND email_verified=1").get(mail);
+        if (u && cfg.mail?.apiKey && cfg.mail?.from) {
+          try {
+            await sendCode("password_reset_codes", u, "reset");
+            store.audit(u.id, "auth.password_reset_requested", u.id);
+          } catch {
+            // Keep the same public response for existing and unknown addresses.
+          }
+        }
+        return send({ ok: true, message: "إذا كان البريد مسجلًا ومؤكدًا، فستصلك رسالة برمز الاستعادة." });
+      }
+      if (path === "/api/auth/reset-password" && method === "POST") {
+        rate("reset-ip:" + clientIp, 10, 900000);
+        const b = await jsonBody(req, 3000),
+          mail = email(b.email),
+          code = cleanText(b.code, 6),
+          newHash = await passwordHash(b.password);
+        rate("reset-email:" + mail, 8, 900000);
+        if (!/^\\d{6}$/.test(code)) fail(400, "أدخل رمز الاستعادة المكوّن من ٦ أرقام.");
+        const u = db.prepare("SELECT * FROM users WHERE email=? AND disabled=0 AND email_verified=1").get(mail),
+          record = u && db.prepare("SELECT * FROM password_reset_codes WHERE user_id=?").get(u.id);
+        if (!u || !record) fail(400, "رمز الاستعادة غير صالح أو انتهت صلاحيته.");
+        if (record.expires <= Date.now()) {
+          db.prepare("DELETE FROM password_reset_codes WHERE user_id=?").run(u.id);
+          fail(400, "انتهت صلاحية الرمز. اطلب الاستعادة مجددًا.");
+        }
+        if (!equal(hash(code), record.code_hash)) {
+          if (record.attempts + 1 >= 5)
+            db.prepare("DELETE FROM password_reset_codes WHERE user_id=?").run(u.id);
+          else
+            db.prepare("UPDATE password_reset_codes SET attempts=attempts+1 WHERE user_id=?").run(u.id);
+          fail(400, "رمز الاستعادة غير صحيح.");
+        }
+        db.prepare("UPDATE users SET password_hash=? WHERE id=?").run(newHash, u.id);
+        db.prepare("DELETE FROM sessions WHERE user_id=?").run(u.id);
+        db.prepare("DELETE FROM password_reset_codes WHERE user_id=?").run(u.id);
+        db.prepare("DELETE FROM email_verification_codes WHERE user_id=?").run(u.id);
+        store.audit(u.id, "auth.password_reset_completed", u.id);
+        return send({ ok: true });
       }
       if (path === "/api/auth/logout" && method === "POST") {
         if (session)
