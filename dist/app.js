@@ -114,6 +114,7 @@ export function render(scroll = true) {
     scratch: "ورقة المسودة",
     admin: "لوحة الإدارة",
     tutor: "المدرس الذكي",
+    leaks: "التسريبات",
     login: "تسجيل الدخول",
     signup: "إنشاء حساب",
   };
