@@ -22,6 +22,7 @@ import {
 import { header, footer, icon, btn, notice, empty, courseCard } from "./ui.js";
 import { inStudentSpace, studentFrame } from "./student-shell.js";
 import * as pages from "./pages.js";
+import { leaksPage, mountLeaks } from "./leaks.js";
 import { mountDrawing } from "./drawing.js";
 import { adminPage, mountAdmin } from "./admin.js";
 import { api, account, setSession } from "./api.js";
@@ -140,6 +141,7 @@ export function render(scroll = true) {
     "plan",
     "progress",
     "tutor",
+    "leaks",
   ];
   if (privatePages.includes(r) && !account.user) {
     content = empty(
@@ -273,6 +275,9 @@ export function render(scroll = true) {
         case "tutor":
           content = tutorLive();
           break;
+        case "leaks":
+          content = leaksPage();
+          break;
         case "login":
           content = authLive();
           break;
@@ -320,6 +325,7 @@ export function render(scroll = true) {
   if (r === "admin" && account.user?.role === "admin")
     cleanups.push(mountAdmin(toast, render));
   if (r === "tutor" && account.user) cleanups.push(mountTutor(toast));
+  if (r === "leaks" && account.user) cleanups.push(mountLeaks(toast));
   if (r === "payment")
     void loadPaymentStatus(toast).then((cleanup) => cleanups.push(cleanup));
   void mountCustom(r);
