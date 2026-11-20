@@ -299,9 +299,9 @@ export function mountAdminLive(tab, toast, render) {
           form.dataset.recipientCount = String(result.recipientCount);
           form.dataset.previewToken = result.previewToken;
           preview.textContent = result.recipientCount
-            ? "سيتم إرسال «" + result.subject + "» إلى " + result.recipientCount + " مشتركًا نشطًا ببريد مؤكد."
+            ? "سيتم إرسال «" + result.subject + "» إلى " + result.recipientCount + " مشتركًا نشطًا ببريد مؤكد." + (result.mailConfigured ? "" : " لكن يلزم إعداد Resend في الاستضافة قبل الإرسال.")
             : "لا يوجد مشتركون مؤهلون حاليًا. لم يتم إرسال أي رسالة.";
-          sendButton.disabled = !result.recipientCount || !values.serviceOnly;
+          sendButton.disabled = !result.recipientCount || !values.serviceOnly || !result.mailConfigured;
         } catch (err) {
           delete form.dataset.recipientCount;
           delete form.dataset.previewToken;
