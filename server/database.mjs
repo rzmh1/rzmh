@@ -89,6 +89,19 @@ export function openDatabase(cfg) {
       attempts INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS broadcasts(
+      id TEXT PRIMARY KEY,
+      subject TEXT NOT NULL,
+      message TEXT NOT NULL,
+      recipient_count INTEGER NOT NULL,
+      sent_count INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL CHECK(status IN ('sending','sent','partial','failed')),
+      provider_ids TEXT NOT NULL DEFAULT '[]',
+      created_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+      created_at TEXT NOT NULL,
+      sent_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS broadcasts_created ON broadcasts(created_at DESC);
   `);
   const leakColumns = new Set(db.prepare("PRAGMA table_info(leak_reports)").all().map((column) => column.name));
   if (!leakColumns.has("public_description")) db.exec("ALTER TABLE leak_reports ADD COLUMN public_description TEXT");
