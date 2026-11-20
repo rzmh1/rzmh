@@ -943,6 +943,16 @@ test("admin broadcasts only to active verified subscribers after fresh preview a
       409,
     );
     assert.equal(batchCalls, 0);
+    assert.equal(
+      (
+        await admin.request("/api/admin/broadcasts/send", {
+          method: "POST",
+          body: { ...draft, confirmCount: preview.data.recipientCount },
+        })
+      ).status,
+      409,
+    );
+    assert.equal(batchCalls, 0);
     const sent = await admin.request("/api/admin/broadcasts/send", {
       method: "POST",
       body: { ...draft, confirmCount: preview.data.recipientCount, previewToken: preview.data.previewToken },
