@@ -617,6 +617,111 @@ export function createApp(cfg = config()) {
         store.audit(user?.id || null, "page.view", b.page);
         return send({ ok: true });
       }
+      if (path === "/api/leaks" && method === "GET") {
+        required(user);
+        if (user.role !== "admin" && !store.entitled(user))
+          fail(403, "قسم التسريبات متاح ضمن اشتراك رُزمة");
+        const rows = db
+          .prepare(
+            "SELECT id,track,subject,public_topic AS topic,public_description AS description,exam_date,created_at,(SELECT count(*) FROM leak_flags f WHERE f.leak_id=leak_reports.id) AS report_count FROM leak_reports WHERE status='approved' AND public_topic IS NOT NULL AND public_description IS NOT NULL ORDER BY created_at DESC LIMIT 200",
+          )
+          .all();
+        const counts = new Map();
+        for (const row of rows) {
+          const key = [row.track, row.subject, row.topic.trim().toLocaleLowerCase()].join("\\u0000");
+          counts.set(key, (counts.get(key) || 0) + 1);
+        }
+        return send({
+          items: rows.map((row) => ({
+            ...row,
+            similarCount: counts.get(
+              [row.track, row.subject, row.topic.trim().toLocaleLowerCase()].join("\\u0000"),
+            ) || 1,
+          })),
+        });
+      }
+      if (path === "/api/leaks" && method === "POST") {
+        required(user);
+        if (user.role !== "admin" && !store.entitled(user))
+          fail(403, "إرسال الإفادات متاح ضمن اشتراك رُزمة");
+        rate("leaks:create:" + user.id, 5, 3600000);
+        const b = await jsonBody(req, 6000);
+        const track = cleanText(b.track, 20),
+          subject = cleanText(b.subject, 30),
+          topic = cleanText(b.topic, 100),
+          description = cleanText(b.description, 1200),
+          examDate = b.examDate ? cleanText(b.examDate, 10) : null;
+        if (!["qudrat", "tahsili", "step"].includes(track))
+          fail(400, "اختر مسارًا تعليميًا صحيحًا");
+        if (
+          !["quantitative", "verbal", "math", "physics", "chemistry", "biology", "english", "other"].includes(subject)
+        )
+          fail(400, "اختر تصنيفًا صحيحًا");
+        if (topic.length < 2 || description.length < 25)
+          fail(400, "اكتب موضوعًا ووصفًا واضحًا لا يقل عن ٢٥ حرفًا");
+        if (examDate && (!/^\\d{4}-\\d{2}-\\d{2}$/.test(examDate) || Number.isNaN(Date.parse(examDate + "T00:00:00Z"))))
+          fail(400, "تاريخ التجربة غير صالح");
+        if (b.rightsConfirmed !== true)
+          fail(400, "أكد أن المشاركة لا تتضمن نصًا أو صورة سرية أو محمية");
+        const id = randomUUID();
+        db.prepare(
+          "INSERT INTO leak_reports(id,user_id,track,subject,topic,description,exam_date,rights_confirmed,created_at) VALUES(?,?,?,?,?,?,?,?,?)",
+        ).run(id, user.id, track, subject, topic, description, examDate, 1, now());
+        store.audit(user.id, "leak.submit", id, { track, subject });
+        return send({ id, status: "pending" }, 201);
+      }
+      const leakFlagMatch = /^\\/api\\/leaks\\/([\\w-]+)\\/report$/.exec(path);
+      if (leakFlagMatch && method === "POST") {
+        required(user);
+        if (user.role !== "admin" && !store.entitled(user))
+          fail(403, "الإبلاغ متاح ضمن اشتراك رُزمة");
+        rate("leaks:report:" + user.id, 10, 3600000);
+        const b = await jsonBody(req, 1000),
+          reason = cleanText(b.reason || "", 100);
+        if (!["inaccurate", "privacy", "copyright", "other"].includes(reason))
+          fail(400, "اختر سببًا صحيحًا للإبلاغ");
+        const id = randomUUID();
+        try {
+          db.prepare(
+            "INSERT INTO leak_flags(id,leak_id,user_id,reason,created_at) SELECT ?,id,?,?,? FROM leak_reports WHERE id=? AND status='approved'",
+          ).run(id, user.id, reason, now(), leakFlagMatch[1]);
+        } catch {
+          fail(409, "سبق أن أبلغت عن هذه المشاركة");
+        }
+        const flag = db.prepare("SELECT changes() AS n").get();
+        if (!flag.n) fail(404, "المشاركة غير موجودة");
+        store.audit(user.id, "leak.report", leakFlagMatch[1], { reason });
+        return send({ ok: true });
+      }
+      if (path === "/api/admin/leaks" && method === "GET") {
+        return send(
+          db.prepare(
+            "SELECT r.*,u.name AS submitter,(SELECT count(*) FROM leak_flags f WHERE f.leak_id=r.id) AS report_count FROM leak_reports r LEFT JOIN users u ON u.id=r.user_id ORDER BY CASE r.status WHEN 'pending' THEN 0 WHEN 'needs_changes' THEN 1 WHEN 'approved' THEN 2 ELSE 3 END,r.created_at DESC LIMIT 300",
+          ).all(),
+        );
+      }
+      const leakReviewMatch = /^\\/api\\/admin\\/leaks\\/([\\w-]+)\\/review$/.exec(path);
+      if (leakReviewMatch && method === "POST") {
+        const b = await jsonBody(req, 4000),
+          status = cleanText(b.status, 20),
+          note = cleanText(b.note || "", 500);
+        if (!["approved", "rejected", "needs_changes", "hidden"].includes(status))
+          fail(400, "حالة مراجعة غير صالحة");
+        let publicTopic = null,
+          publicDescription = null;
+        if (status === "approved") {
+          publicTopic = cleanText(b.publicTopic || "", 100);
+          publicDescription = cleanText(b.publicDescription || "", 1200);
+          if (publicTopic.length < 2 || publicDescription.length < 25)
+            fail(400, "اكتب عنوانًا ووصفًا منقحين قبل اعتماد المشاركة");
+        }
+        const update = db.prepare(
+          "UPDATE leak_reports SET status=?,public_topic=?,public_description=?,review_note=?,reviewed_at=?,reviewed_by=? WHERE id=? AND rights_confirmed=1",
+        ).run(status, publicTopic, publicDescription, note, now(), user.id, leakReviewMatch[1]);
+        if (!update.changes) fail(404, "المشاركة غير موجودة أو لم تؤكد شروط النشر");
+        store.audit(user.id, "leak.review." + status, leakReviewMatch[1]);
+        return send({ ok: true, status });
+      }
       if (path === "/api/custom" && method === "GET")
         return send(
           db
