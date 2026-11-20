@@ -92,8 +92,25 @@ export async function tutor(store, user, input, educationContext = null) {
   const s = store.setting("ai");
   if (!s.enabled) fail(503, "خدمة المدرس غير مفعلة حاليًا");
   if (!store.entitled(user)) fail(403, "المدرس الذكي متاح باشتراك نشط");
-  const message = cleanText(input.message, 4000);
-  if (!message) fail(400, "اكتب سؤالك أولًا");
+  const message = cleanText(input.message || "", 4000);
+  const image = input.image || null;
+  if (!message && !image) fail(400, "اكتب سؤالك أو أرفق صورة تعليمية.");
+  let imageInput = null;
+  if (image !== null) {
+    if (!image || typeof image !== "object" || Array.isArray(image))
+      fail(400, "مرفق الصورة غير صالح.");
+    const name = cleanText(image.name || "صورة تعليمية", 120),
+      mimeType = cleanText(image.mimeType || "", 40),
+      data = image.data;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(mimeType))
+      fail(400, "ارفع صورة JPG أو PNG أو WebP فقط.");
+    if (typeof data !== "string" || data.length > 6 * 1024 * 1024 || !/^[A-Za-z0-9+/]+={0,2}$/.test(data))
+      fail(400, "بيانات الصورة غير صالحة.");
+    const bytes = Buffer.from(data, "base64");
+    if (!bytes.length || bytes.length > 4 * 1024 * 1024 || bytes.toString("base64").replace(/=+$/, "") !== data.replace(/=+$/, ""))
+      fail(413, "حجم الصورة أكبر من ٤ ميجابايت أو صيغة الملف غير صحيحة.");
+    imageInput = { name, mimeType, data: bytes.toString("base64") };
+  }
   const day = new Date().toLocaleDateString("en-CA", {
       timeZone: "Asia/Riyadh",
     }),
@@ -173,9 +190,19 @@ export async function tutor(store, user, input, educationContext = null) {
         ? "\nمعلومات الطالب التعليمية التي وافق على مشاركتها:\n" +
           JSON.stringify(educationContext)
         : "\nلا توجد موافقة لمشاركة ملف الطالب أو خطته؛ لا تدّع الاطلاع عليهما.");
+    const userMessage = imageInput
+      ? [
+          { type: "input_text", text: message || "حلّل الصورة التعليمية واشرح السؤال الظاهر فيها." },
+          {
+            type: "input_image",
+            image_url: "data:" + imageInput.mimeType + ";base64," + imageInput.data,
+            detail: "high",
+          },
+        ]
+      : message;
     const response = await responses(
       s,
-      aiRequest(s, [...history, { role: "user", content: message }], context),
+      aiRequest(s, [...history, { role: "user", content: userMessage }], context),
     );
     const inp = response.usage.input_tokens || 0,
       out = response.usage.output_tokens || 0,
@@ -185,7 +212,7 @@ export async function tutor(store, user, input, educationContext = null) {
           : null;
     store.transaction(() => {
       for (const [role, text] of [
-        ["user", message],
+        ["user", message + (imageInput ? "\n[مرفق صورة تعليمية: " + imageInput.name + "]" : "")],
         ["assistant", response.text],
       ])
         store.db
