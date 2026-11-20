@@ -659,7 +659,7 @@ export function createApp(cfg = config()) {
           fail(400, "اختر تصنيفًا صحيحًا");
         if (topic.length < 2 || description.length < 25)
           fail(400, "اكتب موضوعًا ووصفًا واضحًا لا يقل عن ٢٥ حرفًا");
-        if (examDate && (!/^\\d{4}-\\d{2}-\\d{2}$/.test(examDate) || Number.isNaN(Date.parse(examDate + "T00:00:00Z"))))
+        if (examDate && (!/^\d{4}-\d{2}-\d{2}$/.test(examDate) || Number.isNaN(Date.parse(examDate + "T00:00:00Z"))))
           fail(400, "تاريخ التجربة غير صالح");
         if (b.rightsConfirmed !== true)
           fail(400, "أكد أن المشاركة لا تتضمن نصًا أو صورة سرية أو محمية");
