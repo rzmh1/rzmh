@@ -340,3 +340,9 @@ input:focus, select:focus, textarea:focus {
 .leak-report[open] { display:flex; align-items:center; gap:7px; }
 .leak-report-form { display:flex; align-items:center; gap:6px; }
 .leak-report-form select { width:auto; max-width:150px; padding:5px 8px; font-size:10px; }
+
+/* AI tutor attachment control */
+.tutor-attachment { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:10px; }
+.tutor-attachment label { cursor:pointer; }
+.tutor-attachment small { font-size:11px; }
+#tutor-image:focus-visible + small { outline:2px solid var(--purple); }
