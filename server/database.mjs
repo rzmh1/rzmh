@@ -43,6 +43,31 @@ export function openDatabase(cfg) {
  CREATE TABLE IF NOT EXISTS custom_previews(token TEXT PRIMARY KEY,json TEXT NOT NULL,expires INTEGER NOT NULL);
  CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY,actor TEXT,action TEXT NOT NULL,target TEXT,detail TEXT,created_at TEXT NOT NULL);
  CREATE TABLE IF NOT EXISTS rate_limits(key TEXT PRIMARY KEY,count INTEGER NOT NULL,expires INTEGER NOT NULL);
+ CREATE TABLE IF NOT EXISTS leak_reports(
+  id TEXT PRIMARY KEY,
+  user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+  track TEXT NOT NULL,
+  subject TEXT NOT NULL,
+  topic TEXT NOT NULL,
+  description TEXT NOT NULL,
+  exam_date TEXT,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','approved','rejected','needs_changes','hidden')),
+  rights_confirmed INTEGER NOT NULL DEFAULT 0,
+  review_note TEXT,
+  created_at TEXT NOT NULL,
+  reviewed_at TEXT,
+  reviewed_by TEXT REFERENCES users(id) ON DELETE SET NULL
+ );
+ CREATE INDEX IF NOT EXISTS leak_reports_status_created ON leak_reports(status,created_at DESC);
+ CREATE TABLE IF NOT EXISTS leak_flags(
+  id TEXT PRIMARY KEY,
+  leak_id TEXT NOT NULL REFERENCES leak_reports(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  reason TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  UNIQUE(leak_id,user_id)
+ );
+
  `);
   if (!db.prepare("SELECT id FROM content").get()) {
     const data = structuredClone(defaults);
