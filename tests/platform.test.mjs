@@ -869,3 +869,104 @@ test("AI tutor accepts bounded PDF input and keeps document bytes out of convers
     await f.close();
   }
 });
+
+
+test("admin broadcasts only to active verified subscribers after fresh preview and confirmation", async () => {
+  const f = await fixture(),
+    originalFetch = globalThis.fetch;
+  let batchPayload = null,
+    batchCalls = 0;
+  try {
+    f.cfg.mail = {
+      apiKey: "test-resend-key",
+      from: "رُزمة <noreply@example.test>",
+    };
+    globalThis.fetch = async (url, options) => {
+      if (url === "https://api.resend.com/emails/batch") {
+        batchCalls += 1;
+        assert.equal(options.headers.Authorization, "Bearer test-resend-key");
+        assert.match(options.headers["Idempotency-Key"], /^broadcast\//);
+        batchPayload = JSON.parse(options.body);
+        return new Response(
+          JSON.stringify({ data: batchPayload.map((_, i) => ({ id: "batch_email_" + i })) }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+      return originalFetch(url, options);
+    };
+    const admin = await browser(f);
+    await admin.request("/api/auth/login", {
+      method: "POST",
+      body: { email: "owner@example.test", password: "a-very-long-test-password" },
+    });
+    const active = await browser(f),
+      pending = await browser(f);
+    const activeUser = await active.request("/api/auth/register", {
+      method: "POST",
+      body: { email: "active-broadcast@example.test", name: "مشترك نشط", password: "a-long-student-password" },
+    });
+    const pendingUser = await pending.request("/api/auth/register", {
+      method: "POST",
+      body: { email: "unverified-broadcast@example.test", name: "بريد غير مؤكد", password: "a-long-student-password" },
+    });
+    for (const userId of [activeUser.data.user.id, pendingUser.data.user.id]) {
+      assert.equal(
+        (
+          await admin.request("/api/admin/subscriptions", {
+            method: "POST",
+            body: { userId, planId: "month", days: 30 },
+          })
+        ).status,
+        200,
+      );
+    }
+    f.store.db.prepare("UPDATE users SET email_verified=0 WHERE id=?").run(pendingUser.data.user.id);
+    const draft = {
+      subject: "تحديث مهم في رُزمة",
+      message: "تمت إضافة تحسينات مهمة إلى المنصة. افتح حسابك للاطلاع على التفاصيل.",
+      serviceOnly: true,
+    };
+    const preview = await admin.request("/api/admin/broadcasts/preview", {
+      method: "POST",
+      body: draft,
+    });
+    assert.equal(preview.status, 200);
+    assert.equal(preview.data.recipientCount, 1);
+    assert.equal(batchCalls, 0);
+    assert.equal(
+      (
+        await admin.request("/api/admin/broadcasts/send", {
+          method: "POST",
+          body: { ...draft, confirmCount: 2 },
+        })
+      ).status,
+      409,
+    );
+    assert.equal(batchCalls, 0);
+    const sent = await admin.request("/api/admin/broadcasts/send", {
+      method: "POST",
+      body: { ...draft, confirmCount: preview.data.recipientCount },
+    });
+    assert.equal(sent.status, 201);
+    assert.equal(sent.data.sentCount, 1);
+    assert.equal(batchCalls, 1);
+    assert.equal(batchPayload.length, 1);
+    assert.deepEqual(batchPayload[0].to, ["active-broadcast@example.test"]);
+    const history = await admin.request("/api/admin/broadcasts");
+    assert.equal(history.data[0].status, "sent");
+    assert.equal(history.data[0].recipient_count, 1);
+    assert.equal(
+      (
+        await admin.request("/api/admin/broadcasts/send", {
+          method: "POST",
+          body: { ...draft, confirmCount: 1 },
+        })
+      ).status,
+      429,
+    );
+    assert.equal(batchCalls, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+    await f.close();
+  }
+});
