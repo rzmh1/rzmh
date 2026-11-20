@@ -617,3 +617,152 @@ test("student reports stay private until moderator review and publish only redac
     await f.close();
   }
 });
+
+
+test("email verification and password recovery require one-time expiring codes", async () => {
+  const f = await fixture(),
+    originalFetch = globalThis.fetch;
+  let sent = [];
+  try {
+    f.cfg.requireEmailVerification = true;
+    f.cfg.mail = {
+      apiKey: "test-resend-key",
+      from: "رُزمة <noreply@example.test>",
+    };
+    globalThis.fetch = async (url, options) => {
+      if (url === "https://api.resend.com/emails") {
+        assert.equal(options.headers.Authorization, "Bearer test-resend-key");
+        const payload = JSON.parse(options.body);
+        sent.push(payload);
+        return new Response(JSON.stringify({ id: "email_test" }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      return originalFetch(url, options);
+    };
+    const student = await browser(f);
+    const registration = await student.request("/api/auth/register", {
+      method: "POST",
+      body: {
+        email: "verify@example.test",
+        name: "طالب تحقق",
+        password: "a-long-student-password",
+      },
+    });
+    assert.equal(registration.status, 201);
+    assert.equal(registration.data.verificationRequired, true);
+    assert.equal(registration.data.email, "verify@example.test");
+    assert.equal(sent.length, 1);
+    assert.match(sent[0].text, /\d{6}/);
+    assert.equal(
+      (
+        await student.request("/api/auth/login", {
+          method: "POST",
+          body: {
+            email: "verify@example.test",
+            password: "a-long-student-password",
+          },
+        })
+      ).status,
+      403,
+    );
+    const verificationCode = sent[0].text.match(/(\d{6})/)[1];
+    assert.equal(
+      (
+        await student.request("/api/auth/verify-email", {
+          method: "POST",
+          body: { email: "verify@example.test", code: "000000" },
+        })
+      ).status,
+      400,
+    );
+    const verified = await student.request("/api/auth/verify-email", {
+      method: "POST",
+      body: { email: "verify@example.test", code: verificationCode },
+    });
+    assert.equal(verified.status, 200);
+    assert.equal(verified.data.user.email, "verify@example.test");
+    assert(student.cookie.startsWith("ruzmah_session="));
+    assert.equal(
+      (
+        await student.request("/api/auth/verify-email", {
+          method: "POST",
+          body: { email: "verify@example.test", code: verificationCode },
+        })
+      ).status,
+      400,
+    );
+
+    const requested = await student.request("/api/auth/forgot-password", {
+      method: "POST",
+      body: { email: "verify@example.test" },
+    });
+    assert.equal(requested.status, 200);
+    assert.match(requested.data.message, /إذا كان البريد/);
+    assert.equal(sent.length, 2);
+    const resetCode = sent[1].text.match(/(\d{6})/)[1];
+    const reset = await student.request("/api/auth/reset-password", {
+      method: "POST",
+      body: {
+        email: "verify@example.test",
+        code: resetCode,
+        password: "a-new-strong-password",
+      },
+    });
+    assert.equal(reset.status, 200);
+    assert.equal((await student.request("/api/session")).data.user, null);
+    const login = await browser(f);
+    assert.equal(
+      (
+        await login.request("/api/auth/login", {
+          method: "POST",
+          body: {
+            email: "verify@example.test",
+            password: "a-long-student-password",
+          },
+        })
+      ).status,
+      401,
+    );
+    assert.equal(
+      (
+        await login.request("/api/auth/login", {
+          method: "POST",
+          body: {
+            email: "verify@example.test",
+            password: "a-new-strong-password",
+          },
+        })
+      ).status,
+      200,
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+    await f.close();
+  }
+});
+
+test("production email verification refuses signup when mail delivery is not configured", async () => {
+  const f = await fixture();
+  try {
+    f.cfg.requireEmailVerification = true;
+    f.cfg.mail = { apiKey: "", from: "" };
+    const student = await browser(f);
+    const result = await student.request("/api/auth/register", {
+      method: "POST",
+      body: {
+        email: "not-created@example.test",
+        name: "حساب غير منشأ",
+        password: "a-long-student-password",
+      },
+    });
+    assert.equal(result.status, 503);
+    assert.equal(
+      f.store.db.prepare("SELECT count(*) n FROM users WHERE email=?").get("not-created@example.test").n,
+      0,
+    );
+  } finally {
+    await f.close();
+  }
+});
