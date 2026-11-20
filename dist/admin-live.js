@@ -459,6 +459,14 @@ export function mountAdminLive(tab, toast, render) {
         "احفظ التغييرات أولًا، ثم اختبر الاتصال بالإعدادات المحفوظة.";
   };
   const change = (ev) => {
+    if (tab === "broadcasts" && ev.target.closest("#broadcast-form") && ["subject", "message", "serviceOnly"].includes(ev.target.name)) {
+      const form = document.querySelector("#broadcast-form");
+      delete form.dataset.recipientCount;
+      const sendButton = document.querySelector("#broadcast-send"),
+        preview = document.querySelector("#broadcast-preview");
+      if (sendButton) sendButton.disabled = true;
+      if (preview) preview.textContent = "تغيرت الرسالة؛ أعد معاينة عدد المستلمين.";
+    }
     if (ev.target.name === "courseId" && tab === "uploads") {
       const c = db.courses.find((c) => c.id === ev.target.value);
       document.querySelector("[name=lessonId]").innerHTML =
@@ -473,7 +481,7 @@ export function mountAdminLive(tab, toast, render) {
   const submit = async (ev) => {
     const form = ev.target;
     if (
-      !["settings-form", "upload-form", "user-search"].includes(form.id) &&
+      !["settings-form", "upload-form", "user-search", "broadcast-form"].includes(form.id) &&
       !form.matches(".grant-sub")
     )
       return;
@@ -482,6 +490,26 @@ export function mountAdminLive(tab, toast, render) {
     button.disabled = true;
     try {
       const values = Object.fromEntries(new FormData(form));
+      if (form.id === "broadcast-form") {
+        const recipientCount = Number(form.dataset.recipientCount);
+        if (!recipientCount)
+          throw Error("اعرض عدد المستلمين أولًا قبل الإرسال.");
+        if (!form.elements.serviceOnly.checked || !form.elements.confirmSend.checked)
+          throw Error("أكد أن الرسالة تشغيلية وراجع عدد المستلمين قبل الإرسال.");
+        if (!confirm("سيتم إرسال هذه الرسالة إلى " + recipientCount + " مشتركًا نشطًا ببريد مؤكد. هل تريد المتابعة؟"))
+          return;
+        const result = await api("/api/admin/broadcasts/send", {
+          method: "POST",
+          body: {
+            subject: values.subject,
+            message: values.message,
+            serviceOnly: true,
+            confirmCount: recipientCount,
+          },
+        });
+        toast("اكتمل إرسال " + result.sentCount + " من " + result.recipientCount + " رسالة.");
+        await load();
+      }
       if (form.id === "settings-form") {
         values.enabled = new FormData(form).has("enabled");
         await api("/api/admin/settings/" + form.dataset.type, {
