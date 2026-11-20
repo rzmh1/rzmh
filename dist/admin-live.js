@@ -451,6 +451,15 @@ export function mountAdminLive(tab, toast, render) {
     }
   };
   const settingsDirty = (ev) => {
+    const broadcastForm = ev.target.closest("#broadcast-form");
+    if (tab === "broadcasts" && broadcastForm && ["subject", "message"].includes(ev.target.name)) {
+      delete broadcastForm.dataset.recipientCount;
+      delete broadcastForm.dataset.previewToken;
+      const sendButton = document.querySelector("#broadcast-send"),
+        preview = document.querySelector("#broadcast-preview");
+      if (sendButton) sendButton.disabled = true;
+      if (preview) preview.textContent = "تغير نص الرسالة؛ أعد معاينة عدد المستلمين.";
+    }
     const form = ev.target.closest("#settings-form");
     if (!form) return;
     const test = form.querySelector("[data-test-connection]");
