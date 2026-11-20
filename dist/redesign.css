@@ -297,3 +297,39 @@ input:focus, select:focus, textarea:focus {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
 }
+
+/* Student reports: clear provenance and safe review states */
+.leaks-page { max-width: 1120px; margin-inline: auto; }
+.leaks-toolbar { display:flex; align-items:end; justify-content:space-between; gap:16px; margin:22px 0; }
+.leaks-filters { display:flex; gap:10px; flex-wrap:wrap; }
+.leaks-filters label { display:grid; gap:5px; color:var(--muted); font-size:11px; }
+.leaks-filters select { min-width:150px; }
+.leaks-form { padding:clamp(18px,3vw,28px); }
+.leaks-form .panel-head { display:flex; align-items:center; justify-content:space-between; gap:15px; margin-bottom:12px; }
+.leaks-form .panel-head h2 { margin:4px 0 0; }
+.leaks-form .form-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin-top:18px; }
+.leaks-form .field { min-width:0; }
+.leaks-form .field.full { grid-column:1/-1; }
+.leaks-form .field label { font-size:12px; }
+.leaks-form textarea { min-height:120px; }
+.leaks-rights { display:flex; align-items:flex-start; gap:10px; margin:16px 0; color:var(--muted); font-size:11px; }
+.leaks-rights input { width:auto; margin-top:5px; accent-color:var(--purple); }
+.leaks-list { margin-top:28px; }
+.leak-card { padding:22px; margin-bottom:14px; }
+.leak-card-top, .leak-card-foot, .leak-meta { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+.leak-card-top time { color:var(--muted); font-size:10px; }
+.leak-card h3 { margin:13px 0 6px; font-size:18px; }
+.leak-card p { font-size:13px; margin-bottom:14px; }
+.leak-meta { justify-content:flex-start; color:var(--muted); font-size:10px; }
+.leak-meta span { background:var(--soft); border-radius:20px; padding:4px 9px; }
+.leak-card-foot { border-top:1px solid var(--border); padding-top:12px; margin-top:14px; }
+.leak-card-foot .btn { min-height:32px; }
+@media(max-width:720px) {
+  .leaks-toolbar { align-items:stretch; flex-direction:column; }
+  .leaks-toolbar > .btn { width:100%; }
+  .leaks-filters { display:grid; grid-template-columns:1fr 1fr; }
+  .leaks-filters select { min-width:0; width:100%; }
+  .leaks-form .form-grid { grid-template-columns:1fr; }
+  .leaks-form .field.full { grid-column:auto; }
+  .leak-card { padding:16px; }
+}
