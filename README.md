@@ -10,6 +10,7 @@
 - [المعاينة التفاعلية للواجهات](docs/ruzmah-redesign-preview.html) و[شرح الاتجاهات والشاشات](docs/DESIGN_PREVIEW.md).
 - [سجل التنفيذ المرحلي](docs/REDESIGN_IMPLEMENTATION.md).
 - [تقرير الاختبارات ونتائج CI](docs/TEST_REPORT.md).
+- [إعداد البريد والتحقق واستعادة كلمة المرور](docs/EMAIL-SETUP.md).
 
 
 راجع [تقرير المتجر النهائي 3.1](docs/STOREFRONT-FINAL.md) للوظائف المنفذة وطريقة الإدارة وحدود الاختبارات. لم يُنشر المشروع على استضافتك من هذه الجلسة.
