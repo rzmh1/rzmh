@@ -315,7 +315,7 @@ export function createApp(cfg = config()) {
           return send({ verificationRequired: true, email: mail }, 201);
         }
         store.audit(u.id, "auth.register", u.id);
-        return send(createSession(u, res), 201);
+        return send(createSession(u, res));
       }
       if (path === "/api/auth/login" && method === "POST") {
         rate("auth:" + clientIp, 12, 900000);
