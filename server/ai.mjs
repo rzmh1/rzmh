@@ -109,6 +109,11 @@ export async function tutor(store, user, input, educationContext = null) {
     const bytes = Buffer.from(data, "base64");
     if (!bytes.length || bytes.length > 4 * 1024 * 1024 || bytes.toString("base64").replace(/=+$/, "") !== data.replace(/=+$/, ""))
       fail(413, "حجم الصورة أكبر من ٤ ميجابايت أو صيغة الملف غير صحيحة.");
+    const validImage =
+      (mimeType === "image/jpeg" && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) ||
+      (mimeType === "image/png" && bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) ||
+      (mimeType === "image/webp" && bytes.toString("ascii", 0, 4) === "RIFF" && bytes.toString("ascii", 8, 12) === "WEBP");
+    if (!validImage) fail(400, "نوع الصورة لا يطابق محتوى الملف.");
     imageInput = { name, mimeType, data: bytes.toString("base64") };
   }
   const day = new Date().toLocaleDateString("en-CA", {
