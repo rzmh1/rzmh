@@ -1,4 +1,4 @@
-import { api, account } from "./api.js";
+import { api } from "./api.js";
 import { escape as e } from "./data.js";
 import { icon, empty, notice } from "./ui.js";
 
@@ -112,7 +112,7 @@ export function mountLeaks(toast) {
             </div>
             <div class="leak-card-foot">
               <span class="smalltext">محتوى راجعه فريق رُزمة · ليس سؤالًا رسميًا</span>
-              <button class="btn btn-ghost btn-sm" type="button" data-leak-flag="${e(item.id)}">${icon("flag")} إبلاغ عن محتوى</button>
+              <details class="leak-report"><summary>إبلاغ عن محتوى</summary><form class="leak-report-form" data-leak-id="${e(item.id)}"><select name="reason" aria-label="سبب الإبلاغ"><option value="inaccurate">معلومة غير دقيقة</option><option value="privacy">خصوصية أو بيانات شخصية</option><option value="copyright">حقوق نشر</option><option value="other">سبب آخر</option></select><button class="btn btn-outline btn-sm" type="submit">إرسال</button></form></details>
             </div>
           </article>`).join("") : empty("لا توجد إفادات منشورة بهذا التصنيف", "تظهر المشاركات هنا بعد مراجعتها واعتماد صياغتها العامة.", "file")}
       </div>`;
@@ -141,35 +141,29 @@ export function mountLeaks(toast) {
     if (button.hasAttribute("data-leak-compose")) {
       compose = !compose;
       render();
-      return;
     }
-    const id = button.dataset.leakFlag;
-    if (id) {
-      const reason = window.prompt(
-        "سبب الإبلاغ: inaccurate أو privacy أو copyright أو other",
-        "inaccurate",
-      );
-      if (!reason) return;
-      const normalized = reason.trim().toLowerCase();
-      if (!["inaccurate", "privacy", "copyright", "other"].includes(normalized)) {
-        toast("اكتب أحد الأسباب المحددة بالإنجليزية كما هو ظاهر.");
-        return;
-      }
+  }
+
+  async function submit(ev) {
+    if (ev.target.matches(".leak-report-form")) {
+      ev.preventDefault();
+      const form = ev.target,
+        button = form.querySelector('button[type="submit"]');
       button.disabled = true;
       try {
-        await api("/api/leaks/" + encodeURIComponent(id) + "/report", {
+        const values = Object.fromEntries(new FormData(form));
+        await api("/api/leaks/" + encodeURIComponent(form.dataset.leakId) + "/report", {
           method: "POST",
-          body: { reason: normalized },
+          body: { reason: values.reason },
         });
+        form.innerHTML = '<span class="smalltext">وصل بلاغك إلى الإدارة.</span>';
         toast("وصل بلاغك إلى إدارة رُزمة.");
       } catch (err) {
         button.disabled = false;
         error(err);
       }
+      return;
     }
-  }
-
-  async function submit(ev) {
     if (ev.target.id !== "leak-form") return;
     ev.preventDefault();
     const form = ev.target,
