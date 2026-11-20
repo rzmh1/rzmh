@@ -135,44 +135,50 @@ export function mountTutor(toast) {
     const form = ev.target,
       button = form.querySelector("button[type=submit]"),
       text = form.message.value.trim(),
-      file = form.image.files?.[0] || null;
+      file = form.attachment.files?.[0] || null;
     if (!text && !file) return;
     button.disabled = true;
     const error = document.querySelector("#ai-error");
     error.textContent = "";
     try {
-      let image = null;
+      let image = null,
+        pdf = null;
       if (file) {
-        if (!["image/jpeg", "image/png", "image/webp"].includes(file.type))
-          throw Error("ارفع صورة JPG أو PNG أو WebP فقط.");
-        if (file.size > 4 * 1024 * 1024)
+        const isPdf = file.type === "application/pdf";
+        if (isPdf && (file.size > 5 * 1024 * 1024 || !file.name.toLowerCase().endsWith(".pdf")))
+          throw Error("ارفع ملف PDF صالحًا لا يتجاوز ٥ ميجابايت.");
+        if (!isPdf && !["image/jpeg", "image/png", "image/webp"].includes(file.type))
+          throw Error("ارفع صورة JPG أو PNG أو WebP أو ملف PDF.");
+        if (!isPdf && file.size > 4 * 1024 * 1024)
           throw Error("حجم الصورة يجب ألا يتجاوز ٤ ميجابايت.");
-        image = await new Promise((resolve, reject) => {
+        const data = await new Promise((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = () => {
             const value = String(reader.result || "");
             const comma = value.indexOf(",");
-            if (comma < 0) reject(Error("تعذرت قراءة الصورة."));
-            else resolve({ name: file.name, mimeType: file.type, data: value.slice(comma + 1) });
+            if (comma < 0) reject(Error("تعذرت قراءة الملف."));
+            else resolve(value.slice(comma + 1));
           };
-          reader.onerror = () => reject(Error("تعذرت قراءة الصورة."));
+          reader.onerror = () => reject(Error("تعذرت قراءة الملف."));
           reader.readAsDataURL(file);
         });
+        if (isPdf) pdf = { name: file.name, mimeType: file.type, data };
+        else image = { name: file.name, mimeType: file.type, data };
       }
-      const shownText = text || "حلّل الصورة التعليمية المرفقة";
-      chat.innerHTML += message("user", shownText + (file ? "\n[صورة مرفقة: " + file.name + "]" : ""));
+      const shownText = text || (pdf ? "حلّل ملف PDF التعليمي المرفق" : "حلّل الصورة التعليمية المرفقة");
+      chat.innerHTML += message("user", shownText + (file ? "\n[مرفق: " + file.name + "]" : ""));
       const value = await api("/api/tutor", {
         method: "POST",
-        body: { message: text, image, conversationId },
+        body: { message: text, image, file: pdf, conversationId },
       });
       if (disposed) return;
       conversationId = value.conversationId;
       chat.innerHTML += message("assistant", value.text);
       form.message.value = "";
-      form.image.value = "";
-      document.querySelector("#tutor-file-name").textContent = "JPG أو PNG أو WebP · حتى ٤ ميجابايت";
+      form.attachment.value = "";
+      document.querySelector("#tutor-file-name").textContent = "صور JPG أو PNG أو WebP حتى ٤ ميجابايت · PDF حتى ٥ ميجابايت";
       document.querySelector("#ai-quota").textContent =
-        `المتبقي اليوم: ${value.remaining} طلبات`;
+        \`المتبقي اليوم: \${value.remaining} طلبات\`;
       await load();
     } catch (err) {
       if (!disposed) error.textContent = err.message;
@@ -180,13 +186,6 @@ export function mountTutor(toast) {
       button.disabled = false;
     }
   };
-  const imageInput = document.querySelector("#tutor-image");
-  const imageChange = () => {
-    const file = imageInput?.files?.[0];
-    const label = document.querySelector("#tutor-file-name");
-    if (label) label.textContent = file ? file.name + " · " + Math.ceil(file.size / 1024) + " KB" : "JPG أو PNG أو WebP · حتى ٤ ميجابايت";
-  };
-  imageInput?.addEventListener("change", imageChange);
   document.addEventListener("click", click);
   document.addEventListener("submit", submit);
   return () => {
