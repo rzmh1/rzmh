@@ -28,7 +28,7 @@ import { checkout, handleStripeWebhook, testPayment } from "./payments.mjs";
 import { testAI, tutor } from "./ai.mjs";
 import { storageService } from "./storage.mjs";
 import { frame, codeInput, saveCode } from "./custom.mjs";
-import { sendEmail, verificationMessage, resetMessage } from "./email.mjs";
+import { sendEmail, sendBatchEmails, verificationMessage, resetMessage } from "./email.mjs";
 const staticRoot = fileURLToPath(new URL("../dist/", import.meta.url));
 const safeUser = (u) =>
   u ? { id: u.id, name: u.name, email: u.email, role: u.role } : null;
@@ -220,6 +220,10 @@ export function createApp(cfg = config()) {
     );
     return sessionResponse(user, { csrf });
   }
+  const broadcastRecipients = () =>
+    db.prepare(
+      "SELECT DISTINCT u.id,u.email FROM users u JOIN subscriptions s ON s.user_id=u.id WHERE u.disabled=0 AND u.email_verified=1 AND s.status='active' AND s.start_at<=? AND s.end_at>? ORDER BY u.email",
+    ).all(now(), now());
   const codeHash = (code) => hash((cfg.key || "local-only") + ":" + code);
   async function sendCode(table, user, purpose) {
     const code = String(randomInt(100000, 1000000));
@@ -811,6 +815,76 @@ export function createApp(cfg = config()) {
         if (!flag.n) fail(404, "المشاركة غير موجودة");
         store.audit(user.id, "leak.report", leakFlagMatch[1], { reason });
         return send({ ok: true });
+      }
+      if (path === "/api/admin/broadcasts" && method === "GET") {
+        return send(
+          db.prepare(
+            "SELECT id,subject,recipient_count,sent_count,status,created_at,sent_at FROM broadcasts ORDER BY created_at DESC LIMIT 30",
+          ).all(),
+        );
+      }
+      if (path === "/api/admin/broadcasts/preview" && method === "POST") {
+        const b = await jsonBody(req, 6000),
+          subject = cleanText(b.subject || "", 120),
+          message = cleanText(b.message || "", 4000);
+        if (subject.length < 3 || message.length < 20)
+          fail(400, "اكتب عنوانًا واضحًا ورسالة لا تقل عن ٢٠ حرفًا.");
+        if (b.serviceOnly !== true)
+          fail(400, "أكد أن الرسالة تشغيلية ومخصصة للمشتركين الحاليين.");
+        const recipients = broadcastRecipients();
+        return send({ recipientCount: recipients.length, subject, message });
+      }
+      if (path === "/api/admin/broadcasts/send" && method === "POST") {
+        rate("broadcast:" + user.id, 1, 3600000);
+        if (!cfg.mail?.apiKey || !cfg.mail?.from)
+          fail(503, "أضف إعدادات البريد وتحقق من نطاق الإرسال قبل إرسال الرسائل.");
+        const b = await jsonBody(req, 6000),
+          subject = cleanText(b.subject || "", 120),
+          message = cleanText(b.message || "", 4000),
+          confirmCount = Number(b.confirmCount);
+        if (subject.length < 3 || message.length < 20 || b.serviceOnly !== true)
+          fail(400, "بيانات الرسالة أو تأكيد طبيعتها التشغيلية غير مكتمل.");
+        if (!Number.isInteger(confirmCount) || confirmCount < 1)
+          fail(400, "اعرض عدد المستلمين وراجعه قبل الإرسال.");
+        const recipients = broadcastRecipients();
+        if (recipients.length !== confirmCount)
+          fail(409, "تغير عدد المشتركين المؤهلين منذ المعاينة. أعد المعاينة قبل الإرسال.");
+        if (!recipients.length) fail(400, "لا يوجد مشتركون نشطون ببريد مؤكد.");
+        const id = randomUUID();
+        db.prepare(
+          "INSERT INTO broadcasts(id,subject,message,recipient_count,status,created_by,created_at) VALUES(?,?,?,?,?,?,?)",
+        ).run(id, subject, message, recipients.length, "sending", user.id, now());
+        try {
+          const result = await sendBatchEmails(cfg, recipients, {
+            subject,
+            text: message,
+            batchId: id,
+          });
+          db.prepare(
+            "UPDATE broadcasts SET sent_count=?,status=?,provider_ids=?,sent_at=? WHERE id=?",
+          ).run(
+            result.sentCount,
+            result.sentCount === recipients.length ? "sent" : "partial",
+            JSON.stringify(result.providerIds),
+            now(),
+            id,
+          );
+          store.audit(user.id, "broadcast.sent", id, {
+            recipients: recipients.length,
+            sent: result.sentCount,
+          });
+          return send({ id, recipientCount: recipients.length, sentCount: result.sentCount, status: result.sentCount === recipients.length ? "sent" : "partial" }, 201);
+        } catch (err) {
+          const sentCount = Number(err.sentCount || 0);
+          db.prepare(
+            "UPDATE broadcasts SET sent_count=?,status=?,sent_at=? WHERE id=?",
+          ).run(sentCount, sentCount ? "partial" : "failed", now(), id);
+          store.audit(user.id, sentCount ? "broadcast.partial" : "broadcast.failed", id, {
+            recipients: recipients.length,
+            sent: sentCount,
+          });
+          throw err;
+        }
       }
       if (path === "/api/admin/leaks" && method === "GET") {
         return send(
