@@ -980,3 +980,38 @@ test("admin broadcasts only to active verified subscribers after fresh preview a
     await f.close();
   }
 });
+
+
+test("Resend broadcast delivery chunks recipients into idempotent batches of at most 100", async () => {
+  const { sendBatchEmails } = await import("../server/email.mjs"),
+    originalFetch = globalThis.fetch,
+    sizes = [],
+    keys = [];
+  try {
+    globalThis.fetch = async (url, options) => {
+      assert.equal(url, "https://api.resend.com/emails/batch");
+      const payload = JSON.parse(options.body);
+      sizes.push(payload.length);
+      keys.push(options.headers["Idempotency-Key"]);
+      return new Response(
+        JSON.stringify({ data: payload.map((_, i) => ({ id: "id_" + sizes.length + "_" + i })) }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    };
+    const recipients = Array.from({ length: 101 }, (_, i) => ({
+      id: "student_" + i,
+      email: "student" + i + "@example.test",
+    }));
+    const result = await sendBatchEmails(
+      { mail: { apiKey: "test-key", from: "رُزمة <noreply@example.test>" } },
+      recipients,
+      { subject: "تحديث", text: "رسالة تشغيلية للمشتركين.", batchId: "broadcast-test-id" },
+    );
+    assert.deepEqual(sizes, [100, 1]);
+    assert.equal(new Set(keys).size, 2);
+    assert.equal(result.sentCount, 101);
+    assert.equal(result.providerIds.length, 101);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
