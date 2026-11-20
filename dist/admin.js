@@ -57,6 +57,7 @@ function content() {
       "learning-tracks",
       "scheduler",
       "students",
+      "leaks",
       "uploads",
       "custom",
       "payment",
