@@ -346,3 +346,15 @@ input:focus, select:focus, textarea:focus {
 .tutor-attachment label { cursor:pointer; }
 .tutor-attachment small { font-size:11px; }
 #tutor-image:focus-visible + small { outline:2px solid var(--purple); }
+
+/* Admin subscriber broadcast */
+#broadcast-form { padding:clamp(18px,3vw,28px); }
+#broadcast-form .form-grid { display:grid; grid-template-columns:1fr; gap:14px; }
+#broadcast-form textarea { min-height:150px; }
+.broadcast-preview { margin-top:16px; padding:13px 15px; border:1px solid var(--border); border-radius:13px; background:var(--soft); color:var(--text); font-size:12px; }
+#broadcast-form .checkbox { display:flex; align-items:flex-start; gap:9px; font-size:11px; }
+#broadcast-form .checkbox input { width:auto; margin-top:5px; accent-color:var(--purple); }
+@media(max-width:720px) {
+  #broadcast-form .modal-actions { display:grid; grid-template-columns:1fr; }
+  #broadcast-form .modal-actions .btn { width:100%; }
+}
