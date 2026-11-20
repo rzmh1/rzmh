@@ -4,6 +4,14 @@
 
 راجع [تقرير فحص وإصلاح التشغيل](docs/PRODUCTION-READINESS.md) و[دليل Northflank](docs/NORTHFLANK.md) لنتائج التحقق الحالية.
 
+## إعادة التصميم
+
+- [تقرير جرد المنصة والفجوات](docs/REDESIGN_AUDIT.md).
+- [المعاينة التفاعلية للواجهات](docs/ruzmah-redesign-preview.html) و[شرح الاتجاهات والشاشات](docs/DESIGN_PREVIEW.md).
+- [سجل التنفيذ المرحلي](docs/REDESIGN_IMPLEMENTATION.md).
+- [تقرير الاختبارات ونتائج CI](docs/TEST_REPORT.md).
+
+
 راجع [تقرير المتجر النهائي 3.1](docs/STOREFRONT-FINAL.md) للوظائف المنفذة وطريقة الإدارة وحدود الاختبارات. لم يُنشر المشروع على استضافتك من هذه الجلسة.
 
 **تشغَّل النسخة بخادم Node.js 24 أو Docker وقرص دائم. رفع `dist` وحده على استضافة ثابتة لا يشغّل الحسابات أو الإدارة أو الخطط.**
