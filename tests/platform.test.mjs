@@ -932,6 +932,7 @@ test("admin broadcasts only to active verified subscribers after fresh preview a
     });
     assert.equal(preview.status, 200);
     assert.equal(preview.data.recipientCount, 1);
+    assert.match(preview.data.previewToken, /^\\d+\\.[a-f0-9]{64}$/);
     assert.equal(batchCalls, 0);
     assert.equal(
       (
@@ -957,7 +958,7 @@ test("admin broadcasts only to active verified subscribers after fresh preview a
       method: "POST",
       body: { ...draft, confirmCount: preview.data.recipientCount, previewToken: preview.data.previewToken },
     });
-    assert.equal(sent.status, 201);
+    assert.equal(sent.status, 201, JSON.stringify(sent.data));
     assert.equal(sent.data.sentCount, 1);
     assert.equal(batchCalls, 1);
     assert.equal(batchPayload.length, 1);
