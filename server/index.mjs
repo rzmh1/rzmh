@@ -337,7 +337,7 @@ export function createApp(cfg = config()) {
           mail = email(b.email),
           code = cleanText(b.code, 6);
         rate("verify-email:" + mail, 8, 900000);
-        if (!/^\\d{6}$/.test(code)) fail(400, "أدخل رمز التحقق المكوّن من ٦ أرقام.");
+        if (!/^\d{6}$/.test(code)) fail(400, "أدخل رمز التحقق المكوّن من ٦ أرقام.");
         const u = db.prepare("SELECT * FROM users WHERE email=? AND disabled=0").get(mail),
           record = u && db.prepare("SELECT * FROM email_verification_codes WHERE user_id=?").get(u.id);
         if (!u || u.email_verified || !record) fail(400, "الرمز غير صالح أو انتهت صلاحيته. اطلب رمزًا جديدًا.");
@@ -389,7 +389,7 @@ export function createApp(cfg = config()) {
           code = cleanText(b.code, 6),
           newHash = await passwordHash(b.password);
         rate("reset-email:" + mail, 8, 900000);
-        if (!/^\\d{6}$/.test(code)) fail(400, "أدخل رمز الاستعادة المكوّن من ٦ أرقام.");
+        if (!/^\d{6}$/.test(code)) fail(400, "أدخل رمز الاستعادة المكوّن من ٦ أرقام.");
         const u = db.prepare("SELECT * FROM users WHERE email=? AND disabled=0 AND email_verified=1").get(mail),
           record = u && db.prepare("SELECT * FROM password_reset_codes WHERE user_id=?").get(u.id);
         if (!u || !record) fail(400, "رمز الاستعادة غير صالح أو انتهت صلاحيته.");
