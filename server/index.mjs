@@ -626,11 +626,14 @@ export function createApp(cfg = config()) {
             "SELECT id,track,subject,public_topic AS topic,public_description AS description,exam_date,created_at FROM leak_reports WHERE status='approved' AND public_topic IS NOT NULL AND public_description IS NOT NULL ORDER BY created_at DESC LIMIT 200",
           )
           .all();
-        const counts = new Map();
-        for (const row of rows) {
-          const key = [row.track, row.subject, row.topic.trim().toLocaleLowerCase()].join("\u0000");
-          counts.set(key, (counts.get(key) || 0) + 1);
-        }
+        const counts = new Map(
+          db.prepare(
+            "SELECT track,subject,lower(trim(public_topic)) AS topic,count(*) AS total FROM leak_reports WHERE status='approved' AND public_topic IS NOT NULL GROUP BY track,subject,lower(trim(public_topic))",
+          ).all().map((row) => [
+            [row.track, row.subject, row.topic].join("\u0000"),
+            row.total,
+          ]),
+        );
         return send({
           items: rows.map((row) => ({
             ...row,
