@@ -186,6 +186,13 @@ export function mountTutor(toast) {
       button.disabled = false;
     }
   };
+  const imageInput = document.querySelector("#tutor-attachment");
+  const imageChange = () => {
+    const file = imageInput?.files?.[0];
+    const label = document.querySelector("#tutor-file-name");
+    if (label) label.textContent = file ? file.name + " · " + Math.ceil(file.size / 1024) + " KB" : "صور JPG أو PNG أو WebP حتى ٤ ميجابايت · PDF حتى ٥ ميجابايت";
+  };
+  imageInput?.addEventListener("change", imageChange);
   document.addEventListener("click", click);
   document.addEventListener("submit", submit);
   return () => {
