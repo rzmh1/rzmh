@@ -178,7 +178,7 @@ export function mountTutor(toast) {
       form.attachment.value = "";
       document.querySelector("#tutor-file-name").textContent = "صور JPG أو PNG أو WebP حتى ٤ ميجابايت · PDF حتى ٥ ميجابايت";
       document.querySelector("#ai-quota").textContent =
-        \`المتبقي اليوم: \${value.remaining} طلبات\`;
+        `المتبقي اليوم: ${value.remaining} طلبات`;
       await load();
     } catch (err) {
       if (!disposed) error.textContent = err.message;
