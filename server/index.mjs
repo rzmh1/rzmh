@@ -9,7 +9,7 @@ import http from "node:http";
 import { readFile, stat, mkdir, readdir, unlink } from "node:fs/promises";
 import { resolve, extname, join, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { randomUUID, randomBytes, randomInt } from "node:crypto";
+import { randomUUID, randomBytes, randomInt, createHmac } from "node:crypto";
 import { config } from "./config.mjs";
 import { openDatabase, saveContent, PLANS } from "./database.mjs";
 import {
@@ -831,8 +831,21 @@ export function createApp(cfg = config()) {
           fail(400, "اكتب عنوانًا واضحًا ورسالة لا تقل عن ٢٠ حرفًا.");
         if (b.serviceOnly !== true)
           fail(400, "أكد أن الرسالة تشغيلية ومخصصة للمشتركين الحاليين.");
-        const recipients = broadcastRecipients();
-        return send({ recipientCount: recipients.length, subject, message });
+        const recipients = broadcastRecipients(),
+          expires = Date.now() + 5 * 60000,
+          fingerprint = hash(recipients.map((recipient) => recipient.id).join(","));
+        const previewPayload = JSON.stringify({
+          adminId: user.id,
+          subject,
+          message,
+          recipientCount: recipients.length,
+          fingerprint,
+          expires,
+        });
+        const previewToken =
+          expires + "." +
+          createHmac("sha256", cfg.key).update(previewPayload).digest("hex");
+        return send({ recipientCount: recipients.length, subject, message, previewToken });
       }
       if (path === "/api/admin/broadcasts/send" && method === "POST") {
         if (!cfg.mail?.apiKey || !cfg.mail?.from)
@@ -840,7 +853,8 @@ export function createApp(cfg = config()) {
         const b = await jsonBody(req, 6000),
           subject = cleanText(b.subject || "", 120),
           message = cleanText(b.message || "", 4000),
-          confirmCount = Number(b.confirmCount);
+          confirmCount = Number(b.confirmCount),
+          previewToken = cleanText(b.previewToken || "", 200);
         if (subject.length < 3 || message.length < 20 || b.serviceOnly !== true)
           fail(400, "بيانات الرسالة أو تأكيد طبيعتها التشغيلية غير مكتمل.");
         if (!Number.isInteger(confirmCount) || confirmCount < 1)
@@ -849,6 +863,22 @@ export function createApp(cfg = config()) {
         if (recipients.length !== confirmCount)
           fail(409, "تغير عدد المشتركين المؤهلين منذ المعاينة. أعد المعاينة قبل الإرسال.");
         if (!recipients.length) fail(400, "لا يوجد مشتركون نشطون ببريد مؤكد.");
+        const [expiryText, signature] = previewToken.split("."),
+          expires = Number(expiryText),
+          fingerprint = hash(recipients.map((recipient) => recipient.id).join(","));
+        if (!Number.isSafeInteger(expires) || expires <= Date.now() || !/^[a-f0-9]{64}$/.test(signature || ""))
+          fail(409, "انتهت المعاينة أو لم تعد صالحة. أعد المعاينة قبل الإرسال.");
+        const previewPayload = JSON.stringify({
+          adminId: user.id,
+          subject,
+          message,
+          recipientCount: recipients.length,
+          fingerprint,
+          expires,
+        });
+        const expectedSignature = createHmac("sha256", cfg.key).update(previewPayload).digest("hex");
+        if (!equal(signature, expectedSignature))
+          fail(409, "تغير نص الرسالة أو بيانات المعاينة. أعد المعاينة قبل الإرسال.");
         rate("broadcast:" + user.id, 1, 3600000);
         const id = randomUUID();
         db.prepare(
