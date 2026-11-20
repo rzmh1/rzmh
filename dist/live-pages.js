@@ -160,7 +160,7 @@ export function mountTutor(toast) {
         });
       }
       const shownText = text || "حلّل الصورة التعليمية المرفقة";
-      chat.innerHTML += message("user", shownText + (file ? "\\n[صورة مرفقة: " + file.name + "]" : ""));
+      chat.innerHTML += message("user", shownText + (file ? "\n[صورة مرفقة: " + file.name + "]" : ""));
       const value = await api("/api/tutor", {
         method: "POST",
         body: { message: text, image, conversationId },
