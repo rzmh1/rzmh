@@ -333,3 +333,10 @@ input:focus, select:focus, textarea:focus {
   .leaks-form .field.full { grid-column:auto; }
   .leak-card { padding:16px; }
 }
+
+.leak-report { position:relative; font-size:11px; }
+.leak-report summary { cursor:pointer; color:var(--muted); list-style:none; }
+.leak-report summary::-webkit-details-marker { display:none; }
+.leak-report[open] { display:flex; align-items:center; gap:7px; }
+.leak-report-form { display:flex; align-items:center; gap:6px; }
+.leak-report-form select { width:auto; max-width:150px; padding:5px 8px; font-size:10px; }
