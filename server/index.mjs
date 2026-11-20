@@ -845,7 +845,7 @@ export function createApp(cfg = config()) {
         const previewToken =
           expires + "." +
           createHmac("sha256", cfg.key).update(previewPayload).digest("hex");
-        return send({ recipientCount: recipients.length, subject, message, previewToken });
+        return send({ recipientCount: recipients.length, subject, message, previewToken, mailConfigured: !!cfg.mail?.apiKey && !!cfg.mail?.from });
       }
       if (path === "/api/admin/broadcasts/send" && method === "POST") {
         if (!cfg.mail?.apiKey || !cfg.mail?.from)
