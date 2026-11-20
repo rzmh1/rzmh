@@ -766,3 +766,54 @@ test("production email verification refuses signup when mail delivery is not con
     await f.close();
   }
 });
+
+
+test("AI tutor accepts bounded educational image input without storing image bytes", async () => {
+  const f = await fixture(),
+    originalFetch = globalThis.fetch;
+  let requestBody;
+  try {
+    const settings = f.store.setting("ai");
+    f.store.saveSetting(
+      "ai",
+      { ...settings, secrets: undefined, enabled: true, dailyLimit: 3 },
+      { apiKey: "not-a-real-key" },
+    );
+    const user = f.store.db.prepare("SELECT * FROM users WHERE id=?").get(f.adminId);
+    globalThis.fetch = async (url, options) => {
+      assert.equal(url, "https://api.openai.com/v1/responses");
+      requestBody = JSON.parse(options.body);
+      return new Response(
+        JSON.stringify({
+          id: "resp_image_mock",
+          output: [{ type: "message", content: [{ type: "output_text", text: "قرأت السؤال في الصورة." }] }],
+          usage: { input_tokens: 20, output_tokens: 10 },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    };
+    const png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j1XcAAAAASUVORK5CYII=";
+    const result = await tutor(f.store, user, {
+      message: "استخرج السؤال واشرح الإجابة الصحيحة.",
+      image: { name: "question.png", mimeType: "image/png", data: png },
+    });
+    assert.equal(result.text, "قرأت السؤال في الصورة.");
+    const content = requestBody.input.at(-1).content;
+    assert.equal(content[0].type, "input_text");
+    assert.equal(content[1].type, "input_image");
+    assert(content[1].image_url.startsWith("data:image/png;base64,"));
+    const saved = f.store.db.prepare("SELECT content FROM messages WHERE role='user'").get().content;
+    assert(saved.includes("question.png"));
+    assert(!saved.includes(png));
+    await assert.rejects(
+      tutor(f.store, user, {
+        message: "حل الصورة",
+        image: { name: "spoof.jpg", mimeType: "image/jpeg", data: png },
+      }),
+      (err) => err.status === 400,
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+    await f.close();
+  }
+});
