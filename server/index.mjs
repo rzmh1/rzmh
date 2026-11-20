@@ -835,7 +835,6 @@ export function createApp(cfg = config()) {
         return send({ recipientCount: recipients.length, subject, message });
       }
       if (path === "/api/admin/broadcasts/send" && method === "POST") {
-        rate("broadcast:" + user.id, 1, 3600000);
         if (!cfg.mail?.apiKey || !cfg.mail?.from)
           fail(503, "أضف إعدادات البريد وتحقق من نطاق الإرسال قبل إرسال الرسائل.");
         const b = await jsonBody(req, 6000),
@@ -850,6 +849,7 @@ export function createApp(cfg = config()) {
         if (recipients.length !== confirmCount)
           fail(409, "تغير عدد المشتركين المؤهلين منذ المعاينة. أعد المعاينة قبل الإرسال.");
         if (!recipients.length) fail(400, "لا يوجد مشتركون نشطون ببريد مؤكد.");
+        rate("broadcast:" + user.id, 1, 3600000);
         const id = randomUUID();
         db.prepare(
           "INSERT INTO broadcasts(id,subject,message,recipient_count,status,created_by,created_at) VALUES(?,?,?,?,?,?,?)",
