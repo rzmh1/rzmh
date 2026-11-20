@@ -932,7 +932,7 @@ test("admin broadcasts only to active verified subscribers after fresh preview a
     });
     assert.equal(preview.status, 200);
     assert.equal(preview.data.recipientCount, 1);
-    assert.match(preview.data.previewToken, /^\\d+\\.[a-f0-9]{64}$/);
+    assert.match(preview.data.previewToken, /^[0-9]+[.][a-f0-9]{64}$/);
     assert.equal(batchCalls, 0);
     assert.equal(
       (
