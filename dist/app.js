@@ -167,6 +167,7 @@ export function render(scroll = true) {
       "plan",
       "progress",
       "tutor",
+      "leaks",
     ].includes(r)
   ) {
     content = empty(
