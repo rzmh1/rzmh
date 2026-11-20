@@ -937,7 +937,7 @@ test("admin broadcasts only to active verified subscribers after fresh preview a
       (
         await admin.request("/api/admin/broadcasts/send", {
           method: "POST",
-          body: { ...draft, confirmCount: 2 },
+          body: { ...draft, confirmCount: 2, previewToken: preview.data.previewToken },
         })
       ).status,
       409,
@@ -945,7 +945,7 @@ test("admin broadcasts only to active verified subscribers after fresh preview a
     assert.equal(batchCalls, 0);
     const sent = await admin.request("/api/admin/broadcasts/send", {
       method: "POST",
-      body: { ...draft, confirmCount: preview.data.recipientCount },
+      body: { ...draft, confirmCount: preview.data.recipientCount, previewToken: preview.data.previewToken },
     });
     assert.equal(sent.status, 201);
     assert.equal(sent.data.sentCount, 1);
@@ -959,7 +959,7 @@ test("admin broadcasts only to active verified subscribers after fresh preview a
       (
         await admin.request("/api/admin/broadcasts/send", {
           method: "POST",
-          body: { ...draft, confirmCount: 1 },
+          body: { ...draft, confirmCount: 1, previewToken: preview.data.previewToken },
         })
       ).status,
       429,
