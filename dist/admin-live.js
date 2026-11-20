@@ -297,12 +297,14 @@ export function mountAdminLive(tab, toast, render) {
             body: values,
           });
           form.dataset.recipientCount = String(result.recipientCount);
+          form.dataset.previewToken = result.previewToken;
           preview.textContent = result.recipientCount
             ? "سيتم إرسال «" + result.subject + "» إلى " + result.recipientCount + " مشتركًا نشطًا ببريد مؤكد."
             : "لا يوجد مشتركون مؤهلون حاليًا. لم يتم إرسال أي رسالة.";
           sendButton.disabled = !result.recipientCount || !values.serviceOnly;
         } catch (err) {
           delete form.dataset.recipientCount;
+          delete form.dataset.previewToken;
           preview.textContent = err.message;
         } finally {
           b.disabled = false;
@@ -462,6 +464,7 @@ export function mountAdminLive(tab, toast, render) {
     if (tab === "broadcasts" && ev.target.closest("#broadcast-form") && ["subject", "message", "serviceOnly"].includes(ev.target.name)) {
       const form = document.querySelector("#broadcast-form");
       delete form.dataset.recipientCount;
+      delete form.dataset.previewToken;
       const sendButton = document.querySelector("#broadcast-send"),
         preview = document.querySelector("#broadcast-preview");
       if (sendButton) sendButton.disabled = true;
@@ -505,6 +508,7 @@ export function mountAdminLive(tab, toast, render) {
             message: values.message,
             serviceOnly: true,
             confirmCount: recipientCount,
+            previewToken: form.dataset.previewToken,
           },
         });
         toast("اكتمل إرسال " + result.sentCount + " من " + result.recipientCount + " رسالة.");
