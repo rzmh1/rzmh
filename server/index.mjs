@@ -398,7 +398,7 @@ export function createApp(cfg = config()) {
           db.prepare("DELETE FROM password_reset_codes WHERE user_id=?").run(u.id);
           fail(400, "انتهت صلاحية الرمز. اطلب الاستعادة مجددًا.");
         }
-        if (!equal(hash(code), record.code_hash)) {
+        if (!equal(codeHash(code), record.code_hash)) {
           if (record.attempts + 1 >= 5)
             db.prepare("DELETE FROM password_reset_codes WHERE user_id=?").run(u.id);
           else
