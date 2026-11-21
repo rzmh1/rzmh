@@ -39,7 +39,16 @@ export function createApp(cfg = config()) {
     storage = storageService(store);
   storage.resume();
   const learning = learningService(store);
+  let lastRateLimitCleanup = 0;
+  const cleanupRateLimits = (force = false) => {
+    const time = Date.now();
+    if (!force && time - lastRateLimitCleanup < 10 * 60 * 1000) return;
+    db.prepare("DELETE FROM rate_limits WHERE expires<=?").run(time);
+    lastRateLimitCleanup = time;
+  };
+  cleanupRateLimits(true);
   const rate = (key, max = 20, window = 60000) => {
+    cleanupRateLimits();
     const r = db.prepare("SELECT * FROM rate_limits WHERE key=?").get(key);
     if (r && r.expires > Date.now()) {
       if (r.count >= max)
