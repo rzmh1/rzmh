@@ -272,22 +272,32 @@ export function aiLibraryService(store, storage) {
     ).all();
     let refreshed = 0;
     for (const row of rows) {
-      const status = await request(
-        key,
-        "/vector_stores/" + encodeURIComponent(vectorId) + "/files/" + encodeURIComponent(row.openai_file_id),
-      );
-      const next = ["completed", "in_progress", "failed", "cancelled"].includes(status.status)
-        ? (status.status === "cancelled" ? "failed" : status.status)
-        : row.status;
-      db.prepare(
-        "UPDATE ai_library_files SET status=?,usage_bytes=?,error=?,updated_at=? WHERE asset_id=?"
-      ).run(
-        next,
-        Number(status.usage_bytes) || 0,
-        status.last_error?.message ? cleanText(status.last_error.message, 300) : null,
-        now(),
-        row.asset_id,
-      );
+      try {
+        const status = await request(
+          key,
+          "/vector_stores/" + encodeURIComponent(vectorId) + "/files/" + encodeURIComponent(row.openai_file_id),
+        );
+        const next = ["completed", "in_progress", "failed", "cancelled"].includes(status.status)
+          ? (status.status === "cancelled" ? "failed" : status.status)
+          : row.status;
+        db.prepare(
+          "UPDATE ai_library_files SET status=?,usage_bytes=?,error=?,updated_at=? WHERE asset_id=?"
+        ).run(
+          next,
+          Number(status.usage_bytes) || 0,
+          status.last_error?.message ? cleanText(status.last_error.message, 300) : null,
+          now(),
+          row.asset_id,
+        );
+      } catch (err) {
+        if (err.status === 404) {
+          db.prepare(
+            "UPDATE ai_library_files SET status='failed',error=?,updated_at=? WHERE asset_id=?"
+          ).run("تعذر العثور على الملف المفهرس لدى OpenAI. أعد فهرسته.", now(), row.asset_id);
+        } else {
+          throw err;
+        }
+      }
       refreshed++;
     }
     return { refreshed };
@@ -306,10 +316,14 @@ export function aiLibraryService(store, storage) {
         key,
         "/vector_stores/" + encodeURIComponent(vectorId) + "/files/" + encodeURIComponent(row.openai_file_id),
         { method: "DELETE" },
-      );
+      ).catch((err) => {
+        if (err.status !== 404) throw err;
+      });
       await request(key, "/files/" + encodeURIComponent(row.openai_file_id), {
         method: "DELETE",
-      }).catch(() => {});
+      }).catch((err) => {
+        if (err.status !== 404) throw err;
+      });
     }
     db.prepare("DELETE FROM ai_library_files WHERE asset_id=?").run(assetId);
     store.audit(user.id, "ai_library.remove", assetId);
