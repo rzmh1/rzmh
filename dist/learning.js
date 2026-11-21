@@ -464,7 +464,7 @@ ${upcoming.length ? `<section class="dash-card"><div class="dash-card-head"><h2>
       ${independent.length ? `<section class="spaced"><h2>دورات مستقلة</h2><div class="teacher-courses">${independent.map((course) => `<article class="panel"><span class="badge">${e(courseGroupName(course))}</span><h3>${e(course.title)}</h3><p>${e(course.description)}</p>${btn("عرض الدروس والملفات والاختبارات", "#/course/" + course.id, "outline")}</article>`).join("")}</div></section>` : ""}
       <div class="track-shortcuts spaced"><a href="#/bank?track=${encodeURIComponent(id)}">بنك أسئلة المسار ${icon("arrow")}</a><a href="#/tests">الاختبارات العامة ${icon("arrow")}</a><a href="#/mistakes">دفتر الأخطاء ${icon("arrow")}</a>${id === "qudrat-verbal" ? `<a href="#/bank?track=${id}&topic=vocabulary">المفردات ${icon("book")}</a><a href="#/bank?track=${id}&topic=reading">استيعاب المقروء ${icon("book")}</a>` : ""}</div>`;
   }
-  function drawDiscover() {  function drawDiscover() {
+  function drawDiscover() {
     const tests = catalog.tests.filter(
       (t) => t.level === "diagnostic" && t.visible,
     );
