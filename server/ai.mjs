@@ -324,6 +324,9 @@ export async function tutor(store, user, input, educationContext = null, resourc
         resources?.aiLibrary?.vectorStoreId || null,
       ),
     );
+    const responseText = response.text + (response.citations?.length
+      ? "\n\nالمصادر المستخدمة من مكتبة رُزمة:\n" + response.citations.map((name) => "• " + name).join("\n")
+      : "");
     const inp = response.usage.input_tokens || 0,
       out = response.usage.output_tokens || 0,
       cost =
@@ -333,7 +336,7 @@ export async function tutor(store, user, input, educationContext = null, resourc
     store.transaction(() => {
       for (const [role, text] of [
         ["user", message + (imageInput ? "\n[مرفق صورة سؤال: " + imageInput.name + "]" : fileInput ? "\n[مرفق PDF: " + fileInput.name + "]" : "")],
-        ["assistant", response.text],
+        ["assistant", responseText],
       ])
         store.db
           .prepare(
@@ -348,9 +351,7 @@ export async function tutor(store, user, input, educationContext = null, resourc
     });
     return {
       conversationId,
-      text: response.text + (response.citations?.length
-        ? "\n\nالمصادر المستخدمة من مكتبة رُزمة:\n" + response.citations.map((name) => "• " + name).join("\n")
-        : ""),
+      text: responseText,
       citations: response.citations || [],
       usage: { inputTokens: inp, outputTokens: out },
       remaining: Math.max(
