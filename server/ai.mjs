@@ -190,7 +190,7 @@ export async function tutor(store, user, input, educationContext = null, resourc
       .slice(0, 40);
     const instructorById = new Map(instructors.map((item) => [item.id, item]));
     const courseContext = content.courses
-      .filter((c) => courseVisible(c, content))
+      .filter((c) => courseVisible(content, c))
       .flatMap((c) =>
         c.lessons
           .filter((l) => l.visible !== false)
@@ -249,7 +249,7 @@ export async function tutor(store, user, input, educationContext = null, resourc
       .join("\n")
       .slice(0, 3500);
     const lessonAttachments = content.courses
-      .filter((c) => courseVisible(c, content))
+      .filter((c) => courseVisible(content, c))
       .flatMap((c) =>
         c.lessons
           .filter((l) => l.visible !== false)
