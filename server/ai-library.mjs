@@ -27,7 +27,7 @@ const mimeByExtension = {
   ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
   ".py": "text/x-python",
   ".rb": "text/x-ruby",
-  ".sh": "text/x-sh",
+  ".sh": "application/x-sh",
   ".tex": "text/x-tex",
   ".ts": "application/typescript",
   ".txt": "text/plain",
