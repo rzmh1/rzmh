@@ -108,41 +108,49 @@ export function openDatabase(cfg) {
   if (!leakColumns.has("public_description")) db.exec("ALTER TABLE leak_reports ADD COLUMN public_description TEXT");
   if (!leakColumns.has("public_topic")) db.exec("ALTER TABLE leak_reports ADD COLUMN public_topic TEXT");
   db.exec(`
-    CREATE TABLE IF NOT EXISTS community_posts(
+    CREATE TABLE IF NOT EXISTS support_categories(
       id TEXT PRIMARY KEY,
-      user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
-      track TEXT NOT NULL CHECK(track IN ('qudrat','tahsili')),
-      subject TEXT NOT NULL CHECK(subject IN ('quantitative','verbal','math','physics','chemistry','biology','other')),
-      title TEXT NOT NULL,
-      body TEXT NOT NULL,
-      status TEXT NOT NULL DEFAULT 'visible' CHECK(status IN ('visible','hidden','removed')),
-      accepted_answer_id TEXT,
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
+      name TEXT NOT NULL,
+      active INTEGER NOT NULL DEFAULT 1 CHECK(active IN (0,1)),
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL
     );
-    CREATE INDEX IF NOT EXISTS community_posts_feed ON community_posts(status,updated_at DESC);
-    CREATE INDEX IF NOT EXISTS community_posts_filter ON community_posts(track,subject,status,created_at DESC);
-    CREATE TABLE IF NOT EXISTS community_answers(
+    CREATE TABLE IF NOT EXISTS support_questions(
       id TEXT PRIMARY KEY,
-      post_id TEXT NOT NULL REFERENCES community_posts(id) ON DELETE CASCADE,
-      user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
-      body TEXT NOT NULL,
-      status TEXT NOT NULL DEFAULT 'visible' CHECK(status IN ('visible','hidden','removed')),
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
-    );
-    CREATE INDEX IF NOT EXISTS community_answers_post ON community_answers(post_id,status,created_at);
-    CREATE TABLE IF NOT EXISTS community_flags(
-      id TEXT PRIMARY KEY,
-      target_type TEXT NOT NULL CHECK(target_type IN ('post','answer')),
-      target_id TEXT NOT NULL,
       user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      reason TEXT NOT NULL CHECK(reason IN ('spam','inappropriate','wrong','privacy','other')),
+      category_id TEXT NOT NULL REFERENCES support_categories(id),
+      subject TEXT NOT NULL,
+      body TEXT NOT NULL,
+      reply TEXT,
+      status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','replied','rejected','closed')),
+      published INTEGER NOT NULL DEFAULT 0 CHECK(published IN (0,1)),
+      replied_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+      replied_at TEXT,
       created_at TEXT NOT NULL,
-      UNIQUE(target_type,target_id,user_id)
+      updated_at TEXT NOT NULL
     );
-    CREATE INDEX IF NOT EXISTS community_flags_target ON community_flags(target_type,target_id);
+    CREATE INDEX IF NOT EXISTS support_questions_user ON support_questions(user_id,created_at DESC);
+    CREATE INDEX IF NOT EXISTS support_questions_public ON support_questions(published,status,replied_at DESC);
+    CREATE INDEX IF NOT EXISTS support_questions_status ON support_questions(status,updated_at DESC);
   `);
+  const supportCategoryCount = db.prepare("SELECT count(*) AS n FROM support_categories").get().n;
+  if (!supportCategoryCount) {
+    const insertSupportCategory = db.prepare(
+      "INSERT INTO support_categories(id,name,active,sort_order,created_at) VALUES(?,?,1,?,?)"
+    );
+    const timestamp = new Date().toISOString();
+    [
+      ["courses", "الدورات والاشتراكات"],
+      ["leaks", "التسريبات والتحديثات"],
+      ["schedule", "مواعيد النشر"],
+      ["tutor", "المدرس الذكي"],
+      ["subscription", "الاشتراكات والدفع"],
+      ["technical", "المشاكل التقنية"],
+      ["suggestion", "اقتراحات الطلاب"],
+      ["general", "استفسار عام"],
+    ].forEach(([id, name], index) => insertSupportCategory.run(id, name, index + 1, timestamp));
+  }
+
   if (!db.prepare("SELECT id FROM content").get()) {
     const data = structuredClone(defaults);
     data.tests = [
