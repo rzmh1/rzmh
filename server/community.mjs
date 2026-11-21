@@ -45,7 +45,7 @@ export function listCommunityPosts(store, user, filters = {}) {
     "(SELECT max(a.created_at) FROM community_answers a WHERE a.post_id=p.id AND a.status='visible') AS last_answer_at," +
     "(SELECT count(*) FROM community_flags f WHERE f.target_type='post' AND f.target_id=p.id) AS report_count " +
     "FROM community_posts p LEFT JOIN users u ON u.id=p.user_id WHERE " + where.join(" AND ") +
-    " ORDER BY COALESCE(last_answer_at,p.updated_at,p.created_at) DESC LIMIT 100"
+    " ORDER BY COALESCE((SELECT max(a.created_at) FROM community_answers a WHERE a.post_id=p.id AND a.status='visible'),p.updated_at,p.created_at) DESC LIMIT 100"
   ).all(...params);
 }
 
