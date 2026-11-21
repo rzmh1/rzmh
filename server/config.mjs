@@ -16,8 +16,7 @@ export function config(env = process.env) {
       "Production requires HTTPS APP_ORIGIN and a 32-byte base64 APP_KEY",
     );
   const requireEmailVerification =
-      env.REQUIRE_EMAIL_VERIFICATION === "1" ||
-      (production && env.REQUIRE_EMAIL_VERIFICATION !== "0"),
+      production || env.REQUIRE_EMAIL_VERIFICATION === "1",
     mail = {
       apiKey: env.RESEND_API_KEY || "",
       from: env.EMAIL_FROM || "",
