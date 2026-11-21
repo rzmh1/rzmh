@@ -322,6 +322,20 @@ export function createApp(cfg = config()) {
         store.audit(u.id, "auth.register", u.id);
         return send(createSession(u, res));
       }
+      if (path === "/api/auth/admin-login" && method === "POST") {
+        rate("admin-auth:" + clientIp, 8, 900000);
+        const b = await jsonBody(req, 16000),
+          mail = email(b.email),
+          u = db
+            .prepare("SELECT * FROM users WHERE email=? AND role='admin' AND disabled=0")
+            .get(mail);
+        if (!u || !(await passwordVerify(b.password, u.password_hash)))
+          fail(401, "بيانات دخول المالك غير صحيحة");
+        if (!u.email_verified)
+          fail(403, "تحقق من بريد المالك أولًا، ثم حاول تسجيل الدخول.");
+        store.audit(u.id, "auth.admin_login", u.id);
+        return send(createSession(u, res));
+      }
       if (path === "/api/auth/login" && method === "POST") {
         rate("auth:" + clientIp, 12, 900000);
         const b = await jsonBody(req, 16000),
