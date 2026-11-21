@@ -247,6 +247,7 @@ export function mountTutor(toast) {
       let image = null, pdf = null;
       await imageLoading;
       if (file?.type === "application/pdf") {
+        if (strokes.length) throw Error("إذا أردت الرسم على السؤال، أرفق صورة الصفحة بدل PDF حتى نرسل الرسم مع السؤال.");
         if (file.size > 5 * 1024 * 1024 || !file.name.toLowerCase().endsWith(".pdf")) throw Error("ارفع ملف PDF صالحًا لا يتجاوز ٥ ميجابايت.");
         const data = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => { const value = String(reader.result || ""); const comma = value.indexOf(","); if (comma < 0) reject(Error("تعذرت قراءة الملف.")); else resolve(value.slice(comma + 1)); }; reader.onerror = () => reject(Error("تعذرت قراءة الملف.")); reader.readAsDataURL(file); });
         pdf = { name: file.name, mimeType: file.type, data };
