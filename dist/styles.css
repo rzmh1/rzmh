@@ -4391,3 +4391,5 @@ textarea {
 @media(prefers-reduced-motion:reduce){.tutor-board-step{animation:none}}
 
 .tutor-teacher-canvas{display:block;width:100%;height:auto;aspect-ratio:5/3;margin:12px 0 16px;border:1px solid var(--border);border-radius:12px;background:#fff;touch-action:pan-y}
+
+.tutor-draw-actions [data-tutor-draw].active{border-color:var(--purple);background:var(--purple-light);color:var(--purple);font-weight:800}
