@@ -719,7 +719,7 @@ export function mountAdminLive(tab, toast, render) {
           if (file.size > 512 * 1024 * 1024)
             throw Error("الملف «" + file.name + "» يتجاوز حد 512 MB للملف الواحد.");
           const extension = file.name.split(".").pop().toLowerCase();
-          const mime = !file.type || file.type === "application/octet-stream" ? mimeFallback[extension] : file.type;
+          const mime = mimeFallback[extension];
           if (!mime) throw Error("صيغة الملف غير مدعومة: " + file.name);
           status.textContent = "رفع الملف " + (index + 1) + " من " + files.length + ": " + file.name;
           bar.value = 0;
