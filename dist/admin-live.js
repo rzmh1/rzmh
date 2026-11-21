@@ -97,6 +97,29 @@ export function mountAdminLive(tab, toast, render) {
             ? reports.map((r) => `<article class="panel spaced" data-leak-card="${e(r.id)}"><div class="admin-bar"><div><h3>${e(r.topic)}</h3><small>${e(r.submitter || "حساب محذوف")} · ${date(r.created_at)} · ${e(r.track)} / ${e(r.subject)}</small></div><span class="badge ${r.status === "approved" ? "badge-purple" : ""}">${e(labels[r.status] || r.status)}</span></div><p>${e(r.description)}</p><div class="smalltext">تاريخ التجربة: ${e(r.exam_date || "غير محدد")} · بلاغات: ${r.report_count}</div><div class="form-grid spaced"><div class="field"><label>العنوان العام بعد إزالة أي بيانات شخصية</label><input data-leak-topic value="${e(r.public_topic || r.topic)}" maxlength="100"></div><div class="field"><label>الوصف العام المنقّح قبل النشر</label><textarea data-leak-description maxlength="1200">${e(r.public_description || r.description)}</textarea></div><div class="field"><label>ملاحظة داخلية (اختياري)</label><input data-leak-note value="${e(r.review_note || "")}" maxlength="500"></div></div><div class="table-actions"><button class="btn btn-primary btn-sm" data-leak-review="${e(r.id)}" data-status="approved" ${r.rights_confirmed ? "" : "disabled"}>اعتماد ونشر</button><button class="btn btn-outline btn-sm" data-leak-review="${e(r.id)}" data-status="needs_changes">طلب تعديل</button><button class="btn btn-outline btn-sm danger" data-leak-review="${e(r.id)}" data-status="rejected">رفض</button><button class="btn btn-ghost btn-sm" data-leak-review="${e(r.id)}" data-status="hidden">إخفاء</button></div>${r.rights_confirmed ? "" : '<p class="danger smalltext">لم يؤكد المرسل شروط الحقوق؛ لا يمكن اعتماد المشاركة.</p>'}</article>`).join("")
             : empty("لا توجد مشاركات", "ستظهر هنا إفادات الطلاب الجديدة بعد إرسالها.", "file"));
       }
+      if (tab === "community") {
+        const posts = await api("/api/admin/community");
+        if (disposed) return;
+        const statusLabel = { visible: "ظاهر للمشتركين", hidden: "مخفي", removed: "مزال" };
+        target.innerHTML =
+          "<h2>إدارة مجتمع رُزمة</h2>" +
+          notice("تظهر الأسئلة للمشتركين النشطين فقط. استخدم الإخفاء عند وجود محتوى مخالف، ويمكن إعادة إظهار المشاركة بعد مراجعتها. لا تحذف بيانات الطلاب نهائيًا من هذا القسم.") +
+          (posts.length
+            ? posts.map((p) =>
+                '<article class="panel spaced community-admin-card"><div class="admin-bar"><div><div class="community-meta"><span class="badge badge-purple">' + e(p.track === "qudrat" ? "القدرات" : "التحصيلي") + '</span><span class="badge">' + e(p.subject) + '</span></div><h3 class="spaced">' + e(p.title) + '</h3><small>' + e(p.author_name) + " · " + date(p.created_at) + " · " + p.answer_count + " إجابات · " + p.report_count + " بلاغات</small></div><span class="badge">' + e(statusLabel[p.status] || p.status) + '</span></div><p class="community-admin-body">' + e(p.body) + '</p><div class="table-actions">' +
+                (p.status === "visible" ? '<button class="btn btn-outline btn-sm danger" data-community-post="' + e(p.id) + '" data-status="hidden">إخفاء السؤال</button>' : '<button class="btn btn-outline btn-sm" data-community-post="' + e(p.id) + '" data-status="visible">إعادة إظهار السؤال</button>') +
+                (p.status !== "removed" ? '<button class="btn btn-ghost btn-sm danger" data-community-post="' + e(p.id) + '" data-status="removed">إزالة من المجتمع</button>' : "") +
+                '</div>' +
+                (p.answers.length ? '<div class="community-admin-answers"><b>الإجابات</b>' + p.answers.map((a) =>
+                  '<div class="community-admin-answer"><p>' + e(a.body) + '</p><small>' + e(a.author_name) + " · " + date(a.created_at) + " · " + a.report_count + " بلاغات · " + e(statusLabel[a.status] || a.status) + '</small><div class="table-actions">' +
+                  (a.status === "visible" ? '<button class="btn btn-outline btn-sm danger" data-community-answer="' + e(a.id) + '" data-status="hidden">إخفاء الإجابة</button>' : '<button class="btn btn-outline btn-sm" data-community-answer="' + e(a.id) + '" data-status="visible">إعادة إظهار الإجابة</button>') +
+                  (a.status !== "removed" ? '<button class="btn btn-ghost btn-sm danger" data-community-answer="' + e(a.id) + '" data-status="removed">إزالة</button>' : "") +
+                  '</div></div>'
+                ).join("") + '</div>' : '<p class="muted spaced">لا توجد إجابات حتى الآن.</p>') +
+                "</article>"
+              ).join("")
+            : empty("لا توجد أسئلة في المجتمع بعد", "ستظهر هنا مشاركات الطلاب لمراجعتها عند الحاجة.", "message-circle"));
+      }
       if (tab === "broadcasts") {
         const history = await api("/api/admin/broadcasts");
         if (disposed) return;
@@ -338,6 +361,26 @@ export function mountAdminLive(tab, toast, render) {
           },
         });
         toast(d.status === "approved" ? "تم اعتماد الإفادة بعد تنقيحها." : "تم تحديث حالة المراجعة.");
+        await load();
+        return;
+      }
+      if (d.communityPost) {
+        b.disabled = true;
+        await api("/api/admin/community/posts/" + encodeURIComponent(d.communityPost) + "/moderate", {
+          method: "POST",
+          body: { status: d.status },
+        });
+        toast(d.status === "visible" ? "أُعيد إظهار السؤال." : d.status === "hidden" ? "أُخفي السؤال عن المشتركين." : "أُزيل السؤال من المجتمع.");
+        await load();
+        return;
+      }
+      if (d.communityAnswer) {
+        b.disabled = true;
+        await api("/api/admin/community/answers/" + encodeURIComponent(d.communityAnswer) + "/moderate", {
+          method: "POST",
+          body: { status: d.status },
+        });
+        toast(d.status === "visible" ? "أُعيد إظهار الإجابة." : d.status === "hidden" ? "أُخفيت الإجابة." : "أُزيلت الإجابة.");
         await load();
         return;
       }
