@@ -30,7 +30,7 @@ test("store, routes, mobile styles, paid lesson gate, owner workspace and paymen
   const tutorHtml = live.tutorLive();
   assert(tutorHtml.includes("مساحة رسم الطالب"));
   assert(tutorHtml.includes("إرفاق صورة سؤال"));
-  assert(!tutorHtml.includes("application/pdf"));
+  assert(tutorHtml.includes("application/pdf"));
   const boardHtml = live.teacherBoardMarkup("الخطوة الأولى\\nس = ٦");
   assert(boardHtml.includes("سبورة مدرس رُزمة"));
   assert(boardHtml.includes("data-board-step"));
