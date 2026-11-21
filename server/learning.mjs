@@ -145,6 +145,7 @@ export function learningService(store) {
           subject: c.subject,
           trackId: c.trackId,
           stage: c.stage,
+          groupTitle: c.groupTitle || "",
           instructorId: c.instructorId || "",
           visible: c.visible,
           order: c.order,
