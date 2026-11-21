@@ -2,7 +2,7 @@ import { randomUUID, randomBytes } from "node:crypto";
 import { fail, cleanText } from "./security.mjs";
 export function codeInput(b) {
   const scope = cleanText(b.scope || "home", 60);
-  if (!/^(home|internal|all|section|course|lesson|pricing|tutor)$/.test(scope))
+  if (!/^(home|internal|all|section|course|lesson|pricing|tutor|track|instructor|tests|quiz|results|dashboard|journey|choose|bank|mistakes|tools|updates|about)$/.test(scope))
     fail(400, "نطاق التخصيص غير صالح");
   return {
     scope,
