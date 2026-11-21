@@ -432,9 +432,9 @@ ${upcoming.length ? `<section class="dash-card"><div class="dash-card-head"><h2>
     });
     target.innerHTML = `<div class="teacher-profile">${teacherCard(t, trackId)}<div class="panel"><h2>عن ${e(t.name)}</h2><p>${e(t.bio || "لم تُضف نبذة بعد.")}</p>${t.unknownVideoCount ? notice("بعض المقاطع لم تُستخرج مدتها بعد؛ لا نعرض مدة إجمالية مكتملة قبل توفرها.") : ""}</div></div>
       <nav class="teacher-resource-nav" aria-label="محتوى المصدر">
-        <a href="#teacher-lessons">${icon("play-circle")} الدروس والشروحات</a>
-        <a href="#teacher-files">${icon("files")} الملفات <span>${linkedFiles.length}</span></a>
-        <a href="#teacher-tests">${icon("clipboard-check")} الاختبارات <span>${tests.length}</span></a>
+        <button type="button" data-teacher-jump="teacher-lessons">${icon("play-circle")} الدروس والشروحات</button>
+        <button type="button" data-teacher-jump="teacher-files">${icon("files")} الملفات <span>${linkedFiles.length}</span></button>
+        <button type="button" data-teacher-jump="teacher-tests">${icon("clipboard-check")} الاختبارات <span>${tests.length}</span></button>
         <a href="#/tutor">${icon("bot")} اسأل مدرس رُزمة</a>
       </nav>
       <section id="teacher-lessons" class="spaced"><h2>الدروس والشروحات</h2>
@@ -497,6 +497,8 @@ ${upcoming.length ? `<section class="dash-card"><div class="dash-card-head"><h2>
         step = Math.max(0, step - 1);
         drawWizard();
       }
+      if (b.dataset.teacherJump)
+        document.getElementById(b.dataset.teacherJump)?.scrollIntoView({ behavior: "smooth", block: "start" });
       if (b.dataset.trackJump)
         document.getElementById(b.dataset.trackJump)?.scrollIntoView({
           behavior: window.matchMedia("(prefers-reduced-motion: reduce)")
