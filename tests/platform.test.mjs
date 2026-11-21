@@ -606,6 +606,9 @@ test("secrets use authenticated encryption and custom frames isolate scripts", a
   assert(!cipher.includes("private-key"));
   assert.equal(decrypt(cipher, key), "private-key");
   assert.throws(() => decrypt(cipher, randomBytes(32).toString("base64")));
+  await assert.rejects(passwordHash("1234567"), /٨ و٢٠٠/);
+  const eightCharacterHash = await passwordHash("12345678");
+  assert(await passwordVerify("12345678", eightCharacterHash));
   const hashed = await passwordHash("a-strong-test-password");
   assert(await passwordVerify("a-strong-test-password", hashed));
   assert(!(await passwordVerify("different", hashed)));
