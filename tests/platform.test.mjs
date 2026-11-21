@@ -90,6 +90,7 @@ test("real auth, role checks, shared content, fixed prices, CSRF, grading, prote
   try {
     const owner = await browser(f),
       student = await browser(f),
+      studentSignIn = await browser(f),
       guest = await browser(f);
     f.store.db
       .prepare("INSERT INTO rate_limits VALUES(?,?,?)")
@@ -116,6 +117,15 @@ test("real auth, role checks, shared content, fixed prices, CSRF, grading, prote
       undefined,
       "expired rate-limit records are cleaned on the next rate-limited request",
     );
+    const studentLogin = await studentSignIn.request("/api/auth/login", {
+      method: "POST",
+      body: {
+        email: "student@example.test",
+        password: "a-long-student-password",
+      },
+    });
+    assert.equal(studentLogin.status, 200);
+    assert.equal(studentLogin.data.user.role, "student");
     assert.equal((await student.request("/api/admin/stats")).status, 403);
     assert.equal(
       (
@@ -129,6 +139,19 @@ test("real auth, role checks, shared content, fixed prices, CSRF, grading, prote
       ).status,
       401,
       "student credentials must never authenticate through the owner login endpoint",
+    );
+    assert.equal(
+      (
+        await guest.request("/api/auth/login", {
+          method: "POST",
+          body: {
+            email: "owner@example.test",
+            password: "a-very-long-test-password",
+          },
+        })
+      ).status,
+      401,
+      "owner accounts must not authenticate through the student login endpoint",
     );
     assert.equal(
       (
