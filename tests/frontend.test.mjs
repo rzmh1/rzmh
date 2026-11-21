@@ -34,6 +34,9 @@ test("store, routes, mobile styles, paid lesson gate, owner workspace and paymen
   const boardHtml = live.teacherBoardMarkup("الخطوة الأولى\\nس = ٦");
   assert(boardHtml.includes("سبورة مدرس رُزمة"));
   assert(boardHtml.includes("data-board-step"));
+  const drawnBoard = live.teacherBoardMarkup('الحل بالرسم\\n```diagram\\n{"shapes":[{"type":"line","x1":10,"y1":20,"x2":30,"y2":40}]}\\n```');
+  assert(drawnBoard.includes("tutor-teacher-canvas"));
+  assert(drawnBoard.includes("data-teacher-diagram"));
   const signupHtml = live.authLive(true);
   const loginHtml = live.authLive();
   const resetHtml = live.resetPasswordLive();
