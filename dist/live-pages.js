@@ -114,6 +114,7 @@ export function teacherBoardMarkup(text) {
     : "";
   return `<section class="tutor-solution-board" dir="rtl"><div class="tutor-board-heading"><span>${icon("presentation")} سبورة مدرس رُزمة</span><small>${steps.length} خطوات</small></div>${canvas}<div class="tutor-board-steps">${steps.map((line, index) => `<div class="tutor-board-step" data-board-step="${index}" ${index ? "hidden" : ""}><b>${index + 1}</b><p dir="auto">${e(line)}</p></div>`).join("")}</div><div class="tutor-board-controls"><button type="button" class="btn btn-outline btn-sm" data-board-next ${steps.length <= 1 ? "hidden" : ""}>الخطوة التالية</button><button type="button" class="btn btn-ghost btn-sm" data-board-all ${steps.length <= 1 ? "hidden" : ""}>عرض كل الحل</button></div></section>`;
 }
+export function mountTutor(toast) {
   let conversationId = null,
     disposed = false;
   const list = document.querySelector("#conversation-list"),
