@@ -8,6 +8,7 @@ import { config } from "../server/config.mjs";
 import { openDatabase } from "../server/database.mjs";
 import { storageService } from "../server/storage.mjs";
 import { aiLibraryService } from "../server/ai-library.mjs";
+import { aiRequest } from "../server/ai.mjs";
 
 async function fixture() {
   const dir = await mkdtemp(join(tmpdir(), "ruzmah-ai-library-"));
@@ -128,4 +129,27 @@ test("only the owner can access or index permanent tutor sources", async () => {
   } finally {
     await f.close();
   }
+});
+
+
+test("tutor attaches the permanent file search tool only when a library exists", () => {
+  const settings = {
+    model: "gpt-4.1-mini",
+    instructions: "تعليمات رُزمة",
+    maxTokens: 1200,
+    temperature: null,
+  };
+  const withoutLibrary = aiRequest(settings, [{ role: "user", content: "اشرح النسبة" }]);
+  assert.equal(withoutLibrary.tools, undefined);
+  const withLibrary = aiRequest(
+    settings,
+    [{ role: "user", content: "اشرح النسبة" }],
+    "مكتبة مصادر رُزمة",
+    "vs_ruzmah_test",
+  );
+  assert.deepEqual(withLibrary.tools, [{
+    type: "file_search",
+    vector_store_ids: ["vs_ruzmah_test"],
+    max_num_results: 6,
+  }]);
 });
