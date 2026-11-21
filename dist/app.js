@@ -23,6 +23,7 @@ import { header, footer, icon, btn, notice, empty, courseCard } from "./ui.js";
 import { inStudentSpace, studentFrame } from "./student-shell.js";
 import * as pages from "./pages.js";
 import { leaksPage, mountLeaks } from "./leaks.js";
+import { communityPage, mountCommunity } from "./community.js";
 import { mountDrawing } from "./drawing.js";
 import { adminPage, mountAdmin } from "./admin.js";
 import { api, account, setSession } from "./api.js";
@@ -120,6 +121,7 @@ export function render(scroll = true) {
     "admin-login": "دخول المالك",
     tutor: "المدرس الذكي",
     leaks: "التسريبات",
+    community: "مجتمع رُزمة",
     login: "تسجيل الدخول",
     signup: "إنشاء حساب",
     "verify-email": "تأكيد البريد",
@@ -151,6 +153,7 @@ export function render(scroll = true) {
     "progress",
     "tutor",
     "leaks",
+    "community",
   ];
   if (privatePages.includes(r) && !account.user) {
     content = empty(
@@ -177,6 +180,7 @@ export function render(scroll = true) {
       "progress",
       "tutor",
       "leaks",
+      "community",
     ].includes(r)
   ) {
     content = empty(
@@ -288,6 +292,9 @@ export function render(scroll = true) {
         case "leaks":
           content = leaksPage();
           break;
+        case "community":
+          content = communityPage();
+          break;
         case "admin-login":
           content =
             account.user?.role === "admin"
@@ -351,6 +358,7 @@ export function render(scroll = true) {
     cleanups.push(mountAdmin(toast, render));
   if (r === "tutor" && account.user) cleanups.push(mountTutor(toast));
   if (r === "leaks" && account.user) cleanups.push(mountLeaks(toast));
+  if (r === "community" && account.user) cleanups.push(mountCommunity(toast, id));
   if (r === "payment")
     void loadPaymentStatus(toast).then((cleanup) => cleanups.push(cleanup));
   void mountCustom(r);
