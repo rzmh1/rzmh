@@ -86,13 +86,38 @@ export async function loadPaymentStatus(toast) {
   };
 }
 export function tutorLive() {
-  return `<div class="ai-full">${pageHeading("مدرّسك في رُزمة", "نفهم الفكرة. ثم نبني عليها.", "اسأل عن مفهوم، ارفع مستوى تدريبك، أو رتّب خطتك. استجابات من OpenAI عبر الخادم.")}<div class="notice">${icon("spark")}<p>المدرس قد يخطئ. راجع الحل والمراجع المعتمدة. الحد الافتراضي ٧ طلبات يوميًا، ويمكن للمالك تعديله. لا ترسل بيانات شخصية حساسة. <a class="text-link" href="#/learning-settings">إعداد مشاركة خطتك ونتائجك مع المدرس</a></p></div><div class="tutor-layout"><div class="panel"><div class="admin-bar"><h2>محادثاتك</h2><button class="btn btn-outline btn-sm" data-ai-new>محادثة جديدة ${icon("plus")}</button></div><div id="conversation-list"></div></div><div class="panel"><div id="ai-chat" class="ai-chat" aria-live="polite"><div class="chat-welcome">${icon("spark")}<h3>بأي فكرة نبدأ اليوم؟</h3><p>جرّب: كيف أفهم النسب؟ أو كيف أراجع أخطائي قبل الاختبار؟</p></div></div><form id="tutor-form"><label for="tutor-input">سؤالك</label><textarea id="tutor-input" name="message" maxlength="4000" placeholder="اكتب سؤالك أو خطوات حلك… أو أرفق صورة سؤال"></textarea><div class="tutor-attachment"><label for="tutor-attachment" class="btn btn-outline btn-sm">${icon("image")} إرفاق صورة أو PDF</label><input id="tutor-attachment" name="attachment" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" hidden><small id="tutor-file-name" class="muted">صور JPG أو PNG أو WebP حتى ٤ ميجابايت · PDF حتى ٥ ميجابايت</small></div><div class="admin-bar spaced"><small id="ai-quota" class="muted">يُتحقق من صلاحية الاشتراك والحد اليومي على الخادم.</small><button class="btn btn-primary" type="submit">اسأل المدرس ${icon("arrow")}</button></div><p id="ai-error" class="form-error" role="alert"></p></form></div></div></div>`;
+  return `<div class="ai-full">${pageHeading("مدرّسك في رُزمة", "اسأل عن سؤال. وشاهد الحل خطوة بخطوة.", "اكتب سؤالًا واحدًا أو أرفق صورته؛ لا ترفع ملفًا كاملًا.")}<div class="notice">${icon("spark")}<p>يركّز المدرس على أسئلة القدرات والتحصيلي وSTEP ومصادر رُزمة. يشرح السؤال على لوحة الحل دون تشغيل شرح محاضرة كاملة.</p></div><div class="tutor-layout"><div class="panel"><div class="admin-bar"><h2>محادثاتك</h2><button class="btn btn-outline btn-sm" data-ai-new>محادثة جديدة ${icon("plus")}</button></div><div id="conversation-list"></div></div><div class="panel"><div id="ai-chat" class="ai-chat" aria-live="polite"><div class="chat-welcome">${icon("spark")}<h3>ما السؤال الذي تريد فهمه؟</h3><p>اكتب السؤال أو أرفق صورته، ويمكنك الرسم في مساحة الحل.</p></div></div><form id="tutor-form"><label for="tutor-input">سؤالك أو موضع استفسارك</label><textarea id="tutor-input" name="message" maxlength="1200" placeholder="اكتب السؤال أو اشرح الجزء الذي لم تفهمه…"></textarea><div class="tutor-attachment"><label for="tutor-attachment" class="btn btn-outline btn-sm">${icon("image")} إرفاق صورة سؤال</label><input id="tutor-attachment" name="attachment" type="file" accept="image/jpeg,image/png,image/webp" hidden><small id="tutor-file-name" class="muted">صورة JPG أو PNG أو WebP حتى ٤ ميجابايت</small></div><section class="tutor-draw-panel"><div class="admin-bar"><div><h3>مساحة رسم الطالب</h3><small class="muted">اكتب خطواتك أو ارسم الجزء الذي تريد شرحه.</small></div><div class="tutor-draw-actions"><input id="tutor-pen-color" type="color" value="#594775" aria-label="لون القلم"><input id="tutor-pen-size" type="range" min="2" max="12" value="4" aria-label="سمك القلم"><button type="button" class="btn btn-outline btn-sm" data-tutor-draw="undo">تراجع</button><button type="button" class="btn btn-outline btn-sm" data-tutor-draw="clear">مسح</button></div></div><canvas id="tutor-drawing-canvas" width="900" height="340" aria-label="مساحة رسم السؤال"></canvas><small class="muted">الرسم لا يُرسل إلا عند الضغط على «اسأل المدرس».</small></section><div class="admin-bar spaced"><small id="ai-quota" class="muted">يُتحقق من صلاحية الاشتراك والحد اليومي على الخادم.</small><button class="btn btn-primary" type="submit">اسأل المدرس ${icon("arrow")}</button></div><p id="ai-error" class="form-error" role="alert"></p></form></div></div></div>`;
 }
 export function mountTutor(toast) {
+export function teacherBoardMarkup(text) {
+  const lines = String(text || "").split(/\n+/).map((line) => line.replace(/^\s*(?:[-*•]|\d+[.)、])\s*/, "").trim()).filter(Boolean).slice(0, 30);
+  const steps = lines.length ? lines : [String(text || "").trim()];
+  return `<section class="tutor-solution-board" dir="rtl"><div class="tutor-board-heading"><span>${icon("presentation")} سبورة مدرس رُزمة</span><small>${steps.length} خطوات</small></div><div class="tutor-board-steps">${steps.map((line, index) => `<div class="tutor-board-step" data-board-step="${index}" ${index ? "hidden" : ""}><b>${index + 1}</b><p dir="auto">${e(line)}</p></div>`).join("")}</div><div class="tutor-board-controls"><button type="button" class="btn btn-outline btn-sm" data-board-next ${steps.length <= 1 ? "hidden" : ""}>الخطوة التالية</button><button type="button" class="btn btn-ghost btn-sm" data-board-all ${steps.length <= 1 ? "hidden" : ""}>عرض كل الحل</button></div></section>`;
+}
   let conversationId = null,
     disposed = false;
   const list = document.querySelector("#conversation-list"),
-    chat = document.querySelector("#ai-chat");
+    chat = document.querySelector("#ai-chat"),
+    canvas = document.querySelector("#tutor-drawing-canvas"),
+    penColor = document.querySelector("#tutor-pen-color"),
+    penSize = document.querySelector("#tutor-pen-size");
+  let strokes = [], activeStroke = null, hasDrawing = false;
+  const ctx = canvas?.getContext("2d");
+  const renderMessage = (item) => message(item.role, item.content) + (item.role === "assistant" ? teacherBoardMarkup(item.content) : "");
+  const paintDrawing = () => {
+    if (!canvas || !ctx) return;
+    const rect = canvas.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+    const width = Math.max(1, Math.round(rect.width * dpr)), height = Math.round(220 * dpr);
+    if (canvas.width !== width || canvas.height !== height) { canvas.width = width; canvas.height = height; }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, rect.width, 220); ctx.lineCap = "round"; ctx.lineJoin = "round";
+    for (const stroke of strokes) { ctx.strokeStyle = stroke.color; ctx.lineWidth = stroke.size; ctx.beginPath(); stroke.points.forEach((p, i) => i ? ctx.lineTo(p.x * rect.width, p.y * 220) : ctx.moveTo(p.x * rect.width, p.y * 220)); if (stroke.points.length === 1) { const p = stroke.points[0]; ctx.beginPath(); ctx.arc(p.x * rect.width, p.y * 220, stroke.size / 2, 0, Math.PI * 2); ctx.fillStyle = stroke.color; ctx.fill(); } else ctx.stroke(); }
+  };
+  const drawingPoint = (event) => { const rect = canvas.getBoundingClientRect(); return { x: Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)), y: Math.max(0, Math.min(1, (event.clientY - rect.top) / 220) }; };
+  const pointerDown = (event) => { if (event.button !== 0 || !canvas) return; event.preventDefault(); activeStroke = { color: penColor?.value || "#594775", size: Number(penSize?.value || 4), points: [drawingPoint(event)] }; strokes.push(activeStroke); hasDrawing = true; canvas.setPointerCapture(event.pointerId); paintDrawing(); };
+  const pointerMove = (event) => { if (!activeStroke || !canvas) return; for (const point of event.getCoalescedEvents?.() || [event]) activeStroke.points.push(drawingPoint(point)); paintDrawing(); };
+  const pointerEnd = () => { activeStroke = null; };
+  canvas?.addEventListener("pointerdown", pointerDown); canvas?.addEventListener("pointermove", pointerMove); canvas?.addEventListener("pointerup", pointerEnd); canvas?.addEventListener("pointercancel", pointerEnd);
+  const resizeObserver = canvas ? new ResizeObserver(paintDrawing) : null; resizeObserver?.observe(canvas); paintDrawing();
   const message = (role, text) =>
     `<div class="live-message ${role}"><b>${role === "user" ? "أنت" : "مدرّس رُزمة"}</b><p>${e(text).replace(/\n/g, "<br>")}</p></div>`;
   async function load() {
@@ -112,6 +137,13 @@ export function mountTutor(toast) {
   }
   void load();
   const click = async (ev) => {
+    const drawAction = ev.target.closest("[data-tutor-draw]")?.dataset.tutorDraw;
+    if (drawAction === "undo") { strokes.pop(); hasDrawing = strokes.length > 0; paintDrawing(); }
+    if (drawAction === "clear") { strokes = []; hasDrawing = false; paintDrawing(); }
+    const next = ev.target.closest("[data-board-next]");
+    if (next) { const board = next.closest(".tutor-solution-board"); const hidden = board.querySelector("[data-board-step][hidden]"); if (hidden) hidden.hidden = false; if (!board.querySelector("[data-board-step][hidden]")) next.hidden = true; }
+    const all = ev.target.closest("[data-board-all]");
+    if (all) { const board = all.closest(".tutor-solution-board"); board.querySelectorAll("[data-board-step]").forEach((step) => step.hidden = false); board.querySelector("[data-board-next]")?.setAttribute("hidden", ""); all.hidden = true; }
     const c = ev.target.closest("[data-conversation]");
     if (c) {
       try {
@@ -120,9 +152,7 @@ export function mountTutor(toast) {
         );
         if (disposed) return;
         conversationId = c.dataset.conversation;
-        chat.innerHTML = messages
-          .map((m) => message(m.role, m.content))
-          .join("");
+        chat.innerHTML = messages.map(renderMessage).join("");
       } catch (err) {
         toast(err.message);
       }
@@ -130,6 +160,7 @@ export function mountTutor(toast) {
     if (ev.target.closest("[data-ai-new]")) {
       conversationId = null;
       chat.innerHTML = "<p>محادثة جديدة. اكتب سؤالك أدناه.</p>";
+      strokes = []; hasDrawing = false; paintDrawing();
     }
   };
   const submit = async (ev) => {
@@ -139,47 +170,33 @@ export function mountTutor(toast) {
       button = form.querySelector("button[type=submit]"),
       text = form.message.value.trim(),
       file = form.attachment.files?.[0] || null;
-    if (!text && !file) return;
+    if (!text && !file && !hasDrawing) return;
     button.disabled = true;
     const error = document.querySelector("#ai-error");
     error.textContent = "";
     try {
-      let image = null,
-        pdf = null;
+      let image = null;
       if (file) {
-        const isPdf = file.type === "application/pdf";
-        if (isPdf && (file.size > 5 * 1024 * 1024 || !file.name.toLowerCase().endsWith(".pdf")))
-          throw Error("ارفع ملف PDF صالحًا لا يتجاوز ٥ ميجابايت.");
-        if (!isPdf && !["image/jpeg", "image/png", "image/webp"].includes(file.type))
-          throw Error("ارفع صورة JPG أو PNG أو WebP أو ملف PDF.");
-        if (!isPdf && file.size > 4 * 1024 * 1024)
-          throw Error("حجم الصورة يجب ألا يتجاوز ٤ ميجابايت.");
-        const data = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => {
-            const value = String(reader.result || "");
-            const comma = value.indexOf(",");
-            if (comma < 0) reject(Error("تعذرت قراءة الملف."));
-            else resolve(value.slice(comma + 1));
-          };
-          reader.onerror = () => reject(Error("تعذرت قراءة الملف."));
-          reader.readAsDataURL(file);
-        });
-        if (isPdf) pdf = { name: file.name, mimeType: file.type, data };
-        else image = { name: file.name, mimeType: file.type, data };
+        if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) throw Error("أرفق صورة سؤال بصيغة JPG أو PNG أو WebP فقط.");
+        if (file.size > 4 * 1024 * 1024) throw Error("حجم صورة السؤال يجب ألا يتجاوز ٤ ميجابايت.");
+        const data = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => { const value = String(reader.result || ""); const comma = value.indexOf(","); if (comma < 0) reject(Error("تعذرت قراءة الصورة.")); else resolve(value.slice(comma + 1)); }; reader.onerror = () => reject(Error("تعذرت قراءة الصورة.")); reader.readAsDataURL(file); });
+        image = { name: file.name, mimeType: file.type, data };
+      } else if (hasDrawing && canvas) {
+        image = { name: "student-question-drawing.png", mimeType: "image/png", data: canvas.toDataURL("image/png").split(",")[1] };
       }
-      const shownText = text || (pdf ? "حلّل ملف PDF التعليمي المرفق" : "حلّل الصورة التعليمية المرفقة");
-      chat.innerHTML += message("user", shownText + (file ? "\n[مرفق: " + file.name + "]" : ""));
+      const shownText = text || (image ? "حلّل صورة السؤال أو الرسم المرفق واشرحه." : "");
+      chat.innerHTML += message("user", shownText + (file ? "\n[مرفق صورة: " + file.name + "]" : hasDrawing ? "\n[رسم الطالب مرفق]" : ""));
       const value = await api("/api/tutor", {
         method: "POST",
-        body: { message: text, image, file: pdf, conversationId },
+        body: { message: text, image, conversationId },
       });
       if (disposed) return;
       conversationId = value.conversationId;
-      chat.innerHTML += message("assistant", value.text);
+      chat.innerHTML += message("assistant", value.text) + teacherBoardMarkup(value.text);
+      strokes = []; hasDrawing = false; paintDrawing();
       form.message.value = "";
       form.attachment.value = "";
-      document.querySelector("#tutor-file-name").textContent = "صور JPG أو PNG أو WebP حتى ٤ ميجابايت · PDF حتى ٥ ميجابايت";
+      document.querySelector("#tutor-file-name").textContent = "صورة JPG أو PNG أو WebP حتى ٤ ميجابايت";
       document.querySelector("#ai-quota").textContent =
         `المتبقي اليوم: ${value.remaining} طلبات`;
       await load();
@@ -193,13 +210,18 @@ export function mountTutor(toast) {
   const imageChange = () => {
     const file = imageInput?.files?.[0];
     const label = document.querySelector("#tutor-file-name");
-    if (label) label.textContent = file ? file.name + " · " + Math.ceil(file.size / 1024) + " KB" : "صور JPG أو PNG أو WebP حتى ٤ ميجابايت · PDF حتى ٥ ميجابايت";
+    if (label) label.textContent = file ? file.name + " · " + Math.ceil(file.size / 1024) + " KB" : "صورة JPG أو PNG أو WebP حتى ٤ ميجابايت";
   };
   imageInput?.addEventListener("change", imageChange);
   document.addEventListener("click", click);
   document.addEventListener("submit", submit);
   return () => {
     disposed = true;
+    resizeObserver?.disconnect();
+    canvas?.removeEventListener("pointerdown", pointerDown);
+    canvas?.removeEventListener("pointermove", pointerMove);
+    canvas?.removeEventListener("pointerup", pointerEnd);
+    canvas?.removeEventListener("pointercancel", pointerEnd);
     imageInput?.removeEventListener("change", imageChange);
     document.removeEventListener("click", click);
     document.removeEventListener("submit", submit);
