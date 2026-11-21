@@ -5,7 +5,7 @@ import { readFile } from "node:fs/promises";
 import { transform } from "esbuild";
 import { account } from "../dist/api.js";
 import { db } from "../dist/data.js";
-import { mountLearning, learningPage } from "../dist/learning.js";
+import { mountLearning, learningPage, teacherCard, courseGroupName } from "../dist/learning.js";
 import { coursePage, lessonPage } from "../dist/pages.js";
 import { mountLessonStudy } from "../dist/lesson-study.js";
 
@@ -229,6 +229,9 @@ test("learning pages retain source identity, actual clip duration, linked practi
     c.lessons[0].durationSeconds = 1234;
     c.lessons[0].practiceQuestionIds = ["q1", "q2"];
     const html = coursePage(c.id);
+    c.groupTitle = "زبدة المصدر";
+    assert.equal(courseGroupName(c), "زبدة المصدر");
+    assert(teacherCard({ id: "owned-source", name: "مصدر منشور", specialty: "كمي", courseIds: [], videoCount: 0 }, "qudrat-quant").includes("#/instructor/owned-source?track=qudrat-quant"));
     assert(html.includes("مصدر منشور"));
     assert(html.includes("20:34"));
     assert(html.includes("#/pricing"));
