@@ -1633,3 +1633,46 @@
     grid-column: 1 / -1;
   }
 }
+
+
+/* مكتبة مصادر المدرس الذكي */
+.ai-library-metrics {
+  margin-block: 18px 24px;
+}
+#ai-library-upload-form {
+  padding: 22px;
+}
+#ai-library-upload-form .upload-picker {
+  min-height: 150px;
+}
+#ai-library-upload-form .upload-picker input {
+  margin-top: 12px;
+}
+#ai-library-list {
+  margin-top: 14px;
+}
+#ai-library-list .admin-table-wrap {
+  overflow-x: auto;
+}
+#ai-library-list table {
+  min-width: 680px;
+}
+#ai-library-list td:first-child {
+  min-width: 220px;
+  overflow-wrap: anywhere;
+}
+#ai-library-list .badge {
+  white-space: nowrap;
+}
+#ai-library-list .table-actions,
+.ai-library-metrics .stat {
+  align-items: center;
+}
+@media (max-width: 700px) {
+  #ai-library-upload-form {
+    padding: 15px;
+  }
+  .ai-library-metrics {
+    grid-template-columns: 1fr 1fr;
+  }
+}
