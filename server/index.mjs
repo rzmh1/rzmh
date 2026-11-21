@@ -39,16 +39,26 @@ export function createApp(cfg = config()) {
     storage = storageService(store);
   storage.resume();
   const learning = learningService(store);
+  let lastRateLimitCleanup = 0;
+  const cleanupRateLimits = (force = false) => {
+    const time = Date.now();
+    if (!force && time - lastRateLimitCleanup < 10 * 60 * 1000) return;
+    db.prepare("DELETE FROM rate_limits WHERE expires<=?").run(time);
+    lastRateLimitCleanup = time;
+  };
+  cleanupRateLimits(true);
   const rate = (key, max = 20, window = 60000) => {
+    const now = Date.now();
+    cleanupRateLimits();
     const r = db.prepare("SELECT * FROM rate_limits WHERE key=?").get(key);
-    if (r && r.expires > Date.now()) {
+    if (r && r.expires > now) {
       if (r.count >= max)
         fail(429, "محاولات كثيرة. انتظر قليلًا ثم حاول مجددًا.");
       db.prepare("UPDATE rate_limits SET count=count+1 WHERE key=?").run(key);
     } else
       db.prepare(
         "INSERT INTO rate_limits VALUES(?,1,?) ON CONFLICT(key) DO UPDATE SET count=1,expires=excluded.expires",
-      ).run(key, Date.now() + window);
+      ).run(key, now + window);
   };
   function authenticate(req) {
     const cookie = req.headers.cookie
@@ -322,12 +332,26 @@ export function createApp(cfg = config()) {
         store.audit(u.id, "auth.register", u.id);
         return send(createSession(u, res));
       }
+      if (path === "/api/auth/admin-login" && method === "POST") {
+        rate("admin-auth:" + clientIp, 8, 900000);
+        const b = await jsonBody(req, 16000),
+          mail = email(b.email),
+          u = db
+            .prepare("SELECT * FROM users WHERE email=? AND role='admin' AND disabled=0")
+            .get(mail);
+        if (!u || !(await passwordVerify(b.password, u.password_hash)))
+          fail(401, "بيانات دخول المالك غير صحيحة");
+        if (!u.email_verified)
+          fail(403, "تحقق من بريد المالك أولًا، ثم حاول تسجيل الدخول.");
+        store.audit(u.id, "auth.admin_login", u.id);
+        return send(createSession(u, res));
+      }
       if (path === "/api/auth/login" && method === "POST") {
         rate("auth:" + clientIp, 12, 900000);
         const b = await jsonBody(req, 16000),
           mail = email(b.email),
           u = db
-            .prepare("SELECT * FROM users WHERE email=? AND disabled=0")
+            .prepare("SELECT * FROM users WHERE email=? AND role='student' AND disabled=0")
             .get(mail);
         if (!u || !(await passwordVerify(b.password, u.password_hash)))
           fail(401, "البريد الإلكتروني أو كلمة المرور غير صحيحة");
