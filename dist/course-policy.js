@@ -28,7 +28,7 @@ export function safeNext(value) {
   if (
     typeof value !== "string" ||
     value.length > 600 ||
-    !/^\/(?:course\/[\w-]+(?:\?preview=[\w-]+)?|subscription(?:\/[\w-]+)?|sections|section\/[\w-]+|track\/[\w-]+|instructors|instructor\/[\w-]+)?$/.test(
+    !/^\/(?:admin|course\/[\w-]+(?:\?preview=[\w-]+)?|subscription(?:\/[\w-]+)?|sections|section\/[\w-]+|track\/[\w-]+|instructors|instructor\/[\w-]+)?$/.test(
       value,
     )
   )
@@ -36,8 +36,13 @@ export function safeNext(value) {
   return "#" + value;
 }
 export function afterAuthRoute(session, next) {
+  const target = safeNext(next);
+  if (target === "#/admin") {
+    if (session.user?.role === "admin") return target;
+    return session.entitled ? "#/dashboard" : "#/sections";
+  }
   return (
-    safeNext(next) ||
+    target ||
     (session.user?.role === "admin"
       ? "#/admin"
       : session.entitled
