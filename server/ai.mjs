@@ -95,10 +95,9 @@ export async function tutor(store, user, input, educationContext = null, resourc
   const message = cleanText(input.message || "", 4000);
   const image = input.image || null,
     file = input.file || null;
-  if (!message && !image && !file) fail(400, "اكتب سؤالك أو أرفق صورة أو ملف PDF.");
-  if (image && file) fail(400, "أرفق صورة أو ملف PDF واحدًا في كل رسالة.");
-  let imageInput = null,
-    fileInput = null;
+  if (file) fail(400, "أرسل صورة سؤال واحد فقط أو اكتب سؤالك؛ لا ترفع ملفًا كاملًا.");
+  if (!message && !image) fail(400, "اكتب سؤالك أو أرفق صورة سؤال واحد.");
+  let imageInput = null;
   if (image !== null) {
     if (!image || typeof image !== "object" || Array.isArray(image))
       fail(400, "مرفق الصورة غير صالح.");
@@ -118,23 +117,6 @@ export async function tutor(store, user, input, educationContext = null, resourc
       (mimeType === "image/webp" && bytes.toString("ascii", 0, 4) === "RIFF" && bytes.toString("ascii", 8, 12) === "WEBP");
     if (!validImage) fail(400, "نوع الصورة لا يطابق محتوى الملف.");
     imageInput = { name, mimeType, data: bytes.toString("base64") };
-  }
-  if (file !== null) {
-    if (!file || typeof file !== "object" || Array.isArray(file))
-      fail(400, "مرفق PDF غير صالح.");
-    const name = cleanText(file.name || "document.pdf", 120).replace(/[\\/]/g, "_"),
-      mimeType = cleanText(file.mimeType || "", 40),
-      data = file.data;
-    if (mimeType !== "application/pdf" || !name.toLowerCase().endsWith(".pdf"))
-      fail(400, "ارفع ملف PDF فقط.");
-    if (typeof data !== "string" || data.length > 7 * 1024 * 1024 || !/^[A-Za-z0-9+/]+={0,2}$/.test(data))
-      fail(400, "بيانات ملف PDF غير صالحة.");
-    const bytes = Buffer.from(data, "base64");
-    if (!bytes.length || bytes.length > 5 * 1024 * 1024 || bytes.toString("base64").replace(/=+$/, "") !== data.replace(/=+$/, ""))
-      fail(413, "حجم ملف PDF يجب ألا يتجاوز ٥ ميجابايت.");
-    if (bytes.toString("ascii", 0, 5) !== "%PDF-")
-      fail(400, "محتوى الملف لا يطابق صيغة PDF.");
-    fileInput = { name, data: bytes.toString("base64") };
   }
   const day = new Date().toLocaleDateString("en-CA", {
       timeZone: "Asia/Riyadh",
@@ -295,21 +277,13 @@ export async function tutor(store, user, input, educationContext = null, resourc
         ? "\nمعلومات الطالب التعليمية التي وافق على مشاركتها:\n" +
           JSON.stringify(educationContext)
         : "\nلا توجد موافقة لمشاركة ملف الطالب أو خطته؛ لا تدّع الاطلاع عليهما.");
-    const userMessage = imageInput || fileInput
+    const userMessage = imageInput
       ? [
-          { type: "input_text", text: message || (imageInput ? "حلّل الصورة التعليمية واشرح السؤال الظاهر فيها." : "حلّل ملف PDF التعليمي واشرح الأسئلة والرسومات ذات الصلة.") },
+          { type: "input_text", text: message || "حلّل صورة السؤال التعليمي واشرح خطوات الحل." },
           ...(imageInput
             ? [{
                 type: "input_image",
                 image_url: "data:" + imageInput.mimeType + ";base64," + imageInput.data,
-                detail: "high",
-              }]
-            : []),
-          ...(fileInput
-            ? [{
-                type: "input_file",
-                filename: fileInput.name,
-                file_data: "data:application/pdf;base64," + fileInput.data,
                 detail: "high",
               }]
             : []),
@@ -327,7 +301,7 @@ export async function tutor(store, user, input, educationContext = null, resourc
           : null;
     store.transaction(() => {
       for (const [role, text] of [
-        ["user", message + (imageInput ? "\n[مرفق صورة تعليمية: " + imageInput.name + "]" : fileInput ? "\n[مرفق PDF: " + fileInput.name + "]" : "")],
+        ["user", message + (imageInput ? "\n[مرفق صورة سؤال: " + imageInput.name + "]" : "")],
         ["assistant", response.text],
       ])
         store.db
