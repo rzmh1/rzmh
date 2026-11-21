@@ -260,8 +260,8 @@ export function mountTutor(toast) {
           image = { name: file.name, mimeType: file.type, data };
         }
       } else if (hasDrawing && canvas) image = { name: "student-question-drawing.png", mimeType: "image/png", data: canvas.toDataURL("image/png").split(",")[1] };
-      const shownText = text || (pdf ? "حلّل ملف PDF التعليمي المرفق واشرح السؤال أو الصفحة المطلوبة." : image ? "حلّل صورة السؤال أو الرسم المرفق واشرحه." : "");      const shownText = text || (image ? "حلّل صورة السؤال أو الرسم المرفق واشرحه." : "");
-      chat.innerHTML += message("user", shownText + (file ? "\n[مرفق صورة: " + file.name + "]" : hasDrawing ? "\n[رسم الطالب مرفق]" : ""));
+      const shownText = text || (pdf ? "حلّل ملف PDF التعليمي المرفق واشرح السؤال أو الصفحة المطلوبة." : image ? "حلّل صورة السؤال أو الرسم المرفق واشرحه." : "");
+      chat.innerHTML += message("user", shownText + (file ? "\n[مرفق: " + file.name + "]" : hasDrawing ? "\n[رسم الطالب مرفق]" : ""));
       const value = await api("/api/tutor", {
         method: "POST",
         body: { message: text, image, file: pdf, conversationId },
