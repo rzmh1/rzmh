@@ -344,15 +344,6 @@ export function mountAdminLive(tab, toast, render) {
       error(err);
     }
   }
-  async function refreshLibraryStatus() {
-    if (disposed || tab !== "ai-library") return;
-    try {
-      await api("/api/admin/ai-library/refresh", { method: "POST", body: {} });
-      await load();
-    } catch {
-      // Keep the visible library list available if indexing status cannot refresh.
-    }
-  }
   const click = async (ev) => {
     try {
       const b = ev.target.closest("button");
@@ -728,7 +719,7 @@ export function mountAdminLive(tab, toast, render) {
           if (file.size > 512 * 1024 * 1024)
             throw Error("الملف «" + file.name + "» يتجاوز حد 512 MB للملف الواحد.");
           const extension = file.name.split(".").pop().toLowerCase();
-          const mime = file.type || mimeFallback[extension];
+          const mime = !file.type || file.type === "application/octet-stream" ? mimeFallback[extension] : file.type;
           if (!mime) throw Error("صيغة الملف غير مدعومة: " + file.name);
           status.textContent = "رفع الملف " + (index + 1) + " من " + files.length + ": " + file.name;
           bar.value = 0;
@@ -903,7 +894,6 @@ export function mountAdminLive(tab, toast, render) {
   document.addEventListener("change", change);
   void load();
   if (tab === "uploads") timer = setInterval(() => void load(), 5000);
-  if (tab === "ai-library") timer = setInterval(() => void refreshLibraryStatus(), 10000);
   return () => {
     disposed = true;
     clearInterval(timer);
