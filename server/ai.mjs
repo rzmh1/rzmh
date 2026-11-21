@@ -2,7 +2,7 @@ import { courseVisible, questionVisible } from "./learning-model.mjs";
 import { randomUUID } from "node:crypto";
 import { fail, cleanText } from "./security.mjs";
 import { AI_INSTRUCTIONS } from "./database.mjs";
-export function aiRequest(settings, messages, context = "") {
+export function aiRequest(settings, messages, context = "", vectorStoreId = null) {
   const body = {
     model: settings.model,
     instructions:
@@ -15,6 +15,12 @@ export function aiRequest(settings, messages, context = "") {
     store: false,
     max_output_tokens: settings.maxTokens,
   };
+  if (vectorStoreId)
+    body.tools = [{
+      type: "file_search",
+      vector_store_ids: [vectorStoreId],
+      max_num_results: 6,
+    }];
   if (
     settings.temperature !== null &&
     settings.temperature !== "" &&
@@ -46,14 +52,17 @@ async function responses(s, body) {
       fail(503, "خدمة المدرس بلغت حد الخدمة حاليًا. حاول لاحقًا.");
     fail(502, "رفضت OpenAI الطلب. راجع المفتاح والنموذج وإعدادات الحساب.");
   }
-  const text = (data.output || [])
+  const outputText = (data.output || [])
     .filter((i) => i.type === "message")
     .flatMap((i) => i.content || [])
-    .filter((c) => c.type === "output_text")
-    .map((c) => c.text)
-    .join("\n");
+    .filter((c) => c.type === "output_text");
+  const text = outputText.map((c) => c.text).join("\n");
+  const citations = [...new Set(outputText
+    .flatMap((item) => item.annotations || [])
+    .filter((annotation) => annotation.type === "file_citation" && annotation.filename)
+    .map((annotation) => cleanText(annotation.filename, 180)))];
   if (!text) fail(502, "لم ترجع الخدمة نصًا قابلًا للعرض");
-  return { text, usage: data.usage || {}, id: data.id };
+  return { text, citations, usage: data.usage || {}, id: data.id };
 }
 export async function testAI(store, user) {
   const s = store.setting("ai"),
@@ -280,6 +289,9 @@ export async function tutor(store, user, input, educationContext = null, resourc
       (fileContext || "لا توجد ملفات منشورة في فهرس الملفات الحالي.") +
       "\nمرفقات الدروس الجاهزة:\n" +
       (lessonAttachments || "لا توجد مرفقات دروس جاهزة مرتبطة بالدورات الظاهرة.");
+    const libraryContext = resources?.aiLibrary?.vectorStoreId
+      ? "\nمكتبة رُزمة الدائمة مفعّلة. استخدم أداة البحث في الملفات للمقاطع ذات الصلة بالسؤال، وقدّم اسم المصدر عند الاستشهاد. لا تدّع أن الملف يدعم الإجابة إن لم تُرجع أداة البحث محتوى مناسبًا."
+      : "\nمكتبة مصادر رُزمة الدائمة غير مفعّلة أو لا تحتوي ملفات مفهرسة حاليًا.";
     const context =
       "محتوى الدورات والدروس المنشور في رُزمة:\n" +
       courseContext +
@@ -294,7 +306,8 @@ export async function tutor(store, user, input, educationContext = null, resourc
       (educationContext
         ? "\nمعلومات الطالب التعليمية التي وافق على مشاركتها:\n" +
           JSON.stringify(educationContext)
-        : "\nلا توجد موافقة لمشاركة ملف الطالب أو خطته؛ لا تدّع الاطلاع عليهما.");
+        : "\nلا توجد موافقة لمشاركة ملف الطالب أو خطته؛ لا تدّع الاطلاع عليهما.") +
+      libraryContext;
     const userMessage = imageInput || fileInput
       ? [
           { type: "input_text", text: message || (imageInput ? "حلّل الصورة التعليمية واشرح السؤال الظاهر فيها." : "حلّل ملف PDF التعليمي واشرح السؤال أو الصفحة المحددة.") },
@@ -304,7 +317,12 @@ export async function tutor(store, user, input, educationContext = null, resourc
       : message;
     const response = await responses(
       s,
-      aiRequest(s, [...history, { role: "user", content: userMessage }], context),
+      aiRequest(
+        s,
+        [...history, { role: "user", content: userMessage }],
+        context,
+        resources?.aiLibrary?.vectorStoreId || null,
+      ),
     );
     const inp = response.usage.input_tokens || 0,
       out = response.usage.output_tokens || 0,
@@ -330,7 +348,10 @@ export async function tutor(store, user, input, educationContext = null, resourc
     });
     return {
       conversationId,
-      text: response.text,
+      text: response.text + (response.citations?.length
+        ? "\n\nالمصادر المستخدمة من مكتبة رُزمة:\n" + response.citations.map((name) => "• " + name).join("\n")
+        : ""),
+      citations: response.citations || [],
       usage: { inputTokens: inp, outputTokens: out },
       remaining: Math.max(
         0,
