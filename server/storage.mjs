@@ -32,6 +32,26 @@ const mimeTypes = new Set([
   "image/png",
   "image/webp",
   "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "text/html",
+  "text/javascript",
+  "application/json",
+  "text/markdown",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "text/x-python",
+  "text/plain",
+  "text/css",
+  "text/x-c",
+  "text/x-c++",
+  "text/x-csharp",
+  "text/x-golang",
+  "text/x-java",
+  "text/x-php",
+  "text/x-ruby",
+  "application/x-sh",
+  "text/x-tex",
+  "application/typescript",
 ]);
 export function storageService(store) {
   const { cfg, db } = store;
@@ -478,6 +498,21 @@ export function storageService(store) {
       await pipeline(createReadStream(path), res);
     }
   }
+  async function openForAI(user, id) {
+    if (user?.role !== "admin") fail(403, "مكتبة مصادر المدرس الذكي خاصة بمالك المنصة");
+    const asset = db
+      .prepare("SELECT * FROM assets WHERE id=? AND status='ready'")
+      .get(id);
+    if (!asset) fail(404, "الملف غير موجود أو لم يكتمل رفعه");
+    if (!mimeTypes.has(asset.mime) || asset.mime.startsWith("video/") || asset.mime.startsWith("image/"))
+      fail(415, "هذا النوع من الملفات غير مدعوم في مكتبة المدرس الذكي");
+    if (asset.storage === "s3") {
+      const object = await command(GetObjectCommand, { Key: asset.object_key });
+      if (!object.Body) fail(502, "تعذر فتح الملف من التخزين السحابي");
+      return { asset, stream: object.Body };
+    }
+    return { asset, stream: createReadStream(join(local, asset.object_key)) };
+  }
   async function remove(user, id) {
     const a = db.prepare("SELECT * FROM assets WHERE id=?").get(id);
     if (!a) fail(404, "الملف غير موجود");
@@ -519,6 +554,7 @@ export function storageService(store) {
     complete,
     allowed,
     media,
+    openForAI,
     remove,
     test,
     resume,

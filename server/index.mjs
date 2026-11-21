@@ -26,6 +26,8 @@ import {
 } from "./security.mjs";
 import { checkout, handleStripeWebhook, testPayment } from "./payments.mjs";
 import { testAI, tutor } from "./ai.mjs";
+import { aiLibraryService } from "./ai-library.mjs";
+import { listSupportCategories, createSupportQuestion, listStudentSupportQuestions, listPublishedSupportAnswers, listSupportForAdmin, replySupportQuestion, updateSupportQuestionStatus, upsertSupportCategory } from "./support.mjs";
 import { storageService } from "./storage.mjs";
 import { frame, codeInput, saveCode } from "./custom.mjs";
 import { sendEmail, sendBatchEmails, verificationMessage, resetMessage } from "./email.mjs";
@@ -37,6 +39,7 @@ export function createApp(cfg = config()) {
   const store = openDatabase(cfg),
     { db } = store,
     storage = storageService(store);
+  const aiLibrary = aiLibraryService(store, storage);
   storage.resume();
   const learning = learningService(store);
   let lastRateLimitCleanup = 0;
@@ -719,6 +722,7 @@ export function createApp(cfg = config()) {
             {
               ...learning.catalog(user),
               files: store.getContent().files,
+              aiLibrary: aiLibrary.context(),
             },
           ),
         );
@@ -843,6 +847,59 @@ export function createApp(cfg = config()) {
         if (!flag.n) fail(404, "المشاركة غير موجودة");
         store.audit(user.id, "leak.report", leakFlagMatch[1], { reason });
         return send({ ok: true });
+      }
+      if (path === "/api/support/categories" && method === "GET") {
+        required(user);
+        return send(listSupportCategories(store, user));
+      }
+      if (path === "/api/support/questions" && method === "GET") {
+        required(user);
+        return send(listStudentSupportQuestions(store, user));
+      }
+      if (path === "/api/support/questions" && method === "POST") {
+        required(user);
+        rate("support:create:" + user.id, 5, 3600000);
+        return send(createSupportQuestion(store, user, await jsonBody(req, 6000)), 201);
+      }
+      if (path === "/api/support/public" && method === "GET") {
+        required(user);
+        return send(listPublishedSupportAnswers(store, user, url.searchParams.get("category") || "all"));
+      }
+      if (path === "/api/admin/support" && method === "GET") {
+        admin(user);
+        return send(listSupportForAdmin(store));
+      }
+      const supportReplyMatch = /^\/api\/admin\/support\/questions\/([\w-]+)\/reply$/.exec(path);
+      if (supportReplyMatch && method === "POST") {
+        admin(user);
+        return send(replySupportQuestion(store, user, supportReplyMatch[1], await jsonBody(req, 5000)));
+      }
+      const supportStatusMatch = /^\/api\/admin\/support\/questions\/([\w-]+)\/status$/.exec(path);
+      if (supportStatusMatch && method === "POST") {
+        admin(user);
+        return send(updateSupportQuestionStatus(store, user, supportStatusMatch[1], await jsonBody(req, 1000)));
+      }
+      if (path === "/api/admin/support/categories" && method === "POST") {
+        admin(user);
+        return send(upsertSupportCategory(store, user, await jsonBody(req, 1000)), 201);
+      }
+      if (path === "/api/admin/ai-library" && method === "GET") {
+        admin(user);
+        return send(await aiLibrary.list(user));
+      }
+      if (path === "/api/admin/ai-library/refresh" && method === "POST") {
+        admin(user);
+        return send(await aiLibrary.refresh(user));
+      }
+      const aiLibraryMatch = /^\/api\/admin\/ai-library\/([\w-]+)$/.exec(path);
+      if (aiLibraryMatch && method === "POST") {
+        admin(user);
+        rate("ai-library:index:" + user.id, 20, 60000);
+        return send(await aiLibrary.index(user, aiLibraryMatch[1]), 202);
+      }
+      if (aiLibraryMatch && method === "DELETE") {
+        admin(user);
+        return send(await aiLibrary.remove(user, aiLibraryMatch[1]));
       }
       if (path === "/api/admin/broadcasts" && method === "GET") {
         return send(
@@ -1155,6 +1212,9 @@ export function createApp(cfg = config()) {
         return send(await storage.probe(user, probeMatch[1]));
       const assetMatch = /^\/api\/admin\/assets\/([\w-]+)$/.exec(path);
       if (assetMatch && method === "DELETE") {
+        admin(user);
+        if (db.prepare("SELECT asset_id FROM ai_library_files WHERE asset_id=?").get(assetMatch[1]))
+          fail(409, "أزل الملف من مكتبة المدرس الذكي أولًا، ثم احذفه من التخزين.");
         const result = await storage.remove(user, assetMatch[1]);
         const content = store.getContent();
         for (const c of content.courses) {

@@ -2,7 +2,7 @@ import { courseVisible, questionVisible } from "./learning-model.mjs";
 import { randomUUID } from "node:crypto";
 import { fail, cleanText } from "./security.mjs";
 import { AI_INSTRUCTIONS } from "./database.mjs";
-export function aiRequest(settings, messages, context = "") {
+export function aiRequest(settings, messages, context = "", vectorStoreId = null) {
   const body = {
     model: settings.model,
     instructions:
@@ -15,6 +15,12 @@ export function aiRequest(settings, messages, context = "") {
     store: false,
     max_output_tokens: settings.maxTokens,
   };
+  if (vectorStoreId)
+    body.tools = [{
+      type: "file_search",
+      vector_store_ids: [vectorStoreId],
+      max_num_results: 6,
+    }];
   if (
     settings.temperature !== null &&
     settings.temperature !== "" &&
@@ -46,14 +52,17 @@ async function responses(s, body) {
       fail(503, "خدمة المدرس بلغت حد الخدمة حاليًا. حاول لاحقًا.");
     fail(502, "رفضت OpenAI الطلب. راجع المفتاح والنموذج وإعدادات الحساب.");
   }
-  const text = (data.output || [])
+  const outputText = (data.output || [])
     .filter((i) => i.type === "message")
     .flatMap((i) => i.content || [])
-    .filter((c) => c.type === "output_text")
-    .map((c) => c.text)
-    .join("\n");
+    .filter((c) => c.type === "output_text");
+  const text = outputText.map((c) => c.text).join("\n");
+  const citations = [...new Set(outputText
+    .flatMap((item) => item.annotations || [])
+    .filter((annotation) => annotation.type === "file_citation" && annotation.filename)
+    .map((annotation) => cleanText(annotation.filename, 180)))];
   if (!text) fail(502, "لم ترجع الخدمة نصًا قابلًا للعرض");
-  return { text, usage: data.usage || {}, id: data.id };
+  return { text, citations, usage: data.usage || {}, id: data.id };
 }
 export async function testAI(store, user) {
   const s = store.setting("ai"),
@@ -95,9 +104,10 @@ export async function tutor(store, user, input, educationContext = null, resourc
   const message = cleanText(input.message || "", 4000);
   const image = input.image || null,
     file = input.file || null;
-  if (file) fail(400, "أرسل صورة سؤال واحد فقط أو اكتب سؤالك؛ لا ترفع ملفًا كاملًا.");
-  if (!message && !image) fail(400, "اكتب سؤالك أو أرفق صورة سؤال واحد.");
-  let imageInput = null;
+  if (!message && !image && !file) fail(400, "اكتب سؤالك أو أرفق صورة أو ملف PDF.");
+  if (image && file) fail(400, "أرفق صورة أو ملف PDF واحدًا في كل رسالة.");
+  let imageInput = null,
+    fileInput = null;
   if (image !== null) {
     if (!image || typeof image !== "object" || Array.isArray(image))
       fail(400, "مرفق الصورة غير صالح.");
@@ -117,6 +127,23 @@ export async function tutor(store, user, input, educationContext = null, resourc
       (mimeType === "image/webp" && bytes.toString("ascii", 0, 4) === "RIFF" && bytes.toString("ascii", 8, 12) === "WEBP");
     if (!validImage) fail(400, "نوع الصورة لا يطابق محتوى الملف.");
     imageInput = { name, mimeType, data: bytes.toString("base64") };
+  }
+  if (file !== null) {
+    if (!file || typeof file !== "object" || Array.isArray(file))
+      fail(400, "مرفق PDF غير صالح.");
+    const name = cleanText(file.name || "document.pdf", 120).replace(/[\\/]/g, "_"),
+      mimeType = cleanText(file.mimeType || "", 40),
+      data = file.data;
+    if (mimeType !== "application/pdf" || !name.toLowerCase().endsWith(".pdf"))
+      fail(400, "ارفع ملف PDF فقط.");
+    if (typeof data !== "string" || data.length > 7 * 1024 * 1024 || !/^[A-Za-z0-9+/]+={0,2}$/.test(data))
+      fail(400, "بيانات ملف PDF غير صالحة.");
+    const bytes = Buffer.from(data, "base64");
+    if (!bytes.length || bytes.length > 5 * 1024 * 1024 || bytes.toString("base64").replace(/=+$/, "") !== data.replace(/=+$/, ""))
+      fail(413, "حجم ملف PDF يجب ألا يتجاوز ٥ ميجابايت.");
+    if (bytes.toString("ascii", 0, 5) !== "%PDF-")
+      fail(400, "محتوى الملف لا يطابق صيغة PDF.");
+    fileInput = { name, data: bytes.toString("base64") };
   }
   const day = new Date().toLocaleDateString("en-CA", {
       timeZone: "Asia/Riyadh",
@@ -262,6 +289,9 @@ export async function tutor(store, user, input, educationContext = null, resourc
       (fileContext || "لا توجد ملفات منشورة في فهرس الملفات الحالي.") +
       "\nمرفقات الدروس الجاهزة:\n" +
       (lessonAttachments || "لا توجد مرفقات دروس جاهزة مرتبطة بالدورات الظاهرة.");
+    const libraryContext = resources?.aiLibrary?.vectorStoreId
+      ? "\nمكتبة رُزمة الدائمة مفعّلة. استخدم أداة البحث في الملفات للمقاطع ذات الصلة بالسؤال، وقدّم اسم المصدر عند الاستشهاد. لا تدّع أن الملف يدعم الإجابة إن لم تُرجع أداة البحث محتوى مناسبًا."
+      : "\nمكتبة مصادر رُزمة الدائمة غير مفعّلة أو لا تحتوي ملفات مفهرسة حاليًا.";
     const context =
       "محتوى الدورات والدروس المنشور في رُزمة:\n" +
       courseContext +
@@ -276,23 +306,27 @@ export async function tutor(store, user, input, educationContext = null, resourc
       (educationContext
         ? "\nمعلومات الطالب التعليمية التي وافق على مشاركتها:\n" +
           JSON.stringify(educationContext)
-        : "\nلا توجد موافقة لمشاركة ملف الطالب أو خطته؛ لا تدّع الاطلاع عليهما.");
-    const userMessage = imageInput
+        : "\nلا توجد موافقة لمشاركة ملف الطالب أو خطته؛ لا تدّع الاطلاع عليهما.") +
+      libraryContext;
+    const userMessage = imageInput || fileInput
       ? [
-          { type: "input_text", text: message || "حلّل صورة السؤال التعليمي واشرح خطوات الحل." },
-          ...(imageInput
-            ? [{
-                type: "input_image",
-                image_url: "data:" + imageInput.mimeType + ";base64," + imageInput.data,
-                detail: "high",
-              }]
-            : []),
+          { type: "input_text", text: message || (imageInput ? "حلّل الصورة التعليمية واشرح السؤال الظاهر فيها." : "حلّل ملف PDF التعليمي واشرح السؤال أو الصفحة المحددة.") },
+          ...(imageInput ? [{ type: "input_image", image_url: "data:" + imageInput.mimeType + ";base64," + imageInput.data, detail: "high" }] : []),
+          ...(fileInput ? [{ type: "input_file", filename: fileInput.name, file_data: "data:application/pdf;base64," + fileInput.data, detail: "high" }] : []),
         ]
       : message;
     const response = await responses(
       s,
-      aiRequest(s, [...history, { role: "user", content: userMessage }], context),
+      aiRequest(
+        s,
+        [...history, { role: "user", content: userMessage }],
+        context,
+        resources?.aiLibrary?.vectorStoreId || null,
+      ),
     );
+    const responseText = response.text + (response.citations?.length
+      ? "\n\nالمصادر المستخدمة من مكتبة رُزمة:\n" + response.citations.map((name) => "• " + name).join("\n")
+      : "");
     const inp = response.usage.input_tokens || 0,
       out = response.usage.output_tokens || 0,
       cost =
@@ -301,8 +335,8 @@ export async function tutor(store, user, input, educationContext = null, resourc
           : null;
     store.transaction(() => {
       for (const [role, text] of [
-        ["user", message + (imageInput ? "\n[مرفق صورة سؤال: " + imageInput.name + "]" : "")],
-        ["assistant", response.text],
+        ["user", message + (imageInput ? "\n[مرفق صورة سؤال: " + imageInput.name + "]" : fileInput ? "\n[مرفق PDF: " + fileInput.name + "]" : "")],
+        ["assistant", responseText],
       ])
         store.db
           .prepare(
@@ -317,7 +351,8 @@ export async function tutor(store, user, input, educationContext = null, resourc
     });
     return {
       conversationId,
-      text: response.text,
+      text: responseText,
+      citations: response.citations || [],
       usage: { inputTokens: inp, outputTokens: out },
       remaining: Math.max(
         0,

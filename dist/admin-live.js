@@ -97,6 +97,31 @@ export function mountAdminLive(tab, toast, render) {
             ? reports.map((r) => `<article class="panel spaced" data-leak-card="${e(r.id)}"><div class="admin-bar"><div><h3>${e(r.topic)}</h3><small>${e(r.submitter || "حساب محذوف")} · ${date(r.created_at)} · ${e(r.track)} / ${e(r.subject)}</small></div><span class="badge ${r.status === "approved" ? "badge-purple" : ""}">${e(labels[r.status] || r.status)}</span></div><p>${e(r.description)}</p><div class="smalltext">تاريخ التجربة: ${e(r.exam_date || "غير محدد")} · بلاغات: ${r.report_count}</div><div class="form-grid spaced"><div class="field"><label>العنوان العام بعد إزالة أي بيانات شخصية</label><input data-leak-topic value="${e(r.public_topic || r.topic)}" maxlength="100"></div><div class="field"><label>الوصف العام المنقّح قبل النشر</label><textarea data-leak-description maxlength="1200">${e(r.public_description || r.description)}</textarea></div><div class="field"><label>ملاحظة داخلية (اختياري)</label><input data-leak-note value="${e(r.review_note || "")}" maxlength="500"></div></div><div class="table-actions"><button class="btn btn-primary btn-sm" data-leak-review="${e(r.id)}" data-status="approved" ${r.rights_confirmed ? "" : "disabled"}>اعتماد ونشر</button><button class="btn btn-outline btn-sm" data-leak-review="${e(r.id)}" data-status="needs_changes">طلب تعديل</button><button class="btn btn-outline btn-sm danger" data-leak-review="${e(r.id)}" data-status="rejected">رفض</button><button class="btn btn-ghost btn-sm" data-leak-review="${e(r.id)}" data-status="hidden">إخفاء</button></div>${r.rights_confirmed ? "" : '<p class="danger smalltext">لم يؤكد المرسل شروط الحقوق؛ لا يمكن اعتماد المشاركة.</p>'}</article>`).join("")
             : empty("لا توجد مشاركات", "ستظهر هنا إفادات الطلاب الجديدة بعد إرسالها.", "file"));
       }
+      if (tab === "community") {
+        const data = await api("/api/admin/support");
+        if (disposed) return;
+        const statusLabels = { pending: "بانتظار الرد", replied: "تم الرد", rejected: "مرفوض", closed: "مغلق" };
+        const pending = data.questions.filter((q) => q.status === "pending").length;
+        target.innerHTML =
+          "<h2>استفسارات الطلاب</h2>" +
+          notice("كل استفسار يصل إلى الإدارة فقط. اكتب الرد ثم اختر إن كنت تريد نشر السؤال والرد لجميع الطلاب أم إبقاء الرد خاصًا بصاحب الاستفسار. لا يظهر شيء للعامة قبل حفظ الرد مع تفعيل خيار النشر.") +
+          '<div class="admin-metrics"><div class="stat"><span>كل الاستفسارات</span><b>' + data.questions.length + '</b></div><div class="stat"><span>بانتظار الرد</span><b>' + pending + '</b></div><div class="stat"><span>إجابات منشورة</span><b>' + data.questions.filter((q) => q.published && q.status === "replied").length + '</b></div></div>' +
+          '<section class="panel spaced"><h3>تصنيفات الاستفسارات</h3><p class="muted">يمكنك تغيير الأسماء أو إيقاف تصنيف أو إضافة تصنيف جديد. التصنيف المتوقف لا يظهر للطلاب عند إرسال سؤال جديد.</p><form id="support-category-form" class="inline-form spaced"><input name="name" maxlength="50" minlength="2" placeholder="اسم تصنيف جديد، مثل: مواعيد الاختبارات" required><button class="btn btn-primary" type="submit">إضافة تصنيف</button></form>' +
+          (data.categories.map((c) =>
+            '<div class="support-admin-category" data-support-category-card="' + e(c.id) + '"><input data-support-category-name value="' + e(c.name) + '" maxlength="50" aria-label="اسم التصنيف"><label><input type="checkbox" data-support-category-active ' + (c.active ? "checked" : "") + '> نشط</label><button class="btn btn-outline btn-sm" data-support-category-save="' + e(c.id) + '">حفظ</button></div>'
+          ).join("") || '<p class="muted">لا توجد تصنيفات.</p>') +
+          '</section><section class="support-admin-questions"><h3>صندوق الاستفسارات</h3>' +
+          (data.questions.length
+            ? data.questions.map((q) =>
+                '<article class="panel spaced support-admin-card" data-support-card="' + e(q.id) + '"><div class="admin-bar"><div><span class="badge">' + e(q.category_name) + '</span><h3 class="spaced">' + e(q.subject) + '</h3><small>' + e(q.student_name) + (q.student_email ? " · " + e(q.student_email) : "") + " · " + date(q.created_at) + '</small></div><span class="badge ' + (q.status === "replied" ? "badge-purple" : "") + '">' + e(statusLabels[q.status] || q.status) + '</span></div><p class="support-admin-question">' + e(q.body) + '</p><div class="field"><label>رد إدارة رُزمة</label><textarea data-support-reply rows="4" maxlength="3000" placeholder="اكتب ردًا واضحًا للطالب...">' + e(q.reply || "") + '</textarea></div><label class="checkbox support-publish-option"><input type="checkbox" data-support-publish ' + (q.published ? "checked" : "") + '><span>أوافق على نشر السؤال والرد لجميع الطلاب بعد حفظ الرد</span></label><div class="table-actions"><button class="btn btn-primary btn-sm" data-support-reply="' + e(q.id) + '" ' + (q.status === "rejected" || q.status === "closed" ? "disabled" : "") + '>حفظ الرد</button>' +
+                (q.status !== "rejected" ? '<button class="btn btn-outline btn-sm danger" data-support-status="' + e(q.id) + '" data-status="rejected">رفض الاستفسار</button>' : "") +
+                (q.status !== "closed" ? '<button class="btn btn-ghost btn-sm" data-support-status="' + e(q.id) + '" data-status="closed">إغلاق</button>' : "") +
+                (q.published ? '<span class="support-published-label">' + icon("globe") + " منشور للطلاب</span>" : q.status === "replied" ? '<span class="muted smalltext">الرد خاص بصاحب الاستفسار</span>' : "") +
+                '</div></article>'
+              ).join("")
+            : empty("صندوق الاستفسارات فارغ", "ستظهر هنا أسئلة الطلاب الجديدة، ولن يراها غير الإدارة حتى تراجعها.", "message-circle")) +
+          "</section>";
+      }
       if (tab === "broadcasts") {
         const history = await api("/api/admin/broadcasts");
         if (disposed) return;
@@ -118,6 +143,35 @@ export function mountAdminLive(tab, toast, render) {
               `<tr><td>${e(a.name)}<br><small>${e(a.mime)}</small>${a.error ? `<p class="danger">${e(a.error)}</p>` : ""}</td><td>${(a.size / 1048576).toFixed(1)} MB</td><td>${e({ uploading: "جارٍ الرفع", processing: "معالجة 720p", ready: "جاهز", failed: "تعذرت المعالجة" }[a.status] || a.status)}</td><td>${e(db.courses.find((c) => c.id === a.course_id)?.title || "غير مرتبط")}<br><small>${e(db.courses.flatMap((c) => c.lessons).find((l) => l.id === a.lesson_id)?.title || "")}</small></td><td><div class="table-actions">${a.status === "ready" ? `${a.mime.startsWith("video/") ? `<span class="badge">${a.duration_seconds ? Math.ceil(a.duration_seconds / 60) + " دقيقة مستخرجة" : "مدة غير معروفة"}</span> <button class="btn btn-outline btn-sm" data-probe-video="${a.id}">استخراج المدة</button>` : ""}<a class="btn btn-outline btn-sm" href="/api/media/${a.id}" target="_blank" rel="noopener noreferrer">فتح</a>` : ""}<button class="btn btn-outline btn-sm danger" data-asset-delete="${a.id}" ${a.status === "processing" ? "disabled" : ""}>حذف</button></div></td></tr>`,
           ),
         );
+      }
+      if (tab === "ai-library") {
+        const data = await api("/api/admin/ai-library");
+        if (disposed) return;
+        const statuses = {
+          completed: "جاهز للمدرس",
+          in_progress: "جارٍ الفهرسة",
+          uploading: "جارٍ الرفع إلى OpenAI",
+          failed: "تعذرت الفهرسة",
+        };
+        target.innerHTML =
+          '<div class="admin-bar"><div><span class="eyebrow">المعرفة الخاصة برُزمة</span><h2>مصادر المدرس الذكي</h2></div><button class="btn btn-outline btn-sm" data-ai-library-refresh="1">' + icon("refresh-cw") + " تحديث الحالات</button></div>" +
+          notice("ارفع ملفاتك هنا مرة واحدة. تُحفظ النسخة الأصلية في مكتبة ملفات رُزمة، ثم تُفهرس نسخة للبحث الذكي. المدرس يبحث في المقاطع المناسبة للسؤال بدل إرسال كل الملفات في كل محادثة.") +
+          '<div class="admin-metrics ai-library-metrics"><div class="stat"><span>الملفات المفهرسة</span><b>' + data.summary.ready + '</b></div><div class="stat"><span>قيد المعالجة</span><b>' + data.summary.processing + '</b></div><div class="stat"><span>حجم الفهرس</span><b>' + (data.summary.usageBytes / 1048576).toFixed(1) + " MB</b></div></div>" +
+          '<form id="ai-library-upload-form" class="panel spaced"><label class="upload-picker" for="ai-library-files">' + icon("upload") + '<strong>اختر ملفاتك التعليمية</strong><span>يمكن اختيار عدة ملفات دفعة واحدة</span><input id="ai-library-files" name="file" type="file" multiple accept=".pdf,.doc,.docx,.pptx,.txt,.md,.html,.json,.js,.py,.css,.ts,.c,.cpp,.cs,.go,.java,.php,.rb,.sh,.tex" required></label><p class="muted">الأنواع المدعومة: PDF وWord وPowerPoint وTXT وMarkdown وHTML وJSON وبعض ملفات البرمجة. الحد التقني لكل ملف 512 MB أو 5 ملايين token؛ لا نضع حدًا إجماليًا ثابتًا يدويًا. التخزين والفهرسة قد يترتب عليهما رسوم حسب استخدامك.</p><div class="upload-progress hidden" id="upload-progress"><progress max="100" value="0"></progress><span>0٪</span><p role="status"></p></div><div class="modal-actions"><button class="btn btn-primary" type="submit">رفع وفهرسة الملفات</button></div></form>' +
+          '<section class="spaced"><h3>ملفات المكتبة</h3><p class="muted">يمكنك أيضًا إضافة أي مستند سبق رفعه إلى مكتبة الفيديوهات والملفات دون إعادة رفعه.</p><div id="ai-library-list"></div></section>';
+        const rows = data.files.map((f) => {
+          const indexed = !!f.indexed;
+          const status = f.index_status ? statuses[f.index_status] || f.index_status : "غير مضاف للمكتبة";
+          const action = indexed
+            ? (f.index_status === "failed"
+              ? '<button class="btn btn-outline btn-sm" data-ai-library-index="' + e(f.id) + '">إعادة الفهرسة</button> '
+              : '<button class="btn btn-outline btn-sm danger" data-ai-library-remove="' + e(f.id) + '">إزالة من المكتبة</button> ')
+            : '<button class="btn btn-primary btn-sm" data-ai-library-index="' + e(f.id) + '">إضافة للمكتبة</button> ';
+          return '<tr><td>' + e(f.name) + '<br><small>' + e(f.mime) + '</small>' + (f.index_error ? '<p class="danger smalltext">' + e(f.index_error) + '</p>' : '') + '</td><td>' + (f.size / 1048576).toFixed(1) + ' MB</td><td><span class="badge">' + e(status) + '</span></td><td>' + (f.usage_bytes ? (f.usage_bytes / 1048576).toFixed(1) + ' MB' : '—') + '</td><td>' + action + '</td></tr>';
+        });
+        document.querySelector("#ai-library-list").innerHTML = rows.length
+          ? table(["الملف", "الحجم الأصلي", "حالة الفهرسة", "حجم الفهرس", "الإجراء"], rows)
+          : empty("لا توجد ملفات بعد", "ارفع ملفاتك التعليمية أو أضف مستندًا سبق رفعه.", "files");
       }
       if (tab === "ai" || tab === "payment") {
         const s = await api("/api/admin/settings/" + tab);
@@ -341,6 +395,68 @@ export function mountAdminLive(tab, toast, render) {
         await load();
         return;
       }
+      if (d.aiLibraryRefresh) {
+        b.disabled = true;
+        const result = await api("/api/admin/ai-library/refresh", { method: "POST", body: {} });
+        toast("تم تحديث حالة " + result.refreshed + " ملفًا.");
+        await load();
+        return;
+      }
+      if (d.aiLibraryIndex) {
+        b.disabled = true;
+        const result = await api("/api/admin/ai-library/" + encodeURIComponent(d.aiLibraryIndex), { method: "POST", body: {} });
+        toast(result.status === "completed" ? "اكتملت فهرسة الملف وأصبح متاحًا للمدرس." : result.status === "failed" ? "تعذرت فهرسة الملف. راجع رسالة الخطأ." : "بدأت فهرسة الملف. سيصبح متاحًا بعد اكتمال المعالجة.");
+        await load();
+        return;
+      }
+      if (d.aiLibraryRemove) {
+        if (!confirm("إزالة الملف من مكتبة المدرس الذكي؟ سيبقى الملف الأصلي في مكتبة ملفات رُزمة ويمكن إضافته مجددًا.")) return;
+        b.disabled = true;
+        await api("/api/admin/ai-library/" + encodeURIComponent(d.aiLibraryRemove), { method: "DELETE", body: {} });
+        toast("تمت إزالة الملف من مكتبة المدرس الذكي.");
+        await load();
+        return;
+      }
+      if (d.supportReply) {
+        const card = b.closest("[data-support-card]");
+        if (!card) return;
+        b.disabled = true;
+        const reply = card.querySelector("[data-support-reply]")?.value || "";
+        const publish = !!card.querySelector("[data-support-publish]")?.checked;
+        await api("/api/admin/support/questions/" + encodeURIComponent(d.supportReply) + "/reply", {
+          method: "POST",
+          body: { reply, publish },
+        });
+        toast(publish ? "تم حفظ الرد ونشر السؤال والإجابة للطلاب." : "تم حفظ الرد بشكل خاص لصاحب الاستفسار.");
+        await load();
+        return;
+      }
+      if (d.supportStatus) {
+        b.disabled = true;
+        await api("/api/admin/support/questions/" + encodeURIComponent(d.supportStatus) + "/status", {
+          method: "POST",
+          body: { status: d.status },
+        });
+        toast(d.status === "rejected" ? "تم رفض الاستفسار وإخفاؤه عن الطلاب الآخرين." : "تم إغلاق الاستفسار.");
+        await load();
+        return;
+      }
+      if (d.supportCategorySave) {
+        const card = b.closest("[data-support-category-card]");
+        if (!card) return;
+        b.disabled = true;
+        await api("/api/admin/support/categories", {
+          method: "POST",
+          body: {
+            id: d.supportCategorySave,
+            name: card.querySelector("[data-support-category-name]")?.value || "",
+            active: !!card.querySelector("[data-support-category-active]")?.checked,
+          },
+        });
+        toast("تم تحديث التصنيف.");
+        await load();
+        return;
+      }
       if (d.probeVideo) {
         b.disabled = true;
         const meta = await api("/api/admin/assets/" + d.probeVideo + "/probe", {
@@ -506,7 +622,7 @@ export function mountAdminLive(tab, toast, render) {
   const submit = async (ev) => {
     const form = ev.target;
     if (
-      !["settings-form", "upload-form", "user-search", "broadcast-form"].includes(form.id) &&
+      !["settings-form", "upload-form", "ai-library-upload-form", "user-search", "broadcast-form", "support-category-form"].includes(form.id) &&
       !form.matches(".grant-sub")
     )
       return;
@@ -515,6 +631,14 @@ export function mountAdminLive(tab, toast, render) {
     button.disabled = true;
     try {
       const values = Object.fromEntries(new FormData(form));
+      if (form.id === "support-category-form") {
+        await api("/api/admin/support/categories", {
+          method: "POST",
+          body: { name: values.name, active: true },
+        });
+        toast("تمت إضافة التصنيف.");
+        await load();
+      }
       if (form.id === "broadcast-form") {
         const recipientCount = Number(form.dataset.recipientCount);
         if (!recipientCount)
@@ -558,6 +682,116 @@ export function mountAdminLive(tab, toast, render) {
         await load();
       }
       if (form.id === "user-search") await load();
+      if (form.id === "ai-library-upload-form") {
+        const files = Array.from(form.file.files || []);
+        if (!files.length) throw Error("اختر ملفًا واحدًا على الأقل.");
+        const progress = document.querySelector("#upload-progress");
+        progress.classList.remove("hidden");
+        const bar = progress.querySelector("progress"),
+          percent = progress.querySelector("span"),
+          status = progress.querySelector("p");
+        const mimeFallback = {
+          pdf: "application/pdf",
+          doc: "application/msword",
+          docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+          txt: "text/plain",
+          md: "text/markdown",
+          html: "text/html",
+          json: "application/json",
+          js: "text/javascript",
+          py: "text/x-python",
+          css: "text/css",
+          ts: "application/typescript",
+          c: "text/x-c",
+          cpp: "text/x-c++",
+          cs: "text/x-csharp",
+          go: "text/x-golang",
+          java: "text/x-java",
+          php: "text/x-php",
+          rb: "text/x-ruby",
+          sh: "application/x-sh",
+          tex: "text/x-tex",
+        };
+        let indexed = 0;
+        for (let index = 0; index < files.length; index++) {
+          const file = files[index];
+          if (file.size > 512 * 1024 * 1024)
+            throw Error("الملف «" + file.name + "» يتجاوز حد 512 MB للملف الواحد.");
+          const extension = file.name.split(".").pop().toLowerCase();
+          const mime = mimeFallback[extension];
+          if (!mime) throw Error("صيغة الملف غير مدعومة: " + file.name);
+          status.textContent = "رفع الملف " + (index + 1) + " من " + files.length + ": " + file.name;
+          bar.value = 0;
+          percent.textContent = "0٪";
+          const upload = await api("/api/admin/assets/init", {
+            method: "POST",
+            body: {
+              name: file.name,
+              mime,
+              size: file.size,
+              courseId: "",
+              lessonId: "",
+              thumbnailId: "",
+              public: false,
+            },
+          });
+          const parts = [];
+          const sendPart = (url, blob, offset) =>
+            new Promise((resolve, reject) => {
+              const x = new XMLHttpRequest();
+              x.open("PUT", url);
+              if (upload.driver === "local") {
+                x.withCredentials = true;
+                x.setRequestHeader("X-CSRF-Token", account.csrf);
+              }
+              x.upload.onprogress = (event) => {
+                const n = Math.round(((offset + event.loaded) / file.size) * 100);
+                bar.value = n;
+                percent.textContent = n + "٪";
+              };
+              x.onload = () =>
+                x.status >= 200 && x.status < 300
+                  ? resolve(x.getResponseHeader("ETag"))
+                  : reject(Error("فشل رفع «" + file.name + "». تحقق من التخزين."));
+              x.onerror = () => reject(Error("انقطع الاتصال أثناء رفع «" + file.name + "»."));
+              x.send(blob);
+            });
+          if (upload.driver === "local") {
+            await sendPart(upload.uploadUrl, file, 0);
+          } else {
+            for (let part = 0; part < upload.urls.length; part++) {
+              const start = part * upload.partSize;
+              const etag = await sendPart(
+                upload.urls[part],
+                file.slice(start, Math.min(file.size, start + upload.partSize)),
+                start,
+              );
+              parts.push({ PartNumber: part + 1, ETag: etag });
+            }
+          }
+          const done = await api("/api/admin/assets/" + upload.id + "/complete", {
+            method: "POST",
+            body: { parts },
+          });
+          if (done.status !== "ready")
+            throw Error("اكتمل رفع «" + file.name + "» لكن الملف لم يصبح جاهزًا للفهرسة.");
+          status.textContent = "فهرسة " + file.name + " في مكتبة المدرس الذكي…";
+          const result = await api("/api/admin/ai-library/" + upload.id, {
+            method: "POST",
+            body: {},
+          });
+          if (result.status === "failed")
+            throw Error("تم رفع «" + file.name + "» لكن فهرسته فشلت. يمكنك إعادة المحاولة من قائمة الملفات.");
+          indexed++;
+          bar.value = 100;
+          percent.textContent = "١٠٠٪";
+          status.textContent = "اكتمل " + indexed + " من " + files.length + " ملفًا.";
+        }
+        form.reset();
+        toast("تم رفع " + indexed + " ملفًا وإضافتها إلى مكتبة المدرس الذكي.");
+        await load();
+      }
       if (form.id === "upload-form") {
         const file = form.file.files[0];
         if (!file) throw Error("اختر ملفًا");

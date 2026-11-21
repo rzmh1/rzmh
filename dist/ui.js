@@ -48,6 +48,12 @@ const paths = {
     "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8ZM12 2v3m0 14v3M2 12h3m14 0h3M5 5l2 2m10 10 2 2M5 19l2-2M17 7l2-2",
   undo: "m8 4-5 5 5 5M3 9h11a6 6 0 0 1 0 12",
   search: "M16 16l5 5M18 10a8 8 0 1 0-16 0 8 8 0 0 0 16 0Z",
+  "messages-square": "M3 4h18v13H8l-5 4V4Zm4 5h10m-10 4h7",
+  "message-circle": "M21 11.5a8.5 8.5 0 0 1-12.5 7.5L3 21l2-5.5A8.5 8.5 0 1 1 21 11.5Z",
+  "arrow-right": "M5 12h14m-7-7 7 7-7 7",
+  "check-circle": "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Zm-4-10 3 3 5-6",
+  globe: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20ZM2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20",
+  send: "m22 2-7 20-4-9-9-4 20-7ZM22 2 11 13",
 };
 export const icon = (name, cls = "") =>
   `<svg class="icon ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${paths[name] || paths.book}"/></svg>`;
