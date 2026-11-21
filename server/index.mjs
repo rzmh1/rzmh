@@ -716,6 +716,10 @@ export function createApp(cfg = config()) {
             user,
             await jsonBody(req, 8 * 1024 * 1024),
             learning.permittedContext(user),
+            {
+              ...learning.catalog(user),
+              files: store.getContent().files,
+            },
           ),
         );
       }

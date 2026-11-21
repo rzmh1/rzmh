@@ -551,10 +551,39 @@ test("AI Responses payload, saved context, service errors and atomic daily limit
         { status: 200, headers: { "content-type": "application/json" } },
       );
     };
-    const value = await tutor(f.store, user, { message: "اشرح النسبة" });
+    const value = await tutor(
+      f.store,
+      user,
+      { message: "اشرح النسبة" },
+      null,
+      {
+        instructors: [
+          {
+            id: "teacher-rz",
+            name: "مدرس رُزمة للاختبار",
+            specialty: "الكمي",
+            kind: "teacher",
+            bio: "شرح النسب والتناسب من منهج رُزمة.",
+            published: true,
+          },
+        ],
+        files: [
+          {
+            title: "ملف مراجعة رُزمة",
+            description: "مراجعة النسب والتناسب",
+            url: "https://private.example.test/do-not-send.pdf",
+            visible: true,
+          },
+        ],
+      },
+    );
     assert.equal(value.remaining, 0);
     assert.equal(body.store, false);
     assert(body.instructions.includes("رُزمة"));
+    assert(body.instructions.includes("مدرس رُزمة للاختبار"));
+    assert(body.instructions.includes("ملف مراجعة رُزمة"));
+    assert(body.instructions.includes("بياناتها الوصفية"));
+    assert(!body.instructions.includes("https://private.example.test/do-not-send.pdf"));
     assert.equal(
       f.store.db.prepare("SELECT count(*) n FROM messages").get().n,
       2,

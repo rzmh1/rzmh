@@ -88,7 +88,7 @@ export async function testAI(store, user) {
     message: "نجح طلب حقيقي إلى Responses API.",
   };
 }
-export async function tutor(store, user, input, educationContext = null) {
+export async function tutor(store, user, input, educationContext = null, resources = null) {
   const s = store.setting("ai");
   if (!s.enabled) fail(503, "خدمة المدرس غير مفعلة حاليًا");
   if (!store.entitled(user)) fail(403, "المدرس الذكي متاح باشتراك نشط");
@@ -185,25 +185,104 @@ export async function tutor(store, user, input, educationContext = null) {
       )
       .all(conversationId, user.id);
     const content = store.getContent();
+    const instructors = (resources?.instructors || [])
+      .filter((item) => item && item.published !== false && item.deleted !== true)
+      .slice(0, 40);
+    const instructorById = new Map(instructors.map((item) => [item.id, item]));
+    const courseContext = content.courses
+      .filter((c) => courseVisible(content, c))
+      .flatMap((c) =>
+        c.lessons
+          .filter((l) => l.visible !== false)
+          .map((l) => {
+            const instructor = instructorById.get(c.instructorId);
+            const source = instructor
+              ? "\nالمدرس/المصدر: " +
+                cleanText(instructor.name || "", 120) +
+                " — " +
+                cleanText(instructor.specialty || "", 160) +
+                "\n" +
+                cleanText(instructor.bio || "", 500)
+              : "";
+            return (
+              "الدورة: " +
+              cleanText(c.title || "", 160) +
+              source +
+              "\nالدرس: " +
+              cleanText(l.title || "", 160) +
+              "\n" +
+              cleanText(l.body || "", 3500) +
+              "\n" +
+              cleanText(l.example || "", 1200)
+            );
+          }),
+      )
+      .join("\n---\n")
+      .slice(0, 14000);
+    const instructorContext = instructors
+      .map(
+        (item) =>
+          (item.kind === "source" ? "مصدر تعليمي: " : "مدرس رُزمة: ") +
+          cleanText(item.name || "", 120) +
+          " — " +
+          cleanText(item.specialty || "", 160) +
+          "\n" +
+          cleanText(item.bio || "", 500),
+      )
+      .join("\n")
+      .slice(0, 3500);
+    const files = (resources?.files || content.files || [])
+      .filter((item) => item && item.visible !== false && item.published !== false)
+      .slice(0, 40);
+    const fileContext = files
+      .map(
+        (item) =>
+          "ملف رُزمة منشور: " +
+          cleanText(item.title || item.name || "ملف تعليمي", 160) +
+          (item.description
+            ? " — " + cleanText(item.description, 400)
+            : "") +
+          (item.courseTitle
+            ? " — الدورة: " + cleanText(item.courseTitle, 120)
+            : ""),
+      )
+      .join("\n")
+      .slice(0, 3500);
+    const lessonAttachments = content.courses
+      .filter((c) => courseVisible(content, c))
+      .flatMap((c) =>
+        c.lessons
+          .filter((l) => l.visible !== false)
+          .flatMap((l) =>
+            (l.fileAssetIds || []).map((id) => {
+              const asset = store.db
+                .prepare("SELECT name FROM assets WHERE id=? AND status='ready'")
+                .get(id);
+              return asset
+                ? "مرفق درس: " +
+                    cleanText(asset.name, 120) +
+                    " — " +
+                    cleanText(c.title, 120) +
+                    " / " +
+                    cleanText(l.title, 120)
+                : "";
+            }),
+          ),
+      )
+      .filter(Boolean)
+      .slice(0, 50)
+      .join("\n")
+      .slice(0, 2500);
+    const referenceContext =
+      "\nمدرسو ومصادر رُزمة المنشورة:\n" +
+      (instructorContext || "لا توجد ملفات تعريف مدرسين/مصادر منشورة في السياق الحالي.") +
+      "\nفهرس الملفات التعليمية في رُزمة:\n" +
+      (fileContext || "لا توجد ملفات منشورة في فهرس الملفات الحالي.") +
+      "\nمرفقات الدروس الجاهزة:\n" +
+      (lessonAttachments || "لا توجد مرفقات دروس جاهزة مرتبطة بالدورات الظاهرة.");
     const context =
-      content.courses
-        .filter((c) => courseVisible(content, c))
-        .flatMap((c) =>
-          c.lessons
-            .filter((l) => l.visible !== false)
-            .map(
-              (l) =>
-                c.title +
-                ": " +
-                l.title +
-                "\n" +
-                l.body +
-                "\n" +
-                (l.example || ""),
-            ),
-        )
-        .join("\n")
-        .slice(0, 14000) +
+      "محتوى الدورات والدروس المنشور في رُزمة:\n" +
+      courseContext +
       "\nأسئلة مرجعية من بنك رُزمة:\n" +
       content.questions
         .filter((q) => questionVisible(content, q))
@@ -211,6 +290,7 @@ export async function tutor(store, user, input, educationContext = null) {
         .map((q) => q.text + "\n" + q.explanation)
         .join("\n")
         .slice(0, 5000) +
+      referenceContext +
       (educationContext
         ? "\nمعلومات الطالب التعليمية التي وافق على مشاركتها:\n" +
           JSON.stringify(educationContext)
