@@ -88,7 +88,7 @@ test("store journey: admin content, measured videos, authenticated single previe
     failedStudent = client();
   try {
     assert.equal((await guest.req("/")).status, 200);
-    await owner.ok("/api/auth/login", "POST", {
+    await owner.ok("/api/auth/admin-login", "POST", {
       email: "store-owner@example.test",
       password: "store-test-password-123",
     });
