@@ -891,7 +891,7 @@ export function createApp(cfg = config()) {
         admin(user);
         return send(await aiLibrary.refresh(user));
       }
-      const aiLibraryMatch = /^\\/api\\/admin\\/ai-library\\/([\\w-]+)$/.exec(path);
+      const aiLibraryMatch = /^\/api\/admin\/ai-library\/([\w-]+)$/.exec(path);
       if (aiLibraryMatch && method === "POST") {
         admin(user);
         rate("ai-library:index:" + user.id, 20, 60000);
