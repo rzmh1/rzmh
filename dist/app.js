@@ -28,6 +28,7 @@ import { adminPage, mountAdmin } from "./admin.js";
 import { api, account, setSession } from "./api.js";
 import {
   authLive,
+  adminAuthLive,
   reviewOrder,
   paymentStatus,
   loadPaymentStatus,
@@ -116,6 +117,7 @@ export function render(scroll = true) {
     tests: "الاختبارات",
     scratch: "ورقة المسودة",
     admin: "لوحة الإدارة",
+    "admin-login": "دخول المالك",
     tutor: "المدرس الذكي",
     leaks: "التسريبات",
     login: "تسجيل الدخول",
@@ -286,6 +288,12 @@ export function render(scroll = true) {
         case "leaks":
           content = leaksPage();
           break;
+        case "admin-login":
+          content =
+            account.user?.role === "admin"
+              ? adminPage()
+              : adminAuthLive();
+          break;
         case "login":
           content = authLive();
           break;
@@ -312,7 +320,7 @@ export function render(scroll = true) {
                   "دخول خاص بمالك المنصة",
                   "تحتاج تسجيل الدخول بحساب مدير. لا تمنح حسابات الطلاب صلاحية الإدارة.",
                   "lock",
-                  btn("تسجيل الدخول", "#/login"),
+                  btn("دخول المالك", "#/admin-login"),
                 );
           break;
         case "payment":
@@ -657,6 +665,31 @@ document.addEventListener("submit", async (ev) => {
     persistStudent();
     render(false);
     toast("أُضيفت خطوتك القادمة");
+  }
+  if (form.id === "admin-auth-form") {
+    ev.preventDefault();
+    const button = form.querySelector("button[type=submit]"),
+      values = Object.fromEntries(new FormData(form));
+    button.disabled = true;
+    try {
+      const result = await api("/api/auth/admin-login", {
+        method: "POST",
+        body: values,
+      });
+      if (result.user?.role !== "admin")
+        throw Error("هذا الحساب غير مخوّل لدخول لوحة الإدارة.");
+      await initialize();
+      if (account.user?.role !== "admin")
+        throw Error("تعذر التحقق من صلاحية المالك. حاول مرة أخرى.");
+      location.hash = "#/admin";
+      render();
+      toast("أهلًا بك في إدارة رُزمة");
+    } catch (err) {
+      const error = document.querySelector("#admin-form-error");
+      if (error) error.textContent = err.message;
+    } finally {
+      button.disabled = false;
+    }
   }
   if (form.id === "auth-form") {
     ev.preventDefault();
