@@ -6,11 +6,13 @@ import { join } from "node:path";
 import { randomBytes, randomUUID, createHmac } from "node:crypto";
 import { createApp } from "../server/index.mjs";
 import { config } from "../server/config.mjs";
+import { openDatabase } from "../server/database.mjs";
 import {
   passwordHash,
   passwordVerify,
   encrypt,
   decrypt,
+  email,
 } from "../server/security.mjs";
 import { addMonths, activateOrder, verifyStripeSignature } from "../server/payments.mjs";
 import { frame } from "../server/custom.mjs";
@@ -84,6 +86,60 @@ async function browser(f) {
     },
   };
 }
+
+test("email syntax is normalized and rejects malformed or incomplete domains", () => {
+  assert.equal(email("  Student+1@Example.COM  "), "student+1@example.com");
+  assert.equal(email("student@bücher.example"), "student@xn--bcher-kva.example");
+  for (const value of [
+    "not-an-email",
+    "student@localhost",
+    "student@example..com",
+    "student@-example.com",
+    "student@example-.com",
+    "student..name@example.com",
+    "@example.com",
+    "student@example.c",
+    "student name@example.com",
+  ]) assert.throws(() => email(value), value);
+});
+
+test("production always requires email verification", () => {
+  const valid = {
+    NODE_ENV: "production",
+    APP_ORIGIN: "https://ruzmah.example",
+    APP_KEY: randomBytes(32).toString("base64"),
+    REQUIRE_EMAIL_VERIFICATION: "0",
+  };
+  assert.equal(config(valid).requireEmailVerification, true);
+  assert.equal(
+    config({ APP_ORIGIN: "http://localhost:3000", REQUIRE_EMAIL_VERIFICATION: "0" })
+      .requireEmailVerification,
+    false,
+  );
+});
+
+test("expired rate-limit rows are cleaned at startup and the expiry column is indexed", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "ruzmah-rate-cleanup-"));
+  const cfg = config({
+    DATA_DIR: dir,
+    APP_KEY: randomBytes(32).toString("base64"),
+    APP_ORIGIN: "http://127.0.0.1:3000",
+  });
+  const seed = openDatabase(cfg);
+  seed.db.prepare("INSERT INTO rate_limits VALUES(?,?,?)").run("expired:test", 3, Date.now() - 1000);
+  seed.db.prepare("INSERT INTO rate_limits VALUES(?,?,?)").run("active:test", 1, Date.now() + 60000);
+  seed.close();
+  const app = createApp(cfg);
+  try {
+    const keys = app.store.db.prepare("SELECT key FROM rate_limits ORDER BY key").all().map((row) => row.key);
+    assert.deepEqual(keys, ["active:test"]);
+    const indexes = app.store.db.prepare("PRAGMA index_list(rate_limits)").all();
+    assert(indexes.some((index) => index.name === "rate_limits_expires"));
+  } finally {
+    app.store.close();
+    await rm(dir, { recursive: true, force: true });
+  }
+});
 
 test("real auth, role checks, shared content, fixed prices, CSRF, grading, protected uploads and custom code", async () => {
   const f = await fixture();
