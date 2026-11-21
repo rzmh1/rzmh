@@ -86,7 +86,7 @@ export async function loadPaymentStatus(toast) {
   };
 }
 export function tutorLive() {
-  return `<div class="ai-full">${pageHeading("مدرّسك في رُزمة", "اسأل عن سؤال. وشاهد الحل خطوة بخطوة.", "اكتب سؤالًا واحدًا أو أرفق صورته؛ لا ترفع ملفًا كاملًا.")}<div class="notice">${icon("spark")}<p>يركّز المدرس على أسئلة القدرات والتحصيلي وSTEP ومصادر رُزمة. يشرح السؤال على لوحة الحل دون تشغيل شرح محاضرة كاملة.</p></div><div class="tutor-layout"><div class="panel"><div class="admin-bar"><h2>محادثاتك</h2><button class="btn btn-outline btn-sm" data-ai-new>محادثة جديدة ${icon("plus")}</button></div><div id="conversation-list"></div></div><div class="panel"><div id="ai-chat" class="ai-chat" aria-live="polite"><div class="chat-welcome">${icon("spark")}<h3>ما السؤال الذي تريد فهمه؟</h3><p>اكتب السؤال أو أرفق صورته، ويمكنك الرسم في مساحة الحل.</p></div></div><form id="tutor-form"><label for="tutor-input">سؤالك أو موضع استفسارك</label><textarea id="tutor-input" name="message" maxlength="1200" placeholder="اكتب السؤال أو اشرح الجزء الذي لم تفهمه…"></textarea><div class="tutor-attachment"><label for="tutor-attachment" class="btn btn-outline btn-sm">${icon("image")} إرفاق صورة سؤال</label><input id="tutor-attachment" name="attachment" type="file" accept="image/jpeg,image/png,image/webp" hidden><small id="tutor-file-name" class="muted">صورة JPG أو PNG أو WebP حتى ٤ ميجابايت</small></div><section class="tutor-draw-panel"><div class="admin-bar"><div><h3>مساحة رسم الطالب</h3><small class="muted">اكتب خطواتك أو ارسم الجزء الذي تريد شرحه.</small></div><div class="tutor-draw-actions"><input id="tutor-pen-color" type="color" value="#594775" aria-label="لون القلم"><input id="tutor-pen-size" type="range" min="2" max="12" value="4" aria-label="سمك القلم"><button type="button" class="btn btn-outline btn-sm" data-tutor-draw="pen">قلم</button><button type="button" class="btn btn-outline btn-sm" data-tutor-draw="marker">تمييز</button><button type="button" class="btn btn-outline btn-sm" data-tutor-draw="undo">تراجع</button><button type="button" class="btn btn-outline btn-sm" data-tutor-draw="clear">مسح</button></div></div><canvas id="tutor-drawing-canvas" width="900" height="340" aria-label="مساحة رسم السؤال"></canvas><small class="muted">الرسم لا يُرسل إلا عند الضغط على «اسأل المدرس».</small></section><div class="admin-bar spaced"><small id="ai-quota" class="muted">يُتحقق من صلاحية الاشتراك والحد اليومي على الخادم.</small><button class="btn btn-primary" type="submit">اسأل المدرس ${icon("arrow")}</button></div><p id="ai-error" class="form-error" role="alert"></p></form></div></div></div>`;
+  return `<div class="ai-full">${pageHeading("مدرّسك في رُزمة", "اسأل عن سؤال. وشاهد الحل خطوة بخطوة.", "اكتب سؤالك أو أرفق صورة سؤال أو ملف PDF.")}<div class="notice">${icon("spark")}<p>يركّز المدرس على أسئلة القدرات والتحصيلي وSTEP ومصادر رُزمة. يشرح السؤال على لوحة الحل دون تشغيل شرح محاضرة كاملة.</p></div><div class="tutor-layout"><div class="panel"><div class="admin-bar"><h2>محادثاتك</h2><button class="btn btn-outline btn-sm" data-ai-new>محادثة جديدة ${icon("plus")}</button></div><div id="conversation-list"></div></div><div class="panel"><div id="ai-chat" class="ai-chat" aria-live="polite"><div class="chat-welcome">${icon("spark")}<h3>ما السؤال الذي تريد فهمه؟</h3><p>اكتب السؤال أو أرفق صورته، ويمكنك الرسم في مساحة الحل.</p></div></div><form id="tutor-form"><label for="tutor-input">سؤالك أو موضع استفسارك</label><textarea id="tutor-input" name="message" maxlength="1200" placeholder="اكتب السؤال أو اشرح الجزء الذي لم تفهمه…"></textarea><div class="tutor-attachment"><label for="tutor-attachment" class="btn btn-outline btn-sm">${icon("image")} إرفاق صورة أو PDF</label><input id="tutor-attachment" name="attachment" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" hidden><small id="tutor-file-name" class="muted">صورة حتى ٤ ميجابايت · PDF حتى ٥ ميجابايت</small></div><section class="tutor-draw-panel"><div class="admin-bar"><div><h3>مساحة رسم الطالب</h3><small class="muted">اكتب خطواتك أو ارسم الجزء الذي تريد شرحه.</small></div><div class="tutor-draw-actions"><input id="tutor-pen-color" type="color" value="#594775" aria-label="لون القلم"><input id="tutor-pen-size" type="range" min="2" max="12" value="4" aria-label="سمك القلم"><button type="button" class="btn btn-outline btn-sm" data-tutor-draw="pen">قلم</button><button type="button" class="btn btn-outline btn-sm" data-tutor-draw="marker">تمييز</button><button type="button" class="btn btn-outline btn-sm" data-tutor-draw="undo">تراجع</button><button type="button" class="btn btn-outline btn-sm" data-tutor-draw="clear">مسح</button></div></div><canvas id="tutor-drawing-canvas" width="900" height="340" aria-label="مساحة رسم السؤال"></canvas><small class="muted">الرسم لا يُرسل إلا عند الضغط على «اسأل المدرس».</small></section><div class="admin-bar spaced"><small id="ai-quota" class="muted">يُتحقق من صلاحية الاشتراك والحد اليومي على الخادم.</small><button class="btn btn-primary" type="submit">اسأل المدرس ${icon("arrow")}</button></div><p id="ai-error" class="form-error" role="alert"></p></form></div></div></div>`;
 }
 export function teacherBoardMarkup(text) {
   const raw = String(text || "");
@@ -244,23 +244,26 @@ export function mountTutor(toast) {
     const error = document.querySelector("#ai-error");
     error.textContent = "";
     try {
-      let image = null;
+      let image = null, pdf = null;
       await imageLoading;
-      if (file && baseImage && hasDrawing) {
-        image = { name: file.name, mimeType: "image/png", data: canvas.toDataURL("image/png").split(",")[1] };
+      if (file?.type === "application/pdf") {
+        if (file.size > 5 * 1024 * 1024 || !file.name.toLowerCase().endsWith(".pdf")) throw Error("ارفع ملف PDF صالحًا لا يتجاوز ٥ ميجابايت.");
+        const data = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => { const value = String(reader.result || ""); const comma = value.indexOf(","); if (comma < 0) reject(Error("تعذرت قراءة الملف.")); else resolve(value.slice(comma + 1)); }; reader.onerror = () => reject(Error("تعذرت قراءة الملف.")); reader.readAsDataURL(file); });
+        pdf = { name: file.name, mimeType: file.type, data };
       } else if (file) {
-        if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) throw Error("أرفق صورة سؤال بصيغة JPG أو PNG أو WebP فقط.");
+        if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) throw Error("أرفق صورة JPG أو PNG أو WebP أو ملف PDF.");
         if (file.size > 4 * 1024 * 1024) throw Error("حجم صورة السؤال يجب ألا يتجاوز ٤ ميجابايت.");
-        const data = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => { const value = String(reader.result || ""); const comma = value.indexOf(","); if (comma < 0) reject(Error("تعذرت قراءة الصورة.")); else resolve(value.slice(comma + 1)); }; reader.onerror = () => reject(Error("تعذرت قراءة الصورة.")); reader.readAsDataURL(file); });
-        image = { name: file.name, mimeType: file.type, data };
-      } else if (hasDrawing && canvas) {
-        image = { name: "student-question-drawing.png", mimeType: "image/png", data: canvas.toDataURL("image/png").split(",")[1] };
-      }
-      const shownText = text || (image ? "حلّل صورة السؤال أو الرسم المرفق واشرحه." : "");
+        if (baseImage && hasDrawing && canvas) image = { name: file.name, mimeType: "image/png", data: canvas.toDataURL("image/png").split(",")[1] };
+        else {
+          const data = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => { const value = String(reader.result || ""); const comma = value.indexOf(","); if (comma < 0) reject(Error("تعذرت قراءة الصورة.")); else resolve(value.slice(comma + 1)); }; reader.onerror = () => reject(Error("تعذرت قراءة الصورة.")); reader.readAsDataURL(file); });
+          image = { name: file.name, mimeType: file.type, data };
+        }
+      } else if (hasDrawing && canvas) image = { name: "student-question-drawing.png", mimeType: "image/png", data: canvas.toDataURL("image/png").split(",")[1] };
+      const shownText = text || (pdf ? "حلّل ملف PDF التعليمي المرفق واشرح السؤال أو الصفحة المطلوبة." : image ? "حلّل صورة السؤال أو الرسم المرفق واشرحه." : "");      const shownText = text || (image ? "حلّل صورة السؤال أو الرسم المرفق واشرحه." : "");
       chat.innerHTML += message("user", shownText + (file ? "\n[مرفق صورة: " + file.name + "]" : hasDrawing ? "\n[رسم الطالب مرفق]" : ""));
       const value = await api("/api/tutor", {
         method: "POST",
-        body: { message: text, image, conversationId },
+        body: { message: text, image, file: pdf, conversationId },
       });
       if (disposed) return;
       conversationId = value.conversationId;
@@ -269,7 +272,7 @@ export function mountTutor(toast) {
       strokes = []; baseImage = null; hasDrawing = false; imageInputReset(); paintDrawing();
       form.message.value = "";
       form.attachment.value = "";
-      document.querySelector("#tutor-file-name").textContent = "صورة JPG أو PNG أو WebP حتى ٤ ميجابايت";
+      document.querySelector("#tutor-file-name").textContent = "صورة حتى ٤ ميجابايت · PDF حتى ٥ ميجابايت";
       document.querySelector("#ai-quota").textContent =
         `المتبقي اليوم: ${value.remaining} طلبات`;
       await load();
@@ -285,12 +288,13 @@ export function mountTutor(toast) {
     const file = imageInput?.files?.[0];
     const label = document.querySelector("#tutor-file-name");
     if (!file) { baseImage = null; hasDrawing = strokes.length > 0; paintDrawing(); if (label) label.textContent = "صورة JPG أو PNG أو WebP حتى ٤ ميجابايت"; return; }
-    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 4 * 1024 * 1024) {
+    if (file.type !== "application/pdf" && (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 4 * 1024 * 1024)) {
       imageInputReset();
       if (label) label.textContent = "اختر صورة JPG أو PNG أو WebP لا تتجاوز ٤ ميجابايت.";
       return;
     }
     if (label) label.textContent = file.name + " · " + Math.ceil(file.size / 1024) + " KB";
+    if (file.type === "application/pdf") { baseImage = null; hasDrawing = strokes.length > 0; imageLoading = Promise.resolve(); paintDrawing(); return; }
     imageLoading = new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => {
