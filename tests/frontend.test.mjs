@@ -20,12 +20,23 @@ test("store, routes, mobile styles, paid lesson gate, owner workspace and paymen
     ui = await import("../dist/ui.js"),
     live = await import("../dist/live-pages.js"),
     { account } = await import("../dist/api.js");
+  globalThis.location = { hash: "#/reset-password?email=student%40example.test" };
   const html = pages.home();
   assert(!html.includes("بدايات صغيرة"));
   assert(!html.includes("learning-section"));
   assert(html.includes("استكشف الأقسام"));
   assert(!html.includes("#/discover"));
   assert(html.includes("اشترك في رُزمة"));
+  const signupHtml = live.authLive(true);
+  const loginHtml = live.authLive();
+  const resetHtml = live.resetPasswordLive();
+  assert(signupHtml.includes('minlength="8"'));
+  assert(signupHtml.includes("٨ أحرف على الأقل"));
+  assert(!signupHtml.includes("١٢ حرفًا"));
+  assert(!loginHtml.includes('minlength="8"'));
+  assert(loginHtml.includes("كلمة المرور المرتبطة بحسابك"));
+  assert(resetHtml.includes('minlength="8"'));
+  assert(resetHtml.includes("٨ أحرف"));
   for (const price of ["19.99", "39.99", "59.99", "99.99"])
     assert(html.includes(price));
   const css = await readFile(
