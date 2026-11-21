@@ -128,7 +128,7 @@ export function mountCommunity(toast, postId = "") {
     root.innerHTML =
       '<a class="text-link community-back" href="#/community">' +
       icon("arrow-right") +
-      " العودة إلى مجتمع رُزمة</a><article class="panel community-question"><div class="community-meta"><span class="badge badge-purple">' +
+      ' العودة إلى مجتمع رُزمة</a><article class="panel community-question"><div class="community-meta"><span class="badge badge-purple">' +
       e(trackNames[post.track] || post.track) +
       '</span><span class="badge">' +
       e(subjectNames[post.subject] || post.subject) +
