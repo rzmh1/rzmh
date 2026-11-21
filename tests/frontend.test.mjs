@@ -19,6 +19,7 @@ test("store, routes, mobile styles, paid lesson gate, owner workspace and paymen
     pages = await import("../dist/pages.js"),
     ui = await import("../dist/ui.js"),
     live = await import("../dist/live-pages.js"),
+    policy = await import("../dist/course-policy.js"),
     { account } = await import("../dist/api.js");
   const html = pages.home();
   assert(!html.includes("بدايات صغيرة"));
@@ -36,6 +37,28 @@ test("store, routes, mobile styles, paid lesson gate, owner workspace and paymen
   assert(css.includes("viewport") || css.includes("safe-area-inset"));
   assert(/@media\s*\(max-width:\s*480px\)/.test(css));
   assert(!css.includes(".learning-section"));
+  assert(live.authLive().includes("دخول مالك المنصة"));
+  assert(!live.authLive(true).includes("دخول مالك المنصة"));
+  assert.equal(policy.safeNext("/admin"), "#/admin");
+  assert.equal(policy.safeNext("https://example.invalid"), null);
+  assert.equal(
+    policy.afterAuthRoute({ user: { role: "admin" }, entitled: false }, "/admin"),
+    "#/admin",
+  );
+  assert.equal(
+    policy.afterAuthRoute({ user: { role: "student" }, entitled: false }, "/admin"),
+    "#/sections",
+  );
+  assert.equal(
+    policy.afterAuthRoute({ user: { role: "student" }, entitled: true }, "/admin"),
+    "#/dashboard",
+  );
+  const redesignCss = await readFile(
+    new URL("../dist/redesign.css", import.meta.url),
+    "utf8",
+  );
+  await transform(redesignCss, { loader: "css" });
+  assert(redesignCss.includes(".auth-owner-access"));
   const fixtures = [
     html,
     pages.pricing(),
