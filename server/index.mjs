@@ -26,7 +26,7 @@ import {
 } from "./security.mjs";
 import { checkout, handleStripeWebhook, testPayment } from "./payments.mjs";
 import { testAI, tutor } from "./ai.mjs";
-import { listCommunityPosts, getCommunityPost, createCommunityPost, answerCommunityPost, acceptCommunityAnswer, reportCommunityContent, listCommunityForAdmin, moderateCommunityPost, moderateCommunityAnswer } from "./community.mjs";
+import { listSupportCategories, createSupportQuestion, listStudentSupportQuestions, listPublishedSupportAnswers, listSupportForAdmin, replySupportQuestion, updateSupportQuestionStatus, upsertSupportCategory } from "./support.mjs";
 import { storageService } from "./storage.mjs";
 import { frame, codeInput, saveCode } from "./custom.mjs";
 import { sendEmail, sendBatchEmails, verificationMessage, resetMessage } from "./email.mjs";
@@ -845,49 +845,33 @@ export function createApp(cfg = config()) {
         store.audit(user.id, "leak.report", leakFlagMatch[1], { reason });
         return send({ ok: true });
       }
-      if (path === "/api/community/posts" && method === "GET") {
+      if (path === "/api/support/categories" && method === "GET") {
         required(user);
-        return send(listCommunityPosts(store, user, {
-          track: url.searchParams.get("track") || "all",
-          subject: url.searchParams.get("subject") || "all",
-          q: url.searchParams.get("q") || "",
-        }));
+        return send(listSupportCategories(store, user));
       }
-      if (path === "/api/community/posts" && method === "POST") {
+      if (path === "/api/support/questions" && method === "GET") {
         required(user);
-        rate("community:create:" + user.id, 5, 3600000);
-        return send(createCommunityPost(store, user, await jsonBody(req, 8000)), 201);
+        return send(listStudentSupportQuestions(store, user));
       }
-      const communityPostMatch = /^\/api\/community\/posts\/([\w-]+)$/.exec(path);
-      if (communityPostMatch && method === "GET") {
+      if (path === "/api/support/questions" && method === "POST") {
         required(user);
-        return send(getCommunityPost(store, user, communityPostMatch[1]));
+        rate("support:create:" + user.id, 5, 3600000);
+        return send(createSupportQuestion(store, user, await jsonBody(req, 6000)), 201);
       }
-      const communityAnswerMatch = /^\/api\/community\/posts\/([\w-]+)\/answers$/.exec(path);
-      if (communityAnswerMatch && method === "POST") {
+      if (path === "/api/support/public" && method === "GET") {
         required(user);
-        rate("community:answer:" + user.id, 20, 3600000);
-        return send(answerCommunityPost(store, user, communityAnswerMatch[1], await jsonBody(req, 4000)), 201);
+        return send(listPublishedSupportAnswers(store, user, url.searchParams.get("category") || "all"));
       }
-      const communityAcceptMatch = /^\/api\/community\/posts\/([\w-]+)\/accept$/.exec(path);
-      if (communityAcceptMatch && method === "POST") {
-        required(user);
-        const body = await jsonBody(req, 1000);
-        return send(acceptCommunityAnswer(store, user, communityAcceptMatch[1], body.answerId));
-      }
-      if (path === "/api/community/reports" && method === "POST") {
-        required(user);
-        rate("community:report:" + user.id, 10, 3600000);
-        return send(reportCommunityContent(store, user, await jsonBody(req, 1000)), 201);
-      }
-      if (path === "/api/admin/community" && method === "GET")
-        return send(listCommunityForAdmin(store));
-      const communityPostModeration = /^\/api\/admin\/community\/posts\/([\w-]+)\/moderate$/.exec(path);
-      if (communityPostModeration && method === "POST")
-        return send(moderateCommunityPost(store, user, communityPostModeration[1], await jsonBody(req, 1000)));
-      const communityAnswerModeration = /^\/api\/admin\/community\/answers\/([\w-]+)\/moderate$/.exec(path);
-      if (communityAnswerModeration && method === "POST")
-        return send(moderateCommunityAnswer(store, user, communityAnswerModeration[1], await jsonBody(req, 1000)));
+      if (path === "/api/admin/support" && method === "GET")
+        return send(listSupportForAdmin(store));
+      const supportReplyMatch = /^\/api\/admin\/support\/questions\/([\w-]+)\/reply$/.exec(path);
+      if (supportReplyMatch && method === "POST")
+        return send(replySupportQuestion(store, user, supportReplyMatch[1], await jsonBody(req, 5000)));
+      const supportStatusMatch = /^\/api\/admin\/support\/questions\/([\w-]+)\/status$/.exec(path);
+      if (supportStatusMatch && method === "POST")
+        return send(updateSupportQuestionStatus(store, user, supportStatusMatch[1], await jsonBody(req, 1000)));
+      if (path === "/api/admin/support/categories" && method === "POST")
+        return send(upsertSupportCategory(store, user, await jsonBody(req, 1000)), 201);
       if (path === "/api/admin/broadcasts" && method === "GET") {
         return send(
           db.prepare(
