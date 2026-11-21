@@ -862,16 +862,24 @@ export function createApp(cfg = config()) {
         required(user);
         return send(listPublishedSupportAnswers(store, user, url.searchParams.get("category") || "all"));
       }
-      if (path === "/api/admin/support" && method === "GET")
+      if (path === "/api/admin/support" && method === "GET") {
+        admin(user);
         return send(listSupportForAdmin(store));
+      }
       const supportReplyMatch = /^\/api\/admin\/support\/questions\/([\w-]+)\/reply$/.exec(path);
-      if (supportReplyMatch && method === "POST")
+      if (supportReplyMatch && method === "POST") {
+        admin(user);
         return send(replySupportQuestion(store, user, supportReplyMatch[1], await jsonBody(req, 5000)));
+      }
       const supportStatusMatch = /^\/api\/admin\/support\/questions\/([\w-]+)\/status$/.exec(path);
-      if (supportStatusMatch && method === "POST")
+      if (supportStatusMatch && method === "POST") {
+        admin(user);
         return send(updateSupportQuestionStatus(store, user, supportStatusMatch[1], await jsonBody(req, 1000)));
-      if (path === "/api/admin/support/categories" && method === "POST")
+      }
+      if (path === "/api/admin/support/categories" && method === "POST") {
+        admin(user);
         return send(upsertSupportCategory(store, user, await jsonBody(req, 1000)), 201);
+      }
       if (path === "/api/admin/broadcasts" && method === "GET") {
         return send(
           db.prepare(
