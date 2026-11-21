@@ -18,6 +18,7 @@ export const studentRoutes = [
   "progress",
   "tutor",
   "leaks",
+  "community",
   "scratch",
   "lesson",
   "subscription",
@@ -45,6 +46,7 @@ const groups = [
       ["tests", "clock", "الاختبارات"],
       ["mistakes", "error", "دفتر الأخطاء"],
       ["leaks", "file", "التسريبات"],
+      ["community", "messages-square", "مجتمع رُزمة"],
     ],
   ],
   [
@@ -62,7 +64,7 @@ const tabs = [
   ["dashboard", "shapes", "اليوم"],
   ["choose", "book", "دوراتي"],
   ["tutor", "spark", "المدرّس"],
-  ["leaks", "file", "التسريبات"],
+  ["community", "messages-square", "مجتمع"],
   ["subscription", "user", "حسابي"],
 ];
 
