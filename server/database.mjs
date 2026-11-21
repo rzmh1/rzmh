@@ -133,6 +133,24 @@ export function openDatabase(cfg) {
     CREATE INDEX IF NOT EXISTS support_questions_public ON support_questions(published,status,replied_at DESC);
     CREATE INDEX IF NOT EXISTS support_questions_status ON support_questions(status,updated_at DESC);
   `);
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS ai_library_state(
+      id INTEGER PRIMARY KEY CHECK(id=1),
+      vector_store_id TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS ai_library_files(
+      asset_id TEXT PRIMARY KEY REFERENCES assets(id) ON DELETE RESTRICT,
+      openai_file_id TEXT UNIQUE,
+      status TEXT NOT NULL CHECK(status IN ('uploading','in_progress','completed','failed')),
+      usage_bytes INTEGER NOT NULL DEFAULT 0,
+      error TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS ai_library_status ON ai_library_files(status,updated_at DESC);
+  `);
   const supportCategoryCount = db.prepare("SELECT count(*) AS n FROM support_categories").get().n;
   if (!supportCategoryCount) {
     const insertSupportCategory = db.prepare(
