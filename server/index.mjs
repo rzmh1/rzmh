@@ -26,6 +26,7 @@ import {
 } from "./security.mjs";
 import { checkout, handleStripeWebhook, testPayment } from "./payments.mjs";
 import { testAI, tutor } from "./ai.mjs";
+import { aiLibraryService } from "./ai-library.mjs";
 import { listSupportCategories, createSupportQuestion, listStudentSupportQuestions, listPublishedSupportAnswers, listSupportForAdmin, replySupportQuestion, updateSupportQuestionStatus, upsertSupportCategory } from "./support.mjs";
 import { storageService } from "./storage.mjs";
 import { frame, codeInput, saveCode } from "./custom.mjs";
@@ -38,6 +39,7 @@ export function createApp(cfg = config()) {
   const store = openDatabase(cfg),
     { db } = store,
     storage = storageService(store);
+  const aiLibrary = aiLibraryService(store, storage);
   storage.resume();
   const learning = learningService(store);
   let lastRateLimitCleanup = 0;
@@ -720,6 +722,7 @@ export function createApp(cfg = config()) {
             {
               ...learning.catalog(user),
               files: store.getContent().files,
+              aiLibrary: aiLibrary.context(),
             },
           ),
         );
@@ -879,6 +882,24 @@ export function createApp(cfg = config()) {
       if (path === "/api/admin/support/categories" && method === "POST") {
         admin(user);
         return send(upsertSupportCategory(store, user, await jsonBody(req, 1000)), 201);
+      }
+      if (path === "/api/admin/ai-library" && method === "GET") {
+        admin(user);
+        return send(await aiLibrary.list(user));
+      }
+      if (path === "/api/admin/ai-library/refresh" && method === "POST") {
+        admin(user);
+        return send(await aiLibrary.refresh(user));
+      }
+      const aiLibraryMatch = /^\\/api\\/admin\\/ai-library\\/([\\w-]+)$/.exec(path);
+      if (aiLibraryMatch && method === "POST") {
+        admin(user);
+        rate("ai-library:index:" + user.id, 20, 60000);
+        return send(await aiLibrary.index(user, aiLibraryMatch[1]), 202);
+      }
+      if (aiLibraryMatch && method === "DELETE") {
+        admin(user);
+        return send(await aiLibrary.remove(user, aiLibraryMatch[1]));
       }
       if (path === "/api/admin/broadcasts" && method === "GET") {
         return send(
@@ -1191,6 +1212,9 @@ export function createApp(cfg = config()) {
         return send(await storage.probe(user, probeMatch[1]));
       const assetMatch = /^\/api\/admin\/assets\/([\w-]+)$/.exec(path);
       if (assetMatch && method === "DELETE") {
+        admin(user);
+        if (db.prepare("SELECT asset_id FROM ai_library_files WHERE asset_id=?").get(assetMatch[1]))
+          fail(409, "أزل الملف من مكتبة المدرس الذكي أولًا، ثم احذفه من التخزين.");
         const result = await storage.remove(user, assetMatch[1]);
         const content = store.getContent();
         for (const c of content.courses) {
