@@ -4389,3 +4389,5 @@ textarea {
 @keyframes tutorStepIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
 @media(max-width:700px){.teacher-resource-nav{grid-template-columns:repeat(2,minmax(0,1fr))}.tutor-draw-actions{width:100%}.tutor-draw-actions .btn{flex:1}#tutor-drawing-canvas{height:190px}}
 @media(prefers-reduced-motion:reduce){.tutor-board-step{animation:none}}
+
+.tutor-teacher-canvas{display:block;width:100%;height:auto;aspect-ratio:5/3;margin:12px 0 16px;border:1px solid var(--border);border-radius:12px;background:#fff;touch-action:pan-y}
