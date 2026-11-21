@@ -75,9 +75,9 @@
 
 ## التحقق
 
-- أضيفت اختبارات Node لسير عمل الإفادات، والتحقق من البريد واستعادة كلمة المرور، ومرفقات الصور وPDF في `tests/platform.test.mjs`، واختبارات مستقلة لاسأل رُزمة في `tests/support.test.mjs` واختبارات المكتبة الدائمة في `tests/ai-library.test.mjs`. في تشغيل CI الحالي نجحت الاختبارات 41/41 دون تخطٍ أو فشل.
+- أضيفت اختبارات Node لسير عمل الإفادات، والتحقق من البريد واستعادة كلمة المرور، ومرفقات الصور وPDF في `tests/platform.test.mjs`، واختبارات مستقلة لاسأل رُزمة في `tests/support.test.mjs` واختبارات المكتبة الدائمة في `tests/ai-library.test.mjs`. في آخر تشغيل CI نجحت الاختبارات 45/45 دون تخطٍ أو فشل.
 - يعمل CI عند فتح أو تحديث Pull Request، وعلى كل push إلى `main` وفرع إعادة التصميم الأساسي.
-- نجح GitHub Actions على commit `946b2e1345e14aab61922b4082e5fa98915cdea1`: `npm ci` و`npm run build` و`npm run check` (41/41) وPlaywright Chromium (5/5) وبناء Docker. [سجل التشغيل](https://github.com/rzmh1/rzmh/actions/runs/44859697709).
+- نجح GitHub Actions على commit `3b6f3c41f890e0ca1472ab40091d927fc2954321`: `npm ci` و`npm run build` و`npm run check` (45/45) وPlaywright Chromium (5/5) وبناء Docker. [سجل التشغيل](https://github.com/rzmh1/rzmh/actions/runs/44865337604).
 - نجحت فحوص CI الآلية لهذه المرحلة. لا تزال مراجعة المتصفح على Safari/iOS وAndroid والخدمات الخارجية وبيئة staging مطلوبة قبل الإطلاق. نجاح CI لا يثبت اتصال Resend أو OpenAI الحقيقي أو إعدادات الاستضافة.
 
 ## حدود الأمان
