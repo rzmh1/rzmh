@@ -98,27 +98,29 @@ export function mountAdminLive(tab, toast, render) {
             : empty("لا توجد مشاركات", "ستظهر هنا إفادات الطلاب الجديدة بعد إرسالها.", "file"));
       }
       if (tab === "community") {
-        const posts = await api("/api/admin/community");
+        const data = await api("/api/admin/support");
         if (disposed) return;
-        const statusLabel = { visible: "ظاهر للمشتركين", hidden: "مخفي", removed: "مزال" };
+        const statusLabels = { pending: "بانتظار الرد", replied: "تم الرد", rejected: "مرفوض", closed: "مغلق" };
+        const pending = data.questions.filter((q) => q.status === "pending").length;
         target.innerHTML =
-          "<h2>إدارة مجتمع رُزمة</h2>" +
-          notice("تظهر الأسئلة للمشتركين النشطين فقط. استخدم الإخفاء عند وجود محتوى مخالف، ويمكن إعادة إظهار المشاركة بعد مراجعتها. لا تحذف بيانات الطلاب نهائيًا من هذا القسم.") +
-          (posts.length
-            ? posts.map((p) =>
-                '<article class="panel spaced community-admin-card"><div class="admin-bar"><div><div class="community-meta"><span class="badge badge-purple">' + e(p.track === "qudrat" ? "القدرات" : "التحصيلي") + '</span><span class="badge">' + e(p.subject) + '</span></div><h3 class="spaced">' + e(p.title) + '</h3><small>' + e(p.author_name) + " · " + date(p.created_at) + " · " + p.answer_count + " إجابات · " + p.report_count + ' بلاغات</small></div><span class="badge">' + e(statusLabel[p.status] || p.status) + '</span></div><p class="community-admin-body">' + e(p.body) + '</p><div class="table-actions">' +
-                (p.status === "visible" ? '<button class="btn btn-outline btn-sm danger" data-community-post="' + e(p.id) + '" data-status="hidden">إخفاء السؤال</button>' : '<button class="btn btn-outline btn-sm" data-community-post="' + e(p.id) + '" data-status="visible">إعادة إظهار السؤال</button>') +
-                (p.status !== "removed" ? '<button class="btn btn-ghost btn-sm danger" data-community-post="' + e(p.id) + '" data-status="removed">إزالة من المجتمع</button>' : "") +
-                '</div>' +
-                (p.answers.length ? '<div class="community-admin-answers"><b>الإجابات</b>' + p.answers.map((a) =>
-                  '<div class="community-admin-answer"><p>' + e(a.body) + '</p><small>' + e(a.author_name) + " · " + date(a.created_at) + " · " + a.report_count + " بلاغات · " + e(statusLabel[a.status] || a.status) + '</small><div class="table-actions">' +
-                  (a.status === "visible" ? '<button class="btn btn-outline btn-sm danger" data-community-answer="' + e(a.id) + '" data-status="hidden">إخفاء الإجابة</button>' : '<button class="btn btn-outline btn-sm" data-community-answer="' + e(a.id) + '" data-status="visible">إعادة إظهار الإجابة</button>') +
-                  (a.status !== "removed" ? '<button class="btn btn-ghost btn-sm danger" data-community-answer="' + e(a.id) + '" data-status="removed">إزالة</button>' : "") +
-                  '</div></div>'
-                ).join("") + '</div>' : '<p class="muted spaced">لا توجد إجابات حتى الآن.</p>') +
-                "</article>"
+          "<h2>استفسارات الطلاب</h2>" +
+          notice("كل استفسار يصل إلى الإدارة فقط. اكتب الرد ثم اختر إن كنت تريد نشر السؤال والرد لجميع الطلاب أم إبقاء الرد خاصًا بصاحب الاستفسار. لا يظهر شيء للعامة قبل حفظ الرد مع تفعيل خيار النشر.") +
+          '<div class="admin-metrics"><div class="stat"><span>كل الاستفسارات</span><b>' + data.questions.length + '</b></div><div class="stat"><span>بانتظار الرد</span><b>' + pending + '</b></div><div class="stat"><span>إجابات منشورة</span><b>' + data.questions.filter((q) => q.published && q.status === "replied").length + '</b></div></div>' +
+          '<section class="panel spaced"><h3>تصنيفات الاستفسارات</h3><p class="muted">يمكنك تغيير الأسماء أو إيقاف تصنيف أو إضافة تصنيف جديد. التصنيف المتوقف لا يظهر للطلاب عند إرسال سؤال جديد.</p><form id="support-category-form" class="inline-form spaced"><input name="name" maxlength="50" minlength="2" placeholder="اسم تصنيف جديد، مثل: مواعيد الاختبارات" required><button class="btn btn-primary" type="submit">إضافة تصنيف</button></form>' +
+          (data.categories.map((c) =>
+            '<div class="support-admin-category" data-support-category-card="' + e(c.id) + '"><input data-support-category-name value="' + e(c.name) + '" maxlength="50" aria-label="اسم التصنيف"><label><input type="checkbox" data-support-category-active ' + (c.active ? "checked" : "") + '> نشط</label><button class="btn btn-outline btn-sm" data-support-category-save="' + e(c.id) + '">حفظ</button></div>'
+          ).join("") || '<p class="muted">لا توجد تصنيفات.</p>') +
+          '</section><section class="support-admin-questions"><h3>صندوق الاستفسارات</h3>' +
+          (data.questions.length
+            ? data.questions.map((q) =>
+                '<article class="panel spaced support-admin-card" data-support-card="' + e(q.id) + '"><div class="admin-bar"><div><span class="badge">' + e(q.category_name) + '</span><h3 class="spaced">' + e(q.subject) + '</h3><small>' + e(q.student_name) + (q.student_email ? " · " + e(q.student_email) : "") + " · " + date(q.created_at) + '</small></div><span class="badge ' + (q.status === "replied" ? "badge-purple" : "") + '">' + e(statusLabels[q.status] || q.status) + '</span></div><p class="support-admin-question">' + e(q.body) + '</p><div class="field"><label>رد إدارة رُزمة</label><textarea data-support-reply rows="4" maxlength="3000" placeholder="اكتب ردًا واضحًا للطالب...">' + e(q.reply || "") + '</textarea></div><label class="checkbox support-publish-option"><input type="checkbox" data-support-publish ' + (q.published ? "checked" : "") + '><span>أوافق على نشر السؤال والرد لجميع الطلاب بعد حفظ الرد</span></label><div class="table-actions"><button class="btn btn-primary btn-sm" data-support-reply="' + e(q.id) + '" ' + (q.status === "rejected" || q.status === "closed" ? "disabled" : "") + '>حفظ الرد</button>' +
+                (q.status !== "rejected" ? '<button class="btn btn-outline btn-sm danger" data-support-status="' + e(q.id) + '" data-status="rejected">رفض الاستفسار</button>' : "") +
+                (q.status !== "closed" ? '<button class="btn btn-ghost btn-sm" data-support-status="' + e(q.id) + '" data-status="closed">إغلاق</button>' : "") +
+                (q.published ? '<span class="support-published-label">' + icon("globe") + " منشور للطلاب</span>" : q.status === "replied" ? '<span class="muted smalltext">الرد خاص بصاحب الاستفسار</span>' : "") +
+                '</div></article>'
               ).join("")
-            : empty("لا توجد أسئلة في المجتمع بعد", "ستظهر هنا مشاركات الطلاب لمراجعتها عند الحاجة.", "message-circle"));
+            : empty("صندوق الاستفسارات فارغ", "ستظهر هنا أسئلة الطلاب الجديدة، ولن يراها غير الإدارة حتى تراجعها.", "message-circle")) +
+          "</section>";
       }
       if (tab === "broadcasts") {
         const history = await api("/api/admin/broadcasts");
@@ -364,23 +366,43 @@ export function mountAdminLive(tab, toast, render) {
         await load();
         return;
       }
-      if (d.communityPost) {
+      if (d.supportReply) {
+        const card = b.closest("[data-support-card]");
+        if (!card) return;
         b.disabled = true;
-        await api("/api/admin/community/posts/" + encodeURIComponent(d.communityPost) + "/moderate", {
+        const reply = card.querySelector("[data-support-reply]")?.value || "";
+        const publish = !!card.querySelector("[data-support-publish]")?.checked;
+        await api("/api/admin/support/questions/" + encodeURIComponent(d.supportReply) + "/reply", {
           method: "POST",
-          body: { status: d.status },
+          body: { reply, publish },
         });
-        toast(d.status === "visible" ? "أُعيد إظهار السؤال." : d.status === "hidden" ? "أُخفي السؤال عن المشتركين." : "أُزيل السؤال من المجتمع.");
+        toast(publish ? "تم حفظ الرد ونشر السؤال والإجابة للطلاب." : "تم حفظ الرد بشكل خاص لصاحب الاستفسار.");
         await load();
         return;
       }
-      if (d.communityAnswer) {
+      if (d.supportStatus) {
         b.disabled = true;
-        await api("/api/admin/community/answers/" + encodeURIComponent(d.communityAnswer) + "/moderate", {
+        await api("/api/admin/support/questions/" + encodeURIComponent(d.supportStatus) + "/status", {
           method: "POST",
           body: { status: d.status },
         });
-        toast(d.status === "visible" ? "أُعيد إظهار الإجابة." : d.status === "hidden" ? "أُخفيت الإجابة." : "أُزيلت الإجابة.");
+        toast(d.status === "rejected" ? "تم رفض الاستفسار وإخفاؤه عن الطلاب الآخرين." : "تم إغلاق الاستفسار.");
+        await load();
+        return;
+      }
+      if (d.supportCategorySave) {
+        const card = b.closest("[data-support-category-card]");
+        if (!card) return;
+        b.disabled = true;
+        await api("/api/admin/support/categories", {
+          method: "POST",
+          body: {
+            id: d.supportCategorySave,
+            name: card.querySelector("[data-support-category-name]")?.value || "",
+            active: !!card.querySelector("[data-support-category-active]")?.checked,
+          },
+        });
+        toast("تم تحديث التصنيف.");
         await load();
         return;
       }
@@ -549,7 +571,7 @@ export function mountAdminLive(tab, toast, render) {
   const submit = async (ev) => {
     const form = ev.target;
     if (
-      !["settings-form", "upload-form", "user-search", "broadcast-form"].includes(form.id) &&
+      !["settings-form", "upload-form", "user-search", "broadcast-form", "support-category-form"].includes(form.id) &&
       !form.matches(".grant-sub")
     )
       return;
@@ -558,6 +580,14 @@ export function mountAdminLive(tab, toast, render) {
     button.disabled = true;
     try {
       const values = Object.fromEntries(new FormData(form));
+      if (form.id === "support-category-form") {
+        await api("/api/admin/support/categories", {
+          method: "POST",
+          body: { name: values.name, active: true },
+        });
+        toast("تمت إضافة التصنيف.");
+        await load();
+      }
       if (form.id === "broadcast-form") {
         const recipientCount = Number(form.dataset.recipientCount);
         if (!recipientCount)
