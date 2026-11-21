@@ -144,6 +144,35 @@ export function mountAdminLive(tab, toast, render) {
           ),
         );
       }
+      if (tab === "ai-library") {
+        const data = await api("/api/admin/ai-library");
+        if (disposed) return;
+        const statuses = {
+          completed: "جاهز للمدرس",
+          in_progress: "جارٍ الفهرسة",
+          uploading: "جارٍ الرفع إلى OpenAI",
+          failed: "تعذرت الفهرسة",
+        };
+        target.innerHTML =
+          '<div class="admin-bar"><div><span class="eyebrow">المعرفة الخاصة برُزمة</span><h2>مصادر المدرس الذكي</h2></div><button class="btn btn-outline btn-sm" data-ai-library-refresh">' + ${icon("refresh-cw")} + " تحديث الحالات</button></div>" +
+          notice("ارفع ملفاتك هنا مرة واحدة. تُحفظ النسخة الأصلية في مكتبة ملفات رُزمة، ثم تُفهرس نسخة للبحث الذكي. المدرس يبحث في المقاطع المناسبة للسؤال بدل إرسال كل الملفات في كل محادثة.") +
+          '<div class="admin-metrics ai-library-metrics"><div class="stat"><span>الملفات المفهرسة</span><b>' + data.summary.ready + '</b></div><div class="stat"><span>قيد المعالجة</span><b>' + data.summary.processing + '</b></div><div class="stat"><span>حجم الفهرس</span><b>' + (data.summary.usageBytes / 1048576).toFixed(1) + " MB</b></div></div>" +
+          '<form id="ai-library-upload-form" class="panel spaced"><label class="upload-picker" for="ai-library-files">' + ${icon("upload")} + '<strong>اختر ملفاتك التعليمية</strong><span>يمكن اختيار عدة ملفات دفعة واحدة</span><input id="ai-library-files" name="file" type="file" multiple accept=".pdf,.doc,.docx,.pptx,.txt,.md,.html,.json,.js,.py,.css,.ts,.c,.cpp,.cs,.go,.java,.php,.rb,.sh,.tex" required></label><p class="muted">الأنواع المدعومة: PDF وWord وPowerPoint وTXT وMarkdown وHTML وJSON وبعض ملفات البرمجة. الحد التقني لكل ملف 512 MB؛ لا تحتاج إلى تحديد حجم إجمالي يدويًا. التخزين والفهرسة قد يترتب عليهما رسوم حسب استخدامك.</p><div class="upload-progress hidden" id="upload-progress"><progress max="100" value="0"></progress><span>0٪</span><p role="status"></p></div><div class="modal-actions"><button class="btn btn-primary" type="submit">رفع وفهرسة الملفات ${icon("upload")}</button></div></form>" +
+          '<section class="spaced"><h3>ملفات المكتبة</h3><p class="muted">يمكنك أيضًا إضافة أي مستند سبق رفعه إلى مكتبة الفيديوهات والملفات دون إعادة رفعه.</p><div id="ai-library-list"></div></section>';
+        const rows = data.files.map((f) => {
+          const indexed = !!f.indexed;
+          const status = f.index_status ? statuses[f.index_status] || f.index_status : "غير مضاف للمكتبة";
+          const action = indexed
+            ? (f.index_status === "failed"
+              ? '<button class="btn btn-outline btn-sm" data-ai-library-index="' + e(f.id) + '">إعادة الفهرسة</button> '
+              : '<button class="btn btn-outline btn-sm danger" data-ai-library-remove="' + e(f.id) + '">إزالة من المكتبة</button> ')
+            : '<button class="btn btn-primary btn-sm" data-ai-library-index="' + e(f.id) + '">إضافة للمكتبة</button> ';
+          return '<tr><td>' + e(f.name) + '<br><small>' + e(f.mime) + '</small>' + (f.index_error ? '<p class="danger smalltext">' + e(f.index_error) + '</p>' : '') + '</td><td>' + (f.size / 1048576).toFixed(1) + ' MB</td><td><span class="badge">' + e(status) + '</span></td><td>' + (f.usage_bytes ? (f.usage_bytes / 1048576).toFixed(1) + ' MB' : '—') + '</td><td>' + action + '</td></tr>';
+        });
+        document.querySelector("#ai-library-list").innerHTML = rows.length
+          ? table(["الملف", "الحجم الأصلي", "حالة الفهرسة", "حجم الفهرس", "الإجراء"], rows)
+          : empty("لا توجد ملفات بعد", "ارفع ملفاتك التعليمية أو أضف مستندًا سبق رفعه.", "files");
+      }
       if (tab === "ai" || tab === "payment") {
         const s = await api("/api/admin/settings/" + tab);
         if (disposed) return;
@@ -315,6 +344,15 @@ export function mountAdminLive(tab, toast, render) {
       error(err);
     }
   }
+  async function refreshLibraryStatus() {
+    if (disposed || tab !== "ai-library") return;
+    try {
+      await api("/api/admin/ai-library/refresh", { method: "POST", body: {} });
+      await load();
+    } catch {
+      // Keep the visible library list available if indexing status cannot refresh.
+    }
+  }
   const click = async (ev) => {
     try {
       const b = ev.target.closest("button");
@@ -363,6 +401,28 @@ export function mountAdminLive(tab, toast, render) {
           },
         });
         toast(d.status === "approved" ? "تم اعتماد الإفادة بعد تنقيحها." : "تم تحديث حالة المراجعة.");
+        await load();
+        return;
+      }
+      if (d.aiLibraryRefresh) {
+        b.disabled = true;
+        const result = await api("/api/admin/ai-library/refresh", { method: "POST", body: {} });
+        toast("تم تحديث حالة " + result.refreshed + " ملفًا.");
+        await load();
+        return;
+      }
+      if (d.aiLibraryIndex) {
+        b.disabled = true;
+        const result = await api("/api/admin/ai-library/" + encodeURIComponent(d.aiLibraryIndex), { method: "POST", body: {} });
+        toast(result.status === "completed" ? "اكتملت فهرسة الملف وأصبح متاحًا للمدرس." : result.status === "failed" ? "تعذرت فهرسة الملف. راجع رسالة الخطأ." : "بدأت فهرسة الملف. سيصبح متاحًا بعد اكتمال المعالجة.");
+        await load();
+        return;
+      }
+      if (d.aiLibraryRemove) {
+        if (!confirm("إزالة الملف من مكتبة المدرس الذكي؟ سيبقى الملف الأصلي في مكتبة ملفات رُزمة ويمكن إضافته مجددًا.")) return;
+        b.disabled = true;
+        await api("/api/admin/ai-library/" + encodeURIComponent(d.aiLibraryRemove), { method: "DELETE", body: {} });
+        toast("تمت إزالة الملف من مكتبة المدرس الذكي.");
         await load();
         return;
       }
@@ -571,7 +631,7 @@ export function mountAdminLive(tab, toast, render) {
   const submit = async (ev) => {
     const form = ev.target;
     if (
-      !["settings-form", "upload-form", "user-search", "broadcast-form", "support-category-form"].includes(form.id) &&
+      !["settings-form", "upload-form", "ai-library-upload-form", "user-search", "broadcast-form", "support-category-form"].includes(form.id) &&
       !form.matches(".grant-sub")
     )
       return;
@@ -631,6 +691,116 @@ export function mountAdminLive(tab, toast, render) {
         await load();
       }
       if (form.id === "user-search") await load();
+      if (form.id === "ai-library-upload-form") {
+        const files = Array.from(form.file.files || []);
+        if (!files.length) throw Error("اختر ملفًا واحدًا على الأقل.");
+        const progress = document.querySelector("#upload-progress");
+        progress.classList.remove("hidden");
+        const bar = progress.querySelector("progress"),
+          percent = progress.querySelector("span"),
+          status = progress.querySelector("p");
+        const mimeFallback = {
+          pdf: "application/pdf",
+          doc: "application/msword",
+          docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+          txt: "text/plain",
+          md: "text/markdown",
+          html: "text/html",
+          json: "application/json",
+          js: "text/javascript",
+          py: "text/x-python",
+          css: "text/css",
+          ts: "application/typescript",
+          c: "text/x-c",
+          cpp: "text/x-c++",
+          cs: "text/x-csharp",
+          go: "text/x-golang",
+          java: "text/x-java",
+          php: "text/x-php",
+          rb: "text/x-ruby",
+          sh: "text/x-sh",
+          tex: "text/x-tex",
+        };
+        let indexed = 0;
+        for (let index = 0; index < files.length; index++) {
+          const file = files[index];
+          if (file.size > 512 * 1024 * 1024)
+            throw Error("الملف «" + file.name + "» يتجاوز حد 512 MB للملف الواحد.");
+          const extension = file.name.split(".").pop().toLowerCase();
+          const mime = file.type || mimeFallback[extension];
+          if (!mime) throw Error("صيغة الملف غير مدعومة: " + file.name);
+          status.textContent = "رفع الملف " + (index + 1) + " من " + files.length + ": " + file.name;
+          bar.value = 0;
+          percent.textContent = "0٪";
+          const upload = await api("/api/admin/assets/init", {
+            method: "POST",
+            body: {
+              name: file.name,
+              mime,
+              size: file.size,
+              courseId: "",
+              lessonId: "",
+              thumbnailId: "",
+              public: false,
+            },
+          });
+          const parts = [];
+          const sendPart = (url, blob, offset) =>
+            new Promise((resolve, reject) => {
+              const x = new XMLHttpRequest();
+              x.open("PUT", url);
+              if (upload.driver === "local") {
+                x.withCredentials = true;
+                x.setRequestHeader("X-CSRF-Token", account.csrf);
+              }
+              x.upload.onprogress = (event) => {
+                const n = Math.round(((offset + event.loaded) / file.size) * 100);
+                bar.value = n;
+                percent.textContent = n + "٪";
+              };
+              x.onload = () =>
+                x.status >= 200 && x.status < 300
+                  ? resolve(x.getResponseHeader("ETag"))
+                  : reject(Error("فشل رفع «" + file.name + "». تحقق من التخزين."));
+              x.onerror = () => reject(Error("انقطع الاتصال أثناء رفع «" + file.name + "»."));
+              x.send(blob);
+            });
+          if (upload.driver === "local") {
+            await sendPart(upload.uploadUrl, file, 0);
+          } else {
+            for (let part = 0; part < upload.urls.length; part++) {
+              const start = part * upload.partSize;
+              const etag = await sendPart(
+                upload.urls[part],
+                file.slice(start, Math.min(file.size, start + upload.partSize)),
+                start,
+              );
+              parts.push({ PartNumber: part + 1, ETag: etag });
+            }
+          }
+          const done = await api("/api/admin/assets/" + upload.id + "/complete", {
+            method: "POST",
+            body: { parts },
+          });
+          if (done.status !== "ready")
+            throw Error("اكتمل رفع «" + file.name + "» لكن الملف لم يصبح جاهزًا للفهرسة.");
+          status.textContent = "فهرسة " + file.name + " في مكتبة المدرس الذكي…";
+          const result = await api("/api/admin/ai-library/" + upload.id, {
+            method: "POST",
+            body: {},
+          });
+          if (result.status === "failed")
+            throw Error("تم رفع «" + file.name + "» لكن فهرسته فشلت. يمكنك إعادة المحاولة من قائمة الملفات.");
+          indexed++;
+          bar.value = 100;
+          percent.textContent = "١٠٠٪";
+          status.textContent = "اكتمل " + indexed + " من " + files.length + " ملفًا.";
+        }
+        form.reset();
+        toast("تم رفع " + indexed + " ملفًا وإضافتها إلى مكتبة المدرس الذكي.");
+        await load();
+      }
       if (form.id === "upload-form") {
         const file = form.file.files[0];
         if (!file) throw Error("اختر ملفًا");
@@ -733,6 +903,7 @@ export function mountAdminLive(tab, toast, render) {
   document.addEventListener("change", change);
   void load();
   if (tab === "uploads") timer = setInterval(() => void load(), 5000);
+  if (tab === "ai-library") timer = setInterval(() => void refreshLibraryStatus(), 10000);
   return () => {
     disposed = true;
     clearInterval(timer);
