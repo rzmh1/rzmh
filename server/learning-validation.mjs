@@ -25,7 +25,8 @@ export function validateLearningContent(store, data) {
       !data.tracks.some(
         (t) => t.id === c.trackId && t.sectionId === c.sectionId,
       ) ||
-      !STAGES.includes(c.stage)
+      !STAGES.includes(c.stage) ||
+      (c.groupTitle != null && (typeof c.groupTitle !== "string" || c.groupTitle.length > 80))
     )
       fail(400, "اربط الدورة بمسار ومرحلة صالحين");
     if (
