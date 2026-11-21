@@ -33,11 +33,14 @@ const test = base.extend({
   }, { scope: 'worker' }],
 });
 async function login(page, app, email) {
-  await page.goto(`${app.url}/#/login`);
-  await page.locator('#auth-form input[name=email]').fill(email);
-  await page.locator('#auth-form input[name=password]').fill(app.password);
-  await page.locator('#auth-form button[type=submit]').click();
-  await expect(page.locator('#auth-form')).toHaveCount(0);
+  const owner = email === "admin@example.test";
+  const route = owner ? "admin-login" : "login";
+  const form = owner ? "#admin-auth-form" : "#auth-form";
+  await page.goto(`${app.url}/#/${route}`);
+  await page.locator(`${form} input[name=email]`).fill(email);
+  await page.locator(`${form} input[name=password]`).fill(app.password);
+  await page.locator(`${form} button[type=submit]`).click();
+  await expect(page.locator(form)).toHaveCount(0);
 }
 function trackFailures(page) {
   const failures = [];
@@ -52,7 +55,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
   test(`public RTL pages render without missing resources at ${viewport.width}px`, async ({ page, app }) => {
     const failures = trackFailures(page);
     await page.setViewportSize(viewport);
-    for (const route of ['', 'sections', 'section/qudrat', 'section/tahsili', 'section/step', 'instructors', 'course/quant-basics', 'pricing', 'subscription/year', 'updates', 'about', 'login', 'signup']) {
+    for (const route of ['', 'sections', 'section/qudrat', 'section/tahsili', 'section/step', 'instructors', 'course/quant-basics', 'pricing', 'subscription/year', 'updates', 'about', 'login', 'signup', 'admin-login']) {
       await page.goto(`${app.url}/#/${route}`);
       await expect(page.locator('#main')).toBeVisible();
       await expect(page.locator('#main')).not.toContainText('تعذر الاتصال');
