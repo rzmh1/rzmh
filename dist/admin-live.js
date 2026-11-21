@@ -710,7 +710,7 @@ export function mountAdminLive(tab, toast, render) {
           java: "text/x-java",
           php: "text/x-php",
           rb: "text/x-ruby",
-          sh: "text/x-sh",
+          sh: "application/x-sh",
           tex: "text/x-tex",
         };
         let indexed = 0;
