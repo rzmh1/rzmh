@@ -71,10 +71,10 @@
 
 ## التحقق
 
-- أضيفت اختبارات Node لسير عمل الإفادات، والتحقق من البريد واستعادة كلمة المرور، ومرفقات الصور وPDF في `tests/platform.test.mjs`، واختبارات مستقلة لمجتمع رُزمة في `tests/community.test.mjs`.
+- أضيفت اختبارات Node لسير عمل الإفادات، والتحقق من البريد واستعادة كلمة المرور، ومرفقات الصور وPDF في `tests/platform.test.mjs`، واختبارات مستقلة لمجتمع رُزمة في `tests/community.test.mjs`. في تشغيل CI الحالي نجحت الاختبارات 41/41 دون تخطٍ أو فشل.
 - يعمل CI عند فتح أو تحديث Pull Request، وعلى كل push إلى `main` وفرع إعادة التصميم الأساسي.
-- نجح GitHub Actions على commit `73921979d9a692571e744c6241fa5b496d98bede`: `npm ci` و`npm run build` و`npm run check` بنتيجة 34/34 وPlaywright Chromium بنتيجة 5/5 وبناء Docker. [سجل التشغيل](https://github.com/rzmh1/rzmh/actions/runs/44823859952).
-- نجحت فحوص CI الآلية لهذه المرحلة. لا تزال مراجعة المتصفح على Safari/iOS وAndroid والخدمات الخارجية وبيئة staging مطلوبة قبل الإطلاق.
+- نجح GitHub Actions على commit `946b2e1345e14aab61922b4082e5fa98915cdea1`: `npm ci` و`npm run build` و`npm run check` (41/41) وPlaywright Chromium (5/5) وبناء Docker. [سجل التشغيل](https://github.com/rzmh1/rzmh/actions/runs/44859697709).
+- نجحت فحوص CI الآلية لهذه المرحلة. لا تزال مراجعة المتصفح على Safari/iOS وAndroid والخدمات الخارجية وبيئة staging مطلوبة قبل الإطلاق. نجاح CI لا يثبت اتصال Resend أو OpenAI الحقيقي أو إعدادات الاستضافة.
 
 ## حدود الأمان
 
