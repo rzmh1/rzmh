@@ -17,10 +17,10 @@ export function fail(status, message) {
 export async function passwordHash(password) {
   if (
     typeof password !== "string" ||
-    password.length < 12 ||
+    password.length < 8 ||
     password.length > 200
   )
-    fail(400, "كلمة المرور يجب أن تكون بين ١٢ و٢٠٠ حرف");
+    fail(400, "كلمة المرور يجب أن تكون بين ٨ و٢٠٠ حرف");
   const salt = randomBytes(16).toString("hex");
   const key = await scrypt(password, salt, 64);
   return salt + ":" + key.toString("hex");
