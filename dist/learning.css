@@ -1463,3 +1463,173 @@
     flex-direction: column;
   }
 }
+
+
+/* اسأل رُزمة — استفسارات خاصة وإجابات معتمدة */
+.support-page {
+  max-width: 1120px;
+  margin-inline: auto;
+}
+.support-page .page-heading {
+  margin-bottom: 26px;
+}
+.support-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+.support-compose,
+.support-info > .panel {
+  padding: 22px;
+}
+.support-compose h2,
+.support-info h2 {
+  margin-block: 6px 12px;
+}
+.support-compose form {
+  display: grid;
+  gap: 14px;
+}
+.support-ticket {
+  padding: 17px;
+  margin-top: 12px;
+}
+.support-ticket-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.support-ticket-top > div {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+.support-ticket-top time {
+  color: var(--muted);
+  font-size: 10px;
+}
+.support-ticket h3,
+.support-public-card h3 {
+  font-size: 15px;
+  margin-bottom: 8px;
+}
+.support-ticket > p,
+.support-public-card > p,
+.support-reply p,
+.support-admin-question {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.9;
+  font-size: 12px;
+}
+.support-reply {
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 12px;
+  background: var(--surface-secondary);
+}
+.support-reply > b {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+}
+.support-reply p {
+  margin-top: 8px;
+}
+.support-reply small {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 8px;
+}
+.support-published {
+  color: var(--success, #21845b);
+}
+.support-steps {
+  padding-inline-start: 22px;
+  line-height: 2.2;
+  font-size: 12px;
+}
+.support-public-section {
+  margin-top: 30px;
+}
+.support-public-section .section-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 14px;
+}
+.support-public-card {
+  padding: 19px 22px;
+  margin-top: 12px;
+}
+.support-filter select {
+  min-width: 160px;
+}
+.support-admin-category {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  margin-top: 9px;
+}
+.support-admin-category > input {
+  min-width: 0;
+}
+.support-admin-category label,
+.support-publish-option {
+  font-size: 11px;
+}
+.support-admin-card {
+  padding: 20px;
+}
+.support-admin-card .field {
+  margin-top: 14px;
+}
+.support-admin-question {
+  margin-block: 15px;
+}
+.support-publish-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-block: 12px;
+}
+.support-publish-option input {
+  margin-top: 4px;
+}
+.support-published-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--success, #21845b);
+  font-size: 11px;
+}
+.support-admin-questions {
+  margin-top: 25px;
+}
+@media (max-width: 800px) {
+  .support-grid {
+    grid-template-columns: 1fr;
+  }
+  .support-compose,
+  .support-info > .panel,
+  .support-admin-card {
+    padding: 16px;
+  }
+  .support-public-section .section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .support-admin-category {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .support-admin-category button {
+    grid-column: 1 / -1;
+  }
+}
