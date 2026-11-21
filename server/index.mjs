@@ -347,7 +347,7 @@ export function createApp(cfg = config()) {
         const b = await jsonBody(req, 16000),
           mail = email(b.email),
           u = db
-            .prepare("SELECT * FROM users WHERE email=? AND disabled=0")
+            .prepare("SELECT * FROM users WHERE email=? AND role='student' AND disabled=0")
             .get(mail);
         if (!u || !(await passwordVerify(b.password, u.password_hash)))
           fail(401, "البريد الإلكتروني أو كلمة المرور غير صحيحة");
