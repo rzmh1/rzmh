@@ -86,7 +86,7 @@ export async function loadPaymentStatus(toast) {
   };
 }
 export function tutorLive() {
-  return `<div class="ai-full">${pageHeading("مدرّسك في رُزمة", "اسأل عن سؤال. وشاهد الحل خطوة بخطوة.", "اكتب سؤالًا واحدًا أو أرفق صورته؛ لا ترفع ملفًا كاملًا.")}<div class="notice">${icon("spark")}<p>يركّز المدرس على أسئلة القدرات والتحصيلي وSTEP ومصادر رُزمة. يشرح السؤال على لوحة الحل دون تشغيل شرح محاضرة كاملة.</p></div><div class="tutor-layout"><div class="panel"><div class="admin-bar"><h2>محادثاتك</h2><button class="btn btn-outline btn-sm" data-ai-new>محادثة جديدة ${icon("plus")}</button></div><div id="conversation-list"></div></div><div class="panel"><div id="ai-chat" class="ai-chat" aria-live="polite"><div class="chat-welcome">${icon("spark")}<h3>ما السؤال الذي تريد فهمه؟</h3><p>اكتب السؤال أو أرفق صورته، ويمكنك الرسم في مساحة الحل.</p></div></div><form id="tutor-form"><label for="tutor-input">سؤالك أو موضع استفسارك</label><textarea id="tutor-input" name="message" maxlength="1200" placeholder="اكتب السؤال أو اشرح الجزء الذي لم تفهمه…"></textarea><div class="tutor-attachment"><label for="tutor-attachment" class="btn btn-outline btn-sm">${icon("image")} إرفاق صورة سؤال</label><input id="tutor-attachment" name="attachment" type="file" accept="image/jpeg,image/png,image/webp" hidden><small id="tutor-file-name" class="muted">صورة JPG أو PNG أو WebP حتى ٤ ميجابايت</small></div><section class="tutor-draw-panel"><div class="admin-bar"><div><h3>مساحة رسم الطالب</h3><small class="muted">اكتب خطواتك أو ارسم الجزء الذي تريد شرحه.</small></div><div class="tutor-draw-actions"><input id="tutor-pen-color" type="color" value="#594775" aria-label="لون القلم"><input id="tutor-pen-size" type="range" min="2" max="12" value="4" aria-label="سمك القلم"><button type="button" class="btn btn-outline btn-sm" data-tutor-draw="undo">تراجع</button><button type="button" class="btn btn-outline btn-sm" data-tutor-draw="clear">مسح</button></div></div><canvas id="tutor-drawing-canvas" width="900" height="340" aria-label="مساحة رسم السؤال"></canvas><small class="muted">الرسم لا يُرسل إلا عند الضغط على «اسأل المدرس».</small></section><div class="admin-bar spaced"><small id="ai-quota" class="muted">يُتحقق من صلاحية الاشتراك والحد اليومي على الخادم.</small><button class="btn btn-primary" type="submit">اسأل المدرس ${icon("arrow")}</button></div><p id="ai-error" class="form-error" role="alert"></p></form></div></div></div>`;
+  return `<div class="ai-full">${pageHeading("مدرّسك في رُزمة", "اسأل عن سؤال. وشاهد الحل خطوة بخطوة.", "اكتب سؤالًا واحدًا أو أرفق صورته؛ لا ترفع ملفًا كاملًا.")}<div class="notice">${icon("spark")}<p>يركّز المدرس على أسئلة القدرات والتحصيلي وSTEP ومصادر رُزمة. يشرح السؤال على لوحة الحل دون تشغيل شرح محاضرة كاملة.</p></div><div class="tutor-layout"><div class="panel"><div class="admin-bar"><h2>محادثاتك</h2><button class="btn btn-outline btn-sm" data-ai-new>محادثة جديدة ${icon("plus")}</button></div><div id="conversation-list"></div></div><div class="panel"><div id="ai-chat" class="ai-chat" aria-live="polite"><div class="chat-welcome">${icon("spark")}<h3>ما السؤال الذي تريد فهمه؟</h3><p>اكتب السؤال أو أرفق صورته، ويمكنك الرسم في مساحة الحل.</p></div></div><form id="tutor-form"><label for="tutor-input">سؤالك أو موضع استفسارك</label><textarea id="tutor-input" name="message" maxlength="1200" placeholder="اكتب السؤال أو اشرح الجزء الذي لم تفهمه…"></textarea><div class="tutor-attachment"><label for="tutor-attachment" class="btn btn-outline btn-sm">${icon("image")} إرفاق صورة سؤال</label><input id="tutor-attachment" name="attachment" type="file" accept="image/jpeg,image/png,image/webp" hidden><small id="tutor-file-name" class="muted">صورة JPG أو PNG أو WebP حتى ٤ ميجابايت</small></div><section class="tutor-draw-panel"><div class="admin-bar"><div><h3>مساحة رسم الطالب</h3><small class="muted">اكتب خطواتك أو ارسم الجزء الذي تريد شرحه.</small></div><div class="tutor-draw-actions"><input id="tutor-pen-color" type="color" value="#594775" aria-label="لون القلم"><input id="tutor-pen-size" type="range" min="2" max="12" value="4" aria-label="سمك القلم"><button type="button" class="btn btn-outline btn-sm" data-tutor-draw="pen">قلم</button><button type="button" class="btn btn-outline btn-sm" data-tutor-draw="marker">تمييز</button><button type="button" class="btn btn-outline btn-sm" data-tutor-draw="undo">تراجع</button><button type="button" class="btn btn-outline btn-sm" data-tutor-draw="clear">مسح</button></div></div><canvas id="tutor-drawing-canvas" width="900" height="340" aria-label="مساحة رسم السؤال"></canvas><small class="muted">الرسم لا يُرسل إلا عند الضغط على «اسأل المدرس».</small></section><div class="admin-bar spaced"><small id="ai-quota" class="muted">يُتحقق من صلاحية الاشتراك والحد اليومي على الخادم.</small><button class="btn btn-primary" type="submit">اسأل المدرس ${icon("arrow")}</button></div><p id="ai-error" class="form-error" role="alert"></p></form></div></div></div>`;
 }
 export function teacherBoardMarkup(text) {
   const lines = String(text || "").split(/\n+/).map((line) => line.replace(/^\s*(?:[-*•]|\d+[.)、])\s*/, "").trim()).filter(Boolean).slice(0, 30);
@@ -101,7 +101,7 @@ export function mountTutor(toast) {
     canvas = document.querySelector("#tutor-drawing-canvas"),
     penColor = document.querySelector("#tutor-pen-color"),
     penSize = document.querySelector("#tutor-pen-size");
-  let strokes = [], activeStroke = null, hasDrawing = false;
+  let strokes = [], activeStroke = null, hasDrawing = false, baseImage = null, imageLoading = Promise.resolve(), drawTool = "pen";
   const ctx = canvas?.getContext("2d");
   const renderMessage = (item) => message(item.role, item.content) + (item.role === "assistant" ? teacherBoardMarkup(item.content) : "");
   const paintDrawing = () => {
@@ -110,10 +110,11 @@ export function mountTutor(toast) {
     const width = Math.max(1, Math.round(rect.width * dpr)), height = Math.round(220 * dpr);
     if (canvas.width !== width || canvas.height !== height) { canvas.width = width; canvas.height = height; }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, rect.width, 220); ctx.lineCap = "round"; ctx.lineJoin = "round";
-    for (const stroke of strokes) { ctx.strokeStyle = stroke.color; ctx.lineWidth = stroke.size; ctx.beginPath(); stroke.points.forEach((p, i) => i ? ctx.lineTo(p.x * rect.width, p.y * 220) : ctx.moveTo(p.x * rect.width, p.y * 220)); if (stroke.points.length === 1) { const p = stroke.points[0]; ctx.beginPath(); ctx.arc(p.x * rect.width, p.y * 220, stroke.size / 2, 0, Math.PI * 2); ctx.fillStyle = stroke.color; ctx.fill(); } else ctx.stroke(); }
+    if (baseImage) { const scale = Math.min(rect.width / baseImage.width, 220 / baseImage.height); const w = baseImage.width * scale, h = baseImage.height * scale; ctx.drawImage(baseImage, (rect.width - w) / 2, (220 - h) / 2, w, h); }
+    for (const stroke of strokes) { ctx.save(); ctx.strokeStyle = stroke.color; ctx.lineWidth = stroke.tool === "marker" ? stroke.size * 3 : stroke.size; if (stroke.tool === "marker") ctx.globalAlpha = 0.28; ctx.beginPath(); stroke.points.forEach((p, i) => i ? ctx.lineTo(p.x * rect.width, p.y * 220) : ctx.moveTo(p.x * rect.width, p.y * 220)); if (stroke.points.length === 1) { const p = stroke.points[0]; ctx.beginPath(); ctx.arc(p.x * rect.width, p.y * 220, stroke.size / 2, 0, Math.PI * 2); ctx.fillStyle = stroke.color; ctx.fill(); } else ctx.stroke(); ctx.restore(); }
   };
   const drawingPoint = (event) => { const rect = canvas.getBoundingClientRect(); return { x: Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)), y: Math.max(0, Math.min(1, (event.clientY - rect.top) / 220)) }; };
-  const pointerDown = (event) => { if (event.button !== 0 || !canvas) return; event.preventDefault(); activeStroke = { color: penColor?.value || "#594775", size: Number(penSize?.value || 4), points: [drawingPoint(event)] }; strokes.push(activeStroke); hasDrawing = true; canvas.setPointerCapture(event.pointerId); paintDrawing(); };
+  const pointerDown = (event) => { if (event.button !== 0 || !canvas) return; event.preventDefault(); activeStroke = { color: penColor?.value || "#594775", size: Number(penSize?.value || 4), tool: drawTool, points: [drawingPoint(event)] }; strokes.push(activeStroke); hasDrawing = true; canvas.setPointerCapture(event.pointerId); paintDrawing(); };
   const pointerMove = (event) => { if (!activeStroke || !canvas) return; for (const point of event.getCoalescedEvents?.() || [event]) activeStroke.points.push(drawingPoint(point)); paintDrawing(); };
   const pointerEnd = () => { activeStroke = null; };
   canvas?.addEventListener("pointerdown", pointerDown); canvas?.addEventListener("pointermove", pointerMove); canvas?.addEventListener("pointerup", pointerEnd); canvas?.addEventListener("pointercancel", pointerEnd);
@@ -138,8 +139,9 @@ export function mountTutor(toast) {
   void load();
   const click = async (ev) => {
     const drawAction = ev.target.closest("[data-tutor-draw]")?.dataset.tutorDraw;
-    if (drawAction === "undo") { strokes.pop(); hasDrawing = strokes.length > 0; paintDrawing(); }
-    if (drawAction === "clear") { strokes = []; hasDrawing = false; paintDrawing(); }
+    if (drawAction === "pen" || drawAction === "marker") drawTool = drawAction;
+    if (drawAction === "undo") { strokes.pop(); hasDrawing = strokes.length > 0 || !!baseImage; paintDrawing(); }
+    if (drawAction === "clear") { strokes = []; hasDrawing = !!baseImage; paintDrawing(); }
     const next = ev.target.closest("[data-board-next]");
     if (next) { const board = next.closest(".tutor-solution-board"); const hidden = board.querySelector("[data-board-step][hidden]"); if (hidden) hidden.hidden = false; if (!board.querySelector("[data-board-step][hidden]")) next.hidden = true; }
     const all = ev.target.closest("[data-board-all]");
@@ -160,7 +162,7 @@ export function mountTutor(toast) {
     if (ev.target.closest("[data-ai-new]")) {
       conversationId = null;
       chat.innerHTML = "<p>محادثة جديدة. اكتب سؤالك أدناه.</p>";
-      strokes = []; hasDrawing = false; paintDrawing();
+      strokes = []; baseImage = null; hasDrawing = false; imageInputReset(); paintDrawing();
     }
   };
   const submit = async (ev) => {
@@ -176,7 +178,10 @@ export function mountTutor(toast) {
     error.textContent = "";
     try {
       let image = null;
-      if (file) {
+      await imageLoading;
+      if (file && baseImage && hasDrawing) {
+        image = { name: file.name, mimeType: "image/png", data: canvas.toDataURL("image/png").split(",")[1] };
+      } else if (file) {
         if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) throw Error("أرفق صورة سؤال بصيغة JPG أو PNG أو WebP فقط.");
         if (file.size > 4 * 1024 * 1024) throw Error("حجم صورة السؤال يجب ألا يتجاوز ٤ ميجابايت.");
         const data = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => { const value = String(reader.result || ""); const comma = value.indexOf(","); if (comma < 0) reject(Error("تعذرت قراءة الصورة.")); else resolve(value.slice(comma + 1)); }; reader.onerror = () => reject(Error("تعذرت قراءة الصورة.")); reader.readAsDataURL(file); });
@@ -193,7 +198,7 @@ export function mountTutor(toast) {
       if (disposed) return;
       conversationId = value.conversationId;
       chat.innerHTML += message("assistant", value.text) + teacherBoardMarkup(value.text);
-      strokes = []; hasDrawing = false; paintDrawing();
+      strokes = []; baseImage = null; hasDrawing = false; imageInputReset(); paintDrawing();
       form.message.value = "";
       form.attachment.value = "";
       document.querySelector("#tutor-file-name").textContent = "صورة JPG أو PNG أو WebP حتى ٤ ميجابايت";
@@ -207,10 +212,29 @@ export function mountTutor(toast) {
     }
   };
   const imageInput = document.querySelector("#tutor-attachment");
+  const imageInputReset = () => { if (imageInput) imageInput.value = ""; };
   const imageChange = () => {
     const file = imageInput?.files?.[0];
     const label = document.querySelector("#tutor-file-name");
-    if (label) label.textContent = file ? file.name + " · " + Math.ceil(file.size / 1024) + " KB" : "صورة JPG أو PNG أو WebP حتى ٤ ميجابايت";
+    if (!file) { baseImage = null; hasDrawing = strokes.length > 0; paintDrawing(); if (label) label.textContent = "صورة JPG أو PNG أو WebP حتى ٤ ميجابايت"; return; }
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 4 * 1024 * 1024) {
+      imageInputReset();
+      if (label) label.textContent = "اختر صورة JPG أو PNG أو WebP لا تتجاوز ٤ ميجابايت.";
+      return;
+    }
+    if (label) label.textContent = file.name + " · " + Math.ceil(file.size / 1024) + " KB";
+    imageLoading = new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const image = new Image();
+        image.onload = () => { baseImage = image; hasDrawing = true; paintDrawing(); resolve(); };
+        image.onerror = () => reject(Error("تعذرت قراءة الصورة."));
+        image.src = String(reader.result || "");
+      };
+      reader.onerror = () => reject(Error("تعذرت قراءة الصورة."));
+      reader.readAsDataURL(file);
+    });
+    imageLoading.catch((err) => { if (!disposed) toast(err.message); });
   };
   imageInput?.addEventListener("change", imageChange);
   document.addEventListener("click", click);
