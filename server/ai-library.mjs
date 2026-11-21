@@ -187,10 +187,21 @@ export function aiLibraryService(store, storage) {
     const existing = db.prepare(
       "SELECT * FROM ai_library_files WHERE asset_id=?"
     ).get(assetId);
-    if (existing && ["completed", "in_progress", "uploading"].includes(existing.status))
+    if (existing && ["completed", "in_progress"].includes(existing.status))
       return { status: existing.status, alreadyIndexed: true };
 
     const key = apiKey(store);
+    const currentVectorId = vectorStoreId();
+    if (existing?.openai_file_id && currentVectorId) {
+      await request(
+        key,
+        "/vector_stores/" + encodeURIComponent(currentVectorId) + "/files/" + encodeURIComponent(existing.openai_file_id),
+        { method: "DELETE" },
+      ).catch(() => {});
+      await request(key, "/files/" + encodeURIComponent(existing.openai_file_id), {
+        method: "DELETE",
+      }).catch(() => {});
+    }
     const vectorId = await ensureVectorStore(key);
     const timestamp = now();
     db.prepare(
@@ -253,9 +264,9 @@ export function aiLibraryService(store, storage) {
 
   async function refresh(user) {
     requireOwner(user);
-    const key = apiKey(store);
     const vectorId = vectorStoreId();
     if (!vectorId) return { refreshed: 0 };
+    const key = apiKey(store);
     const rows = db.prepare(
       "SELECT asset_id,openai_file_id,status FROM ai_library_files WHERE openai_file_id IS NOT NULL AND status IN ('uploading','in_progress')"
     ).all();
