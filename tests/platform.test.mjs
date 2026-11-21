@@ -956,53 +956,20 @@ test("AI tutor accepts bounded educational image input without storing image byt
 });
 
 
-test("AI tutor accepts bounded PDF input and keeps document bytes out of conversation history", async () => {
-  const f = await fixture(),
-    originalFetch = globalThis.fetch;
-  let requestBody;
+test("AI tutor rejects full PDF uploads; students send one short question or image instead", async () => {
+  const f = await fixture();
   try {
     const settings = f.store.setting("ai");
-    f.store.saveSetting(
-      "ai",
-      { ...settings, secrets: undefined, enabled: true, dailyLimit: 3 },
-      { apiKey: "not-a-real-key" },
-    );
+    f.store.saveSetting("ai", { ...settings, secrets: undefined, enabled: true, dailyLimit: 3 }, { apiKey: "not-a-real-key" });
     const user = f.store.db.prepare("SELECT * FROM users WHERE id=?").get(f.adminId);
-    globalThis.fetch = async (url, options) => {
-      assert.equal(url, "https://api.openai.com/v1/responses");
-      requestBody = JSON.parse(options.body);
-      return new Response(
-        JSON.stringify({
-          id: "resp_pdf_mock",
-          output: [{ type: "message", content: [{ type: "output_text", text: "راجعت ملف الدرس." }] }],
-          usage: { input_tokens: 30, output_tokens: 12 },
-        }),
-        { status: 200, headers: { "content-type": "application/json" } },
-      );
-    };
-    const pdf = Buffer.from("%PDF-1.4\n%Ruzmah educational test", "ascii").toString("base64");
-    const result = await tutor(f.store, user, {
-      message: "استخرج الفكرة واشرح الرسم.",
-      file: { name: "lesson.pdf", mimeType: "application/pdf", data: pdf },
-    });
-    assert.equal(result.text, "راجعت ملف الدرس.");
-    const content = requestBody.input.at(-1).content;
-    assert.equal(content[0].type, "input_text");
-    assert.equal(content[1].type, "input_file");
-    assert.equal(content[1].filename, "lesson.pdf");
-    assert(content[1].file_data.startsWith("data:application/pdf;base64,"));
-    const saved = f.store.db.prepare("SELECT content FROM messages WHERE role='user'").get().content;
-    assert(saved.includes("lesson.pdf"));
-    assert(!saved.includes(pdf));
     await assert.rejects(
       tutor(f.store, user, {
-        message: "حل الملف",
-        file: { name: "fake.pdf", mimeType: "application/pdf", data: Buffer.from("not a PDF").toString("base64") },
+        message: "اشرح الملف كاملًا",
+        file: { name: "lesson.pdf", mimeType: "application/pdf", data: Buffer.from("%PDF-1.4").toString("base64") },
       }),
-      (err) => err.status === 400,
+      (err) => err.status === 400 && /سؤال واحد/.test(err.message),
     );
   } finally {
-    globalThis.fetch = originalFetch;
     await f.close();
   }
 });
