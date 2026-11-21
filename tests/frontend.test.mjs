@@ -27,6 +27,13 @@ test("store, routes, mobile styles, paid lesson gate, owner workspace and paymen
   assert(html.includes("استكشف الأقسام"));
   assert(!html.includes("#/discover"));
   assert(html.includes("اشترك في رُزمة"));
+  const tutorHtml = live.tutorLive();
+  assert(tutorHtml.includes("مساحة رسم الطالب"));
+  assert(tutorHtml.includes("إرفاق صورة سؤال"));
+  assert(!tutorHtml.includes("application/pdf"));
+  const boardHtml = live.teacherBoardMarkup("الخطوة الأولى\\nس = ٦");
+  assert(boardHtml.includes("سبورة مدرس رُزمة"));
+  assert(boardHtml.includes("data-board-step"));
   const signupHtml = live.authLive(true);
   const loginHtml = live.authLive();
   const resetHtml = live.resetPasswordLive();
@@ -71,6 +78,7 @@ test("store, routes, mobile styles, paid lesson gate, owner workspace and paymen
     live.paymentStatus(true),
     live.paymentStatus(false),
     live.tutorLive(),
+    live.teacherBoardMarkup("الخطوة الأولى\\nس = ٦"),
     pages.aboutPage(),
   ];
   for (const [i, s] of fixtures.entries()) {
