@@ -40,12 +40,16 @@ export function createApp(cfg = config()) {
   storage.resume();
   const learning = learningService(store);
   let lastRateLimitCleanup = 0;
+  const cleanupRateLimits = (force = false) => {
+    const time = Date.now();
+    if (!force && time - lastRateLimitCleanup < 10 * 60 * 1000) return;
+    db.prepare("DELETE FROM rate_limits WHERE expires<=?").run(time);
+    lastRateLimitCleanup = time;
+  };
+  cleanupRateLimits(true);
   const rate = (key, max = 20, window = 60000) => {
     const now = Date.now();
-    if (now - lastRateLimitCleanup >= 60000) {
-      db.prepare("DELETE FROM rate_limits WHERE expires<=?").run(now);
-      lastRateLimitCleanup = now;
-    }
+    cleanupRateLimits();
     const r = db.prepare("SELECT * FROM rate_limits WHERE key=?").get(key);
     if (r && r.expires > now) {
       if (r.count >= max)
