@@ -39,16 +39,22 @@ export function createApp(cfg = config()) {
     storage = storageService(store);
   storage.resume();
   const learning = learningService(store);
+  let lastRateLimitCleanup = 0;
   const rate = (key, max = 20, window = 60000) => {
+    const now = Date.now();
+    if (now - lastRateLimitCleanup >= 60000) {
+      db.prepare("DELETE FROM rate_limits WHERE expires<=?").run(now);
+      lastRateLimitCleanup = now;
+    }
     const r = db.prepare("SELECT * FROM rate_limits WHERE key=?").get(key);
-    if (r && r.expires > Date.now()) {
+    if (r && r.expires > now) {
       if (r.count >= max)
         fail(429, "محاولات كثيرة. انتظر قليلًا ثم حاول مجددًا.");
       db.prepare("UPDATE rate_limits SET count=count+1 WHERE key=?").run(key);
     } else
       db.prepare(
         "INSERT INTO rate_limits VALUES(?,1,?) ON CONFLICT(key) DO UPDATE SET count=1,expires=excluded.expires",
-      ).run(key, Date.now() + window);
+      ).run(key, now + window);
   };
   function authenticate(req) {
     const cookie = req.headers.cookie
