@@ -309,9 +309,9 @@ export function aiLibraryService(store, storage) {
       "SELECT * FROM ai_library_files WHERE asset_id=?"
     ).get(assetId);
     if (!row) fail(404, "الملف غير موجود في مكتبة المدرس الذكي");
-    const key = apiKey(store);
     const vectorId = vectorStoreId();
     if (row.openai_file_id && vectorId) {
+      const key = apiKey(store);
       await request(
         key,
         "/vector_stores/" + encodeURIComponent(vectorId) + "/files/" + encodeURIComponent(row.openai_file_id),
