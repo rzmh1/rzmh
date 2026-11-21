@@ -49,7 +49,7 @@ const mimeTypes = new Set([
   "text/x-java",
   "text/x-php",
   "text/x-ruby",
-  "text/x-sh",
+  "application/x-sh",
   "text/x-tex",
   "application/typescript",
 ]);
