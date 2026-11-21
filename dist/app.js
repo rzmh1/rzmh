@@ -121,7 +121,7 @@ export function render(scroll = true) {
     "admin-login": "دخول المالك",
     tutor: "المدرس الذكي",
     leaks: "التسريبات",
-    community: "مجتمع رُزمة",
+    community: "اسأل رُزمة",
     login: "تسجيل الدخول",
     signup: "إنشاء حساب",
     "verify-email": "تأكيد البريد",
