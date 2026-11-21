@@ -109,7 +109,33 @@ test("real auth, role checks, shared content, fixed prices, CSRF, grading, prote
     assert.equal((await student.request("/api/admin/stats")).status, 403);
     assert.equal(
       (
-        await owner.request("/api/auth/login", {
+        await student.request("/api/auth/admin-login", {
+          method: "POST",
+          body: {
+            email: "student@example.test",
+            password: "a-long-student-password",
+          },
+        })
+      ).status,
+      401,
+      "student credentials must never authenticate through the owner login endpoint",
+    );
+    assert.equal(
+      (
+        await guest.request("/api/auth/admin-login", {
+          method: "POST",
+          body: {
+            email: "owner@example.test",
+            password: "incorrect-owner-password",
+          },
+        })
+      ).status,
+      401,
+      "an owner email without the correct password must be rejected",
+    );
+    assert.equal(
+      (
+        await owner.request("/api/auth/admin-login", {
           method: "POST",
           body: {
             email: "owner@example.test",
