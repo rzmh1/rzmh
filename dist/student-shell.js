@@ -46,7 +46,7 @@ const groups = [
       ["tests", "clock", "الاختبارات"],
       ["mistakes", "error", "دفتر الأخطاء"],
       ["leaks", "file", "التسريبات"],
-      ["community", "messages-square", "مجتمع رُزمة"],
+      ["community", "message-circle", "اسأل رُزمة"],
     ],
   ],
   [
@@ -64,7 +64,7 @@ const tabs = [
   ["dashboard", "shapes", "اليوم"],
   ["choose", "book", "دوراتي"],
   ["tutor", "spark", "المدرّس"],
-  ["community", "messages-square", "مجتمع"],
+  ["community", "message-circle", "اسأل رُزمة"],
   ["subscription", "user", "حسابي"],
 ];
 
