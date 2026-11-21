@@ -55,6 +55,7 @@ test("store, routes, mobile styles, paid lesson gate, owner workspace and paymen
     pages.scratchPage(),
     live.authLive(),
     live.authLive(true),
+    live.adminAuthLive(),
     live.reviewOrder("year"),
     live.paymentStatus(true),
     live.paymentStatus(false),
