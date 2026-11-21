@@ -91,6 +91,9 @@ test("real auth, role checks, shared content, fixed prices, CSRF, grading, prote
     const owner = await browser(f),
       student = await browser(f),
       guest = await browser(f);
+    f.store.db
+      .prepare("INSERT INTO rate_limits VALUES(?,?,?)")
+      .run("expired-test-entry", 1, Date.now() - 1);
     assert.equal((await guest.request("/api/admin/stats")).status, 401);
     assert.equal(
       (
@@ -105,6 +108,13 @@ test("real auth, role checks, shared content, fixed prices, CSRF, grading, prote
         })
       ).data.user.role,
       "student",
+    );
+    assert.equal(
+      f.store.db
+        .prepare("SELECT key FROM rate_limits WHERE key=?")
+        .get("expired-test-entry"),
+      undefined,
+      "expired rate-limit records are cleaned on the next rate-limited request",
     );
     assert.equal((await student.request("/api/admin/stats")).status, 403);
     assert.equal(
