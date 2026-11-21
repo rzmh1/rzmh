@@ -4383,9 +4383,9 @@ textarea {
 .tutor-board-step p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.9;font-size:14px}
 .tutor-board-controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 .teacher-resource-nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:20px 0}
-.teacher-resource-nav>a{display:flex;align-items:center;justify-content:center;gap:8px;min-height:64px;padding:12px;border:1px solid var(--border);border-radius:14px;background:var(--surface);font-weight:700;font-size:12px}
-.teacher-resource-nav>a:hover{border-color:var(--purple);background:var(--soft)}
-.teacher-resource-nav>a span{font-size:10px;color:var(--muted)}
+.teacher-resource-nav>a,.teacher-resource-nav>button{display:flex;align-items:center;justify-content:center;gap:8px;min-height:64px;padding:12px;border:1px solid var(--border);border-radius:14px;background:var(--surface);color:var(--text);font:inherit;font-weight:700;font-size:12px;cursor:pointer}
+.teacher-resource-nav>a:hover,.teacher-resource-nav>button:hover{border-color:var(--purple);background:var(--soft)}
+.teacher-resource-nav>a span,.teacher-resource-nav>button span{font-size:10px;color:var(--muted)}
 @keyframes tutorStepIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
 @media(max-width:700px){.teacher-resource-nav{grid-template-columns:repeat(2,minmax(0,1fr))}.tutor-draw-actions{width:100%}.tutor-draw-actions .btn{flex:1}#tutor-drawing-canvas{height:190px}}
 @media(prefers-reduced-motion:reduce){.tutor-board-step{animation:none}}
