@@ -52,7 +52,7 @@ export function listCommunityPosts(store, user, filters = {}) {
 export function getCommunityPost(store, user, id) {
   access(store, user);
   const post = store.db.prepare(
-    "SELECT p.id,p.user_id,p.track,p.subject,p.title,p.body,p.created_at,p.updated_at,p.accepted_answer_id," +
+    "SELECT p.id,p.user_id,p.track,p.subject,p.title,p.body,p.status,p.created_at,p.updated_at,p.accepted_answer_id," +
     "COALESCE(u.name,'طالب سابق') AS author_name " +
     "FROM community_posts p LEFT JOIN users u ON u.id=p.user_id WHERE p.id=? AND p.status='visible'"
   ).get(id);
