@@ -26,6 +26,7 @@ import {
 } from "./security.mjs";
 import { checkout, handleStripeWebhook, testPayment } from "./payments.mjs";
 import { testAI, tutor } from "./ai.mjs";
+import { listCommunityPosts, getCommunityPost, createCommunityPost, answerCommunityPost, acceptCommunityAnswer, reportCommunityContent, listCommunityForAdmin, moderateCommunityPost, moderateCommunityAnswer } from "./community.mjs";
 import { storageService } from "./storage.mjs";
 import { frame, codeInput, saveCode } from "./custom.mjs";
 import { sendEmail, sendBatchEmails, verificationMessage, resetMessage } from "./email.mjs";
@@ -844,6 +845,49 @@ export function createApp(cfg = config()) {
         store.audit(user.id, "leak.report", leakFlagMatch[1], { reason });
         return send({ ok: true });
       }
+      if (path === "/api/community/posts" && method === "GET") {
+        required(user);
+        return send(listCommunityPosts(store, user, {
+          track: url.searchParams.get("track") || "all",
+          subject: url.searchParams.get("subject") || "all",
+          q: url.searchParams.get("q") || "",
+        }));
+      }
+      if (path === "/api/community/posts" && method === "POST") {
+        required(user);
+        rate("community:create:" + user.id, 5, 3600000);
+        return send(createCommunityPost(store, user, await jsonBody(req, 8000)), 201);
+      }
+      const communityPostMatch = /^\/api\/community\/posts\/([\w-]+)$/.exec(path);
+      if (communityPostMatch && method === "GET") {
+        required(user);
+        return send(getCommunityPost(store, user, communityPostMatch[1]));
+      }
+      const communityAnswerMatch = /^\/api\/community\/posts\/([\w-]+)\/answers$/.exec(path);
+      if (communityAnswerMatch && method === "POST") {
+        required(user);
+        rate("community:answer:" + user.id, 20, 3600000);
+        return send(answerCommunityPost(store, user, communityAnswerMatch[1], await jsonBody(req, 4000)), 201);
+      }
+      const communityAcceptMatch = /^\/api\/community\/posts\/([\w-]+)\/accept$/.exec(path);
+      if (communityAcceptMatch && method === "POST") {
+        required(user);
+        const body = await jsonBody(req, 1000);
+        return send(acceptCommunityAnswer(store, user, communityAcceptMatch[1], body.answerId));
+      }
+      if (path === "/api/community/reports" && method === "POST") {
+        required(user);
+        rate("community:report:" + user.id, 10, 3600000);
+        return send(reportCommunityContent(store, user, await jsonBody(req, 1000)), 201);
+      }
+      if (path === "/api/admin/community" && method === "GET")
+        return send(listCommunityForAdmin(store));
+      const communityPostModeration = /^\/api\/admin\/community\/posts\/([\w-]+)\/moderate$/.exec(path);
+      if (communityPostModeration && method === "POST")
+        return send(moderateCommunityPost(store, user, communityPostModeration[1], await jsonBody(req, 1000)));
+      const communityAnswerModeration = /^\/api\/admin\/community\/answers\/([\w-]+)\/moderate$/.exec(path);
+      if (communityAnswerModeration && method === "POST")
+        return send(moderateCommunityAnswer(store, user, communityAnswerModeration[1], await jsonBody(req, 1000)));
       if (path === "/api/admin/broadcasts" && method === "GET") {
         return send(
           db.prepare(
