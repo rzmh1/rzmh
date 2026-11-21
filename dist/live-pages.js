@@ -89,12 +89,32 @@ export function tutorLive() {
   return `<div class="ai-full">${pageHeading("مدرّسك في رُزمة", "اسأل عن سؤال. وشاهد الحل خطوة بخطوة.", "اكتب سؤالًا واحدًا أو أرفق صورته؛ لا ترفع ملفًا كاملًا.")}<div class="notice">${icon("spark")}<p>يركّز المدرس على أسئلة القدرات والتحصيلي وSTEP ومصادر رُزمة. يشرح السؤال على لوحة الحل دون تشغيل شرح محاضرة كاملة.</p></div><div class="tutor-layout"><div class="panel"><div class="admin-bar"><h2>محادثاتك</h2><button class="btn btn-outline btn-sm" data-ai-new>محادثة جديدة ${icon("plus")}</button></div><div id="conversation-list"></div></div><div class="panel"><div id="ai-chat" class="ai-chat" aria-live="polite"><div class="chat-welcome">${icon("spark")}<h3>ما السؤال الذي تريد فهمه؟</h3><p>اكتب السؤال أو أرفق صورته، ويمكنك الرسم في مساحة الحل.</p></div></div><form id="tutor-form"><label for="tutor-input">سؤالك أو موضع استفسارك</label><textarea id="tutor-input" name="message" maxlength="1200" placeholder="اكتب السؤال أو اشرح الجزء الذي لم تفهمه…"></textarea><div class="tutor-attachment"><label for="tutor-attachment" class="btn btn-outline btn-sm">${icon("image")} إرفاق صورة سؤال</label><input id="tutor-attachment" name="attachment" type="file" accept="image/jpeg,image/png,image/webp" hidden><small id="tutor-file-name" class="muted">صورة JPG أو PNG أو WebP حتى ٤ ميجابايت</small></div><section class="tutor-draw-panel"><div class="admin-bar"><div><h3>مساحة رسم الطالب</h3><small class="muted">اكتب خطواتك أو ارسم الجزء الذي تريد شرحه.</small></div><div class="tutor-draw-actions"><input id="tutor-pen-color" type="color" value="#594775" aria-label="لون القلم"><input id="tutor-pen-size" type="range" min="2" max="12" value="4" aria-label="سمك القلم"><button type="button" class="btn btn-outline btn-sm" data-tutor-draw="pen">قلم</button><button type="button" class="btn btn-outline btn-sm" data-tutor-draw="marker">تمييز</button><button type="button" class="btn btn-outline btn-sm" data-tutor-draw="undo">تراجع</button><button type="button" class="btn btn-outline btn-sm" data-tutor-draw="clear">مسح</button></div></div><canvas id="tutor-drawing-canvas" width="900" height="340" aria-label="مساحة رسم السؤال"></canvas><small class="muted">الرسم لا يُرسل إلا عند الضغط على «اسأل المدرس».</small></section><div class="admin-bar spaced"><small id="ai-quota" class="muted">يُتحقق من صلاحية الاشتراك والحد اليومي على الخادم.</small><button class="btn btn-primary" type="submit">اسأل المدرس ${icon("arrow")}</button></div><p id="ai-error" class="form-error" role="alert"></p></form></div></div></div>`;
 }
 export function teacherBoardMarkup(text) {
-  const lines = String(text || "").split(/\n+/).map((line) => line.replace(/^\s*(?:[-*•]|\d+[.)、])\s*/, "").trim()).filter(Boolean).slice(0, 30);
-  const steps = lines.length ? lines : [String(text || "").trim()];
-  return `<section class="tutor-solution-board" dir="rtl"><div class="tutor-board-heading"><span>${icon("presentation")} سبورة مدرس رُزمة</span><small>${steps.length} خطوات</small></div><div class="tutor-board-steps">${steps.map((line, index) => `<div class="tutor-board-step" data-board-step="${index}" ${index ? "hidden" : ""}><b>${index + 1}</b><p dir="auto">${e(line)}</p></div>`).join("")}</div><div class="tutor-board-controls"><button type="button" class="btn btn-outline btn-sm" data-board-next ${steps.length <= 1 ? "hidden" : ""}>الخطوة التالية</button><button type="button" class="btn btn-ghost btn-sm" data-board-all ${steps.length <= 1 ? "hidden" : ""}>عرض كل الحل</button></div></section>`;
+  const raw = String(text || "");
+  const match = raw.match(/```diagram\s*([\s\S]*?)```/i);
+  let diagram = null;
+  if (match) {
+    try {
+      const value = JSON.parse(match[1]);
+      if (value && Array.isArray(value.shapes)) {
+        diagram = {
+          shapes: value.shapes.slice(0, 50).filter((shape) =>
+            shape && ["line", "arrow", "circle", "rect", "point", "text", "polyline", "polygon", "axes"].includes(shape.type)
+          ),
+        };
+      }
+    } catch {}
+  }
+  const clean = raw.replace(/```diagram\s*[\s\S]*?```/gi, "").trim();
+  const lines = clean.split(/\n+/)
+    .map((line) => line.replace(/^\s*(?:[-*•]|\d+[.)、])\s*/, "").trim())
+    .filter(Boolean).slice(0, 30);
+  const steps = lines.length ? lines : [clean || "اتبع الرسم التوضيحي ثم راجع خطوات الحل."];
+  const canvas = diagram?.shapes.length
+    ? `<canvas class="tutor-teacher-canvas" width="1000" height="600" data-teacher-diagram="${e(JSON.stringify(diagram))}" aria-label="رسم توضيحي من مدرس رُزمة"></canvas>`
+    : "";
+  return `<section class="tutor-solution-board" dir="rtl"><div class="tutor-board-heading"><span>${icon("presentation")} سبورة مدرس رُزمة</span><small>${steps.length} خطوات</small></div>${canvas}<div class="tutor-board-steps">${steps.map((line, index) => `<div class="tutor-board-step" data-board-step="${index}" ${index ? "hidden" : ""}><b>${index + 1}</b><p dir="auto">${e(line)}</p></div>`).join("")}</div><div class="tutor-board-controls"><button type="button" class="btn btn-outline btn-sm" data-board-next ${steps.length <= 1 ? "hidden" : ""}>الخطوة التالية</button><button type="button" class="btn btn-ghost btn-sm" data-board-all ${steps.length <= 1 ? "hidden" : ""}>عرض كل الحل</button></div></section>`;
 }
-export function mountTutor(toast) {
-  let conversationId = null,
+  let conversationId = null,  let conversationId = null,
     disposed = false;
   const list = document.querySelector("#conversation-list"),
     chat = document.querySelector("#ai-chat"),
@@ -104,6 +124,51 @@ export function mountTutor(toast) {
   let strokes = [], activeStroke = null, hasDrawing = false, baseImage = null, imageLoading = Promise.resolve(), drawTool = "pen";
   const ctx = canvas?.getContext("2d");
   const renderMessage = (item) => message(item.role, item.content) + (item.role === "assistant" ? teacherBoardMarkup(item.content) : "");
+  const drawTeacherDiagrams = (root = chat) => {
+    for (const board of root.querySelectorAll("canvas[data-teacher-diagram]")) {
+      let diagram;
+      try { diagram = JSON.parse(board.dataset.teacherDiagram); } catch { continue; }
+      const ctx = board.getContext("2d");
+      if (!ctx || !Array.isArray(diagram?.shapes)) continue;
+      const dpr = window.devicePixelRatio || 1, rect = board.getBoundingClientRect();
+      const width = Math.max(1, Math.round(rect.width * dpr)), height = Math.max(1, Math.round(rect.width * 0.6 * dpr));
+      if (board.width !== width || board.height !== height) { board.width = width; board.height = height; }
+      ctx.setTransform(dpr * rect.width / 1000, 0, 0, dpr * rect.width / 1000, 0, 0);
+      ctx.clearRect(0, 0, 1000, 600);
+      ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, 1000, 600);
+      const coord = (v, fallback = 0) => Number.isFinite(Number(v)) ? Math.max(0, Math.min(1000, Number(v))) : fallback;
+      const color = (v) => /^#[0-9a-f]{6}$/i.test(String(v || "")) ? v : "#594775";
+      const line = (shape, arrow = false) => {
+        const x1 = coord(shape.x1), y1 = coord(shape.y1), x2 = coord(shape.x2), y2 = coord(shape.y2);
+        ctx.strokeStyle = color(shape.color); ctx.lineWidth = Math.max(1, Math.min(12, Number(shape.width) || 4));
+        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+        if (arrow) {
+          const angle = Math.atan2(y2 - y1, x2 - x1), size = 18;
+          ctx.beginPath(); ctx.moveTo(x2, y2); ctx.lineTo(x2 - size * Math.cos(angle - Math.PI / 6), y2 - size * Math.sin(angle - Math.PI / 6)); ctx.lineTo(x2 - size * Math.cos(angle + Math.PI / 6), y2 - size * Math.sin(angle + Math.PI / 6)); ctx.closePath(); ctx.fillStyle = color(shape.color); ctx.fill();
+        }
+      };
+      for (const shape of diagram.shapes.slice(0, 50)) {
+        if (!shape || typeof shape !== "object") continue;
+        ctx.strokeStyle = color(shape.color); ctx.fillStyle = color(shape.color); ctx.lineWidth = Math.max(1, Math.min(12, Number(shape.width) || 4));
+        const x = coord(shape.x), y = coord(shape.y);
+        if (shape.type === "line" || shape.type === "arrow") line(shape, shape.type === "arrow");
+        else if (shape.type === "circle") { ctx.beginPath(); ctx.arc(x, y, Math.max(2, Math.min(250, Number(shape.r) || 24)), 0, Math.PI * 2); ctx.stroke(); }
+        else if (shape.type === "rect") ctx.strokeRect(x, y, Math.max(1, Math.min(1000, Number(shape.w) || 80)), Math.max(1, Math.min(600, Number(shape.h) || 60)));
+        else if (shape.type === "point") { ctx.beginPath(); ctx.arc(x, y, Math.max(3, Math.min(20, Number(shape.r) || 7)), 0, Math.PI * 2); ctx.fill(); if (shape.label) { ctx.font = "bold 25px sans-serif"; ctx.fillText(String(shape.label).slice(0, 35), x + 14, y - 12); } }
+        else if (shape.type === "text") { ctx.font = ` ${Math.max(14, Math.min(42, Number(shape.size) || 24))}px sans-serif`; ctx.fillText(String(shape.text || "").slice(0, 90), x, y); }
+        else if (shape.type === "polyline" || shape.type === "polygon") {
+          if (!Array.isArray(shape.points) || shape.points.length < (shape.type === "polygon" ? 3 : 2)) continue;
+          ctx.beginPath(); shape.points.slice(0, 100).forEach((p, i) => i ? ctx.lineTo(coord(p?.[0]), coord(p?.[1])) : ctx.moveTo(coord(p?.[0]), coord(p?.[1])));
+          if (shape.type === "polygon") ctx.closePath(); ctx.stroke();
+        } else if (shape.type === "axes") {
+          const ox = coord(shape.x, 500), oy = coord(shape.y, 300);
+          line({ x1: 70, y1: oy, x2: 940, y2: oy, color: shape.color, width: 3 }, true);
+          line({ x1: ox, y1: 540, x2: ox, y2: 45, color: shape.color, width: 3 }, true);
+          ctx.font = "bold 24px sans-serif"; ctx.fillText(String(shape.xLabel || "س").slice(0, 10), 920, oy - 14); ctx.fillText(String(shape.yLabel || "ص").slice(0, 10), ox + 12, 45);
+        }
+      }
+    }
+  };
   const paintDrawing = () => {
     if (!canvas || !ctx) return;
     const rect = canvas.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
@@ -120,7 +185,7 @@ export function mountTutor(toast) {
   canvas?.addEventListener("pointerdown", pointerDown); canvas?.addEventListener("pointermove", pointerMove); canvas?.addEventListener("pointerup", pointerEnd); canvas?.addEventListener("pointercancel", pointerEnd);
   const resizeObserver = canvas ? new ResizeObserver(paintDrawing) : null; resizeObserver?.observe(canvas); paintDrawing();
   const message = (role, text) =>
-    `<div class="live-message ${role}"><b>${role === "user" ? "أنت" : "مدرّس رُزمة"}</b><p>${e(text).replace(/\n/g, "<br>")}</p></div>`;
+    `<div class="live-message ${role}"><b>${role === "user" ? "أنت" : "مدرّس رُزمة"}</b><p>${e(String(text || "").replace(/```diagram[\\s\\S]*?```/gi, "").trim()).replace(/\n/g, "<br>")}</p></div>`;
   async function load() {
     try {
       const conversations = await api("/api/conversations");
@@ -155,6 +220,7 @@ export function mountTutor(toast) {
         if (disposed) return;
         conversationId = c.dataset.conversation;
         chat.innerHTML = messages.map(renderMessage).join("");
+        drawTeacherDiagrams(chat);
       } catch (err) {
         toast(err.message);
       }
@@ -198,6 +264,7 @@ export function mountTutor(toast) {
       if (disposed) return;
       conversationId = value.conversationId;
       chat.innerHTML += message("assistant", value.text) + teacherBoardMarkup(value.text);
+      drawTeacherDiagrams(chat);
       strokes = []; baseImage = null; hasDrawing = false; imageInputReset(); paintDrawing();
       form.message.value = "";
       form.attachment.value = "";
