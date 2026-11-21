@@ -43,6 +43,7 @@ export function openDatabase(cfg) {
  CREATE TABLE IF NOT EXISTS custom_previews(token TEXT PRIMARY KEY,json TEXT NOT NULL,expires INTEGER NOT NULL);
  CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY,actor TEXT,action TEXT NOT NULL,target TEXT,detail TEXT,created_at TEXT NOT NULL);
  CREATE TABLE IF NOT EXISTS rate_limits(key TEXT PRIMARY KEY,count INTEGER NOT NULL,expires INTEGER NOT NULL);
+ CREATE INDEX IF NOT EXISTS rate_limits_expires ON rate_limits(expires);
  CREATE TABLE IF NOT EXISTS leak_reports(
   id TEXT PRIMARY KEY,
   user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
