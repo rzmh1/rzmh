@@ -1249,7 +1249,7 @@
 
 
 /* Compact, single-screen onboarding and stage choices */
-.welcome-flow-v6{width:min(100%,680px);min-height:calc(100vh - 150px);margin:0 auto;display:flex;flex-direction:column;justify-content:center;gap:14px}
+.welcome-flow-v6{width:min(100%,680px);min-height:calc(100vh - 230px);margin:0 auto;display:flex;flex-direction:column;justify-content:center;gap:14px}
 .welcome-flow-top{display:flex;align-items:center;justify-content:space-between;color:var(--muted);font-size:12px}
 .welcome-flow-progress{font-weight:700;color:var(--purple)}
 .welcome-flow-progressbar{height:4px;background:var(--border);border-radius:99px;overflow:hidden}
@@ -1269,4 +1269,4 @@
 .choice-teacher-v6>span:nth-child(2){display:grid;gap:4px;flex:1}
 .choice-teacher-v6 small{font-size:11px;color:var(--muted)}
 .choice-teacher-avatar{width:42px;height:42px;display:grid;place-items:center;border-radius:50%;background:var(--purple-light);color:var(--purple);font-weight:800}
-@media(max-width:640px){.welcome-flow-v6{min-height:calc(100dvh - 140px)}.welcome-flow-card{padding:20px}.welcome-flow-card h1{font-size:22px}}
+@media(max-width:640px){.welcome-flow-v6{min-height:calc(100dvh - 215px)}.welcome-flow-card{padding:20px}.welcome-flow-card h1{font-size:22px}}
