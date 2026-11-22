@@ -108,137 +108,63 @@ export function mountLearning(kind, id, toast, rerender) {
   function drawWizard() {
     const p = me.profile;
     const questions = [
-      [
-        "sectionId",
-        "ما الاختبار الذي تستعد له؟",
-        catalog.sections
-          .map((s) =>
-            option(
-              "sectionId",
-              s.id,
-              e(s.title) + (s.status === "coming" ? " — المحتوى قادم" : ""),
-              p.sectionId === s.id,
-            ),
-          )
-          .join(""),
-      ],
-      [
-        "foundationStarted",
-        "هل بدأت التأسيس؟",
-        [
-          ["true", "بدأت وأريد أكمل"],
-          ["false", "لم أبدأ بعد"],
-        ]
-          .map(([v, t]) =>
-            option(
-              "foundationStarted",
-              v,
-              t,
-              String(p.foundationStarted) === v,
-            ),
-          )
-          .join(""),
-      ],
-      [
-        "foundationCompleted",
-        "هل أنهيت مرحلة التأسيس؟",
-        [
-          ["true", "نعم، وأحتاج تدريبًا ومراجعة"],
-          ["false", "لا، ما زلت أبني الأساس"],
-        ]
-          .map(([v, t]) =>
-            option(
-              "foundationCompleted",
-              v,
-              t,
-              String(p.foundationCompleted) === v,
-            ),
-          )
-          .join(""),
-      ],
-      [
-        "selfLevel",
-        "كيف تقيّم مستواك؟",
-        [
-          ["beginner", "أبدأ من المفاهيم الأولى"],
-          ["intermediate", "أفهم الأساس وأحتاج تدريبًا"],
-          ["advanced", "أحتاج قياسًا ومراجعة مركّزة"],
-          ["unknown", "أفضل أن أكتشفه بالاختبارات"],
-        ]
-          .map(([v, t]) => option("selfLevel", v, t, p.selfLevel === v))
-          .join(""),
-      ],
-      [
-        "targetScore",
-        "ما الدرجة التي تطمح إليها؟",
-        field(
-          "targetScore",
-          "درجتك المستهدفة",
-          p.targetScore,
-          "number",
-          'min="0" max="100" step="1"',
-        ),
-      ],
-      [
-        "examDate",
-        "متى موعد اختبارك؟",
-        field("examDate", "موعد الاختبار", p.examDate, "date"),
-      ],
-      [
-        "dailyMinutes",
-        "كم وقت تقدر تخصص للمذاكرة يوميًا؟",
-        field(
-          "hours",
-          "عدد الساعات",
-          p.dailyMinutes ? p.dailyMinutes / 60 : "",
-          "number",
-          'min="0.25" max="12" step="0.25"',
-        ) +
-          '<p class="muted">نحسب المقاطع حسب مددها، ونضيف وقتًا للحل والمراجعة والراحة.</p>',
-      ],
-      [
-        "studyDays",
-        "ما الأيام المناسبة لك؟",
-        daysInputs(p.studyDays) + consent(p),
-      ],
+      ["sectionId", "وش اختبارك؟", catalog.sections.filter((s) => s.status !== "coming").map((s) =>
+        option("sectionId", s.id, e(s.title), p.sectionId === s.id)).join("")],
+      ["studyMode", "وش تحتاج في رحلتك؟", [
+        ["both", "تأسيس وتدريب", "أبني الأساس ثم أتدرّب"],
+        ["foundation", "تأسيس فقط", "أحتاج أفهم الأساس أولًا"],
+        ["training", "تدريب فقط", "عندي أساس وأحتاج حل أسئلة"],
+      ].map(([v,t,d]) => `<label class="welcome-choice welcome-choice-v6"><input type="radio" name="studyMode" value="${v}"><span><b>${t}</b><small>${d}</small></span>${icon("check")}</label>`).join("")],
+      ["schedule", "متى اختبارك؟ وكم تقدر تذاكر؟",
+        field("examDate","موعد الاختبار",p.examDate,"date",'required') +
+        field("hours","ساعات المذاكرة يوميًا",p.dailyMinutes ? p.dailyMinutes/60 : 2,"number",'min="0.5" max="24" step="0.5" required') +
+        '<p class="muted">تقدر تعدّل الموعد والساعات لاحقًا من إعدادات خطتك.</p>'],
     ];
-    step = Math.max(0, Math.min(7, step));
-    const [key, title, body] = questions[step];
-    target.innerHTML = `<div class="welcome-layout"><aside><span class="eyebrow">نرتّب البداية، ثم تختار بنفسك</span><h2>وقتك مختلف.<br>ورحلتك تستحق<br>خطة تناسبه.</h2><p>سؤال واحد في كل خطوة. تقدر تتخطى السؤال وتكمل بياناتك لاحقًا.</p><div class="welcome-step-indicator">${step + 1}<small> / ٨</small></div><div class="progress-track"><span style="width:${((step + 1) / 8) * 100}%"></span></div><small>تقييمك الذاتي لا يُعتبر نتيجة اختبار أو دليل إتقان.</small></aside><form id="welcome-form" class="panel" data-key="${key}"><span class="eyebrow">خطوتك ${step + 1} من ٨</span><h2>${title}</h2><div class="welcome-answers">${body}</div><div id="learning-form-error" class="form-error" role="alert"></div><div class="welcome-actions"><button type="button" class="btn btn-outline" data-welcome-back ${step === 0 ? "disabled" : ""}>السابق</button><button type="button" class="btn btn-ghost" data-welcome-skip>تخطي</button><button type="submit" class="btn btn-primary">${step === 7 ? "إلى اختيار الدورات" : "التالي"} ${icon("arrow")}</button></div></form></div>`;
+    step = Math.max(0, Math.min(2, step));
+    const [key,title,body] = questions[step];
+    target.innerHTML = `<div class="welcome-flow-v6">
+      <div class="welcome-flow-top"><span class="eyebrow">إعداد خطتك</span><span class="welcome-flow-progress">${step+1} / 3</span></div>
+      <div class="welcome-flow-progressbar"><span style="width:${((step+1)/3)*100}%"></span></div>
+      <form id="welcome-form" class="panel welcome-flow-card" data-key="${key}">
+        <h1>${title}</h1>
+        <p class="muted">${step===0?"اختر المسار، وسننتقل مباشرة.":step===1?"اختر المرحلة التي تحتاجها، وسننتقل مباشرة.":"حدد الموعد والوقت المناسب لك."}</p>
+        <div class="welcome-answers">${body}</div>
+        <div id="learning-form-error" class="form-error" role="alert"></div>
+        <div class="welcome-actions welcome-actions-v6">
+          ${step ? '<button type="button" class="btn btn-ghost small" data-welcome-back>رجوع</button>' : ""}
+          <button type="button" class="btn btn-ghost small welcome-skip-v6" data-welcome-skip>تخطي</button>
+          ${step===2 ? '<button type="submit" class="btn btn-primary">إنشاء خطتي '+icon("arrow")+'</button>' : ""}
+        </div>
+      </form>
+    </div>`;
   }
   async function advance(skip = false) {
-    const form = document.querySelector("#welcome-form"),
-      key = form.dataset.key,
-      fd = new FormData(form),
-      input = { onboardingStep: Math.min(7, step + 1) };
+    const form = document.querySelector("#welcome-form");
+    if (!form) return;
+    const key = form.dataset.key, fd = new FormData(form);
+    const input = { onboardingStep: Math.min(2, step + 1) };
     if (!skip) {
       if (!form.reportValidity()) return;
-      const value = fd.get(key);
-      if (["foundationStarted", "foundationCompleted"].includes(key)) {
-        if (value !== null) input[key] = value === "true";
-      } else if (key === "dailyMinutes") {
-        const hours = fd.get("hours");
-        input.dailyMinutes = hours ? Math.round(Number(hours) * 60) : null;
-      } else if (key === "studyDays") {
-        input.studyDays = fd.getAll("studyDays").map(Number);
-        input.aiContextConsent = fd.has("aiContextConsent");
-      } else if (key === "targetScore")
-        input.targetScore = value ? Number(value) : null;
-      else if (key === "sectionId" || key === "examDate")
-        input[key] = value || null;
-      else if (value !== null) input[key] = value;
+      if (step === 0) input.sectionId = fd.get("sectionId");
+      if (step === 1) {
+        const mode = fd.get("studyMode");
+        if (!mode) return;
+        input.foundationStarted = mode === "training";
+        input.foundationCompleted = mode === "training";
+        input.selfLevel = mode === "training" ? "advanced" : mode === "foundation" ? "beginner" : "intermediate";
+      }
+      if (step === 2) {
+        input.examDate = fd.get("examDate") || null;
+        input.dailyMinutes = Math.round(Number(fd.get("hours")) * 60);
+        input.onboardingCompleted = true;
+      }
+    } else if (step === 2) {
+      input.onboardingCompleted = true;
     }
-    if (step === 7) input.onboardingCompleted = true;
-    const result = await api("/api/learning/profile", {
-      method: "PUT",
-      body: input,
-    });
+    const result = await api("/api/learning/profile", { method:"PUT", body:input });
     me.profile = result.profile;
-    if (step === 7) location.hash = "#/choose";
-    else {
-      step++;
-      drawWizard();
-    }
+    if (step === 2) location.hash = "#/choose";
+    else { step++; drawWizard(); }
   }
   function courseChoice(c) {
     const teacher = catalog.instructors.find((t) => t.id === c.instructorId),
@@ -508,6 +434,7 @@ ${upcoming.length ? `<section class="dash-card"><div class="dash-card-head"><h2>
           block: "start",
         });
       if (b.hasAttribute("data-welcome-skip")) await advance(true);
+      if (b.hasAttribute("data-welcome-back")) { step=Math.max(0,step-1); drawWizard(); }
       if (b.dataset.journeyComplete) {
         b.disabled = true;
         await api(
@@ -595,6 +522,9 @@ ${upcoming.length ? `<section class="dash-card"><div class="dash-card-head"><h2>
       if (count) count.textContent = chosen.size + " دورات مختارة";
     }
     if (ev.target.id === "choice-teacher") drawChoices();
+    if (kind === "welcome" && ["sectionId","studyMode"].includes(ev.target.name)) {
+      void advance(false).catch(error);
+    }
   };
   const submit = async (ev) => {
     const form = ev.target;
@@ -611,7 +541,7 @@ ${upcoming.length ? `<section class="dash-card"><div class="dash-card-head"><h2>
     const button = form.querySelector("button[type=submit]");
     if (button) button.disabled = true;
     try {
-      if (form.id === "welcome-form") await advance(false);
+      if (form.id === "welcome-form" && step === 2) await advance(false);
       if (form.id === "choices-form") {
         await api("/api/learning/selections", {
           method: "PUT",
