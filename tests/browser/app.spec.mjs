@@ -136,18 +136,25 @@ test('subscribed student completes onboarding, saves choices and replans real co
   const failures = trackFailures(page);
   await login(page, app, 'student@example.test');
   await page.goto(`${app.url}/#/welcome`);
-  const keys = ['sectionId', 'foundationStarted', 'foundationCompleted', 'selfLevel', 'targetScore', 'examDate', 'dailyMinutes', 'studyDays'];
-  for (const key of keys) {
-    await expect(page.locator('#welcome-form')).toHaveAttribute('data-key', key);
-    if (key === 'sectionId') await page.locator('input[name=sectionId][value=qudrat]').check();
-    if (key === 'dailyMinutes') await page.locator('input[name=hours]').fill('2');
-    if (key === 'studyDays')
-      for (const input of await page.locator('input[name=studyDays]').all()) await input.check();
-    await page.locator('#welcome-form button[type=submit]').click();
-  }
+  await expect(page.locator('#welcome-form')).toBeVisible();
+  await page.locator('input[name=sectionId][value=qudrat]').check();
+  await expect(page.locator('input[name=studyMode]')).toHaveCount(3);
+  await page.locator('input[name=studyMode][value=both]').check();
+  await expect(page.locator('input[name=examDate]')).toBeVisible();
+  await page.locator('input[name=examDate]').fill('2027-01-01');
+  await page.locator('input[name=hours]').fill('2');
+  await page.locator('#welcome-form button[type=submit]').click();
   await expect(page).toHaveURL(/#\/choose$/);
-  await page.locator('input[name=courseId][value=quant-basics]').check();
-  await page.locator('#choices-form button[type=submit]').click();
+  const catalog = await page.evaluate(() => fetch('/api/learning/catalog').then(r => r.json()));
+  const targetCourse = catalog.courses.find(course => course.id === 'quant-basics');
+  expect(targetCourse).toBeTruthy();
+  const targetTeacher = targetCourse.instructorId || 'independent';
+  for (let i = 0; i < 10 && !page.url().endsWith('#/journey'); i++) {
+    const targetChoice = page.locator('[data-choice-teacher="' + targetTeacher + '"]');
+    if (await targetChoice.count()) await targetChoice.first().click();
+    else await page.locator('[data-choice-skip]').click();
+    await page.waitForTimeout(80);
+  }
   await expect(page).toHaveURL(/#\/journey$/);
   await expect(page.locator('#learning-root')).toContainText('الأساس الذي تبني عليه');
   for (const route of ['learning-settings', 'bank', 'tests', 'mistakes', 'scratch', 'subscription', 'tutor']) {
