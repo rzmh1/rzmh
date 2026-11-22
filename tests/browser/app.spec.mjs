@@ -137,18 +137,34 @@ test('subscribed student completes onboarding, saves choices and replans real co
   await login(page, app, 'student@example.test');
   await page.goto(`${app.url}/#/welcome`);
   const keys = ['sectionId', 'foundationStarted', 'foundationCompleted', 'selfLevel', 'targetScore', 'examDate', 'dailyMinutes', 'studyDays'];
-  for (const key of keys) {
+  for (let i = 0; i < keys.length; i++) {
+    const key = keys[i];
     await expect(page.locator('#welcome-form')).toHaveAttribute('data-key', key);
-    if (key === 'sectionId') await page.locator('input[name=sectionId][value=qudrat]').check();
-    if (key === 'dailyMinutes') await page.locator('input[name=hours]').fill('2');
+    if (key === 'sectionId') {
+      await page.locator('input[name=sectionId][value=qudrat]').check();
+      await expect(page.locator('#welcome-form')).toHaveAttribute('data-key', keys[i + 1]);
+      continue;
+    }
+    if (key === 'foundationStarted' || key === 'foundationCompleted' || key === 'selfLevel') {
+      await page.locator(`input[name="${key}"]`).first().check();
+      await expect(page.locator('#welcome-form')).toHaveAttribute('data-key', keys[i + 1]);
+      continue;
+    }
+    if (key === 'targetScore') await page.locator('input[name=targetScore]').fill('90');
+    if (key === 'examDate') await page.locator('input[name=examDate]').fill('2027-01-15');
+    if (key === 'dailyMinutes') {
+      await page.locator('input[name=hours][value="2"]').check();
+      await expect(page.locator('#welcome-form')).toHaveAttribute('data-key', keys[i + 1]);
+      continue;
+    }
     if (key === 'studyDays')
       for (const input of await page.locator('input[name=studyDays]').all()) await input.check();
     await page.locator('#welcome-form button[type=submit]').click();
   }
-  await expect(page).toHaveURL(/#\/choose$/);
+  await expect(page).toHaveURL(/#\\/choose$/);
   await page.locator('input[name=courseId][value=quant-basics]').check();
   await page.locator('#choices-form button[type=submit]').click();
-  await expect(page).toHaveURL(/#\/journey$/);
+  await expect(page).toHaveURL(/#\\/journey$/);
   await expect(page.locator('#learning-root')).toContainText('الأساس الذي تبني عليه');
   for (const route of ['learning-settings', 'bank', 'tests', 'mistakes', 'scratch', 'subscription', 'tutor']) {
     await page.goto(`${app.url}/#/${route}`);
@@ -156,9 +172,9 @@ test('subscribed student completes onboarding, saves choices and replans real co
     await expect(page.locator('#main')).not.toContainText('تعذر الاتصال');
   }
   await page.goto(`${app.url}/#/learning-settings`);
-  await page.locator('input[name=hours]').fill('3');
+  await page.locator('#learning-settings input[name=hours]').fill('3');
   await page.locator('#learning-settings button[type=submit]').click();
-  await expect(page).toHaveURL(/#\/journey$/);
+  await expect(page).toHaveURL(/#\\/journey$/);
   await page.reload();
   const me = await page.evaluate(() => fetch('/api/learning/me').then(r => r.json()));
   expect(me.profile.dailyMinutes).toBe(180);
