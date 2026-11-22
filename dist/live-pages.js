@@ -86,7 +86,7 @@ export async function loadPaymentStatus(toast) {
   };
 }
 export function tutorLive() {
-  return pageHeading("مدرّسك في رُزمة", "اسأل. ناقش. وشاهد الحل.", "محادثة واحدة واضحة؛ يشرح المدرّس ويرسم الأشكال داخل الرد نفسه.") +
+  return '<div class="tutor-topbar-v6"><b>مدرّس رُزمة</b><small>اسأل، أرفق صورة، وشاهد خطوات الحل والرسومات داخل المحادثة.</small></div>' +
     '<div class="ai-chat-app-v6"><details class="tutor-history-v6"><summary>' + icon("messages-square") + " محادثاتي السابقة" + '</summary><div id="conversation-list"></div></details>' +
     '<div id="ai-chat" class="ai-chat ai-chat-v6" aria-live="polite"><div class="chat-welcome">' + icon("spark") + '<h3>وش حاب تفهم اليوم؟</h3><p>اكتب سؤالك أو أرفق صورة. يقدر المدرّس يرسم الأشكال الهندسية ويوضح خطوات الحل داخل المحادثة.</p></div></div>' +
     '<form id="tutor-form" class="tutor-composer-v6"><textarea id="tutor-input" name="message" maxlength="1200" placeholder="اسأل مدرس رُزمة..." aria-label="اكتب سؤالك"></textarea><div class="tutor-composer-actions"><label for="tutor-attachment" class="tutor-round-action" title="إرفاق صورة">' + icon("image") + '</label><input id="tutor-attachment" name="attachment" type="file" accept="image/jpeg,image/png,image/webp" hidden><small id="tutor-file-name" class="muted">إرفاق صورة سؤال</small><span class="spacer"></span><small id="ai-quota" class="muted">يُتحقق من صلاحية الاشتراك والحد اليومي على الخادم.</small><button class="tutor-send-v6" type="submit" aria-label="إرسال السؤال">' + icon("arrow-up") + '</button></div><p id="ai-error" class="form-error" role="alert"></p></form>' +
