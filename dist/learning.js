@@ -119,7 +119,7 @@ export function mountLearning(kind, id, toast, rerender) {
       ].map(([v,t,d]) => `<label class="welcome-choice welcome-choice-v6"><input type="radio" name="studyMode" value="${v}"><span><b>${t}</b><small>${d}</small></span>${icon("check")}</label>`).join("")],
       ["schedule", "متى اختبارك؟ وكم تقدر تذاكر؟",
         field("examDate","موعد الاختبار",p.examDate,"date",'required') +
-        field("hours","ساعات المذاكرة يوميًا",p.dailyMinutes ? p.dailyMinutes/60 : 2,"number",'min="0.5" max="24" step="0.5" required') +
+        field("hours","ساعات المذاكرة يوميًا",p.dailyMinutes ? p.dailyMinutes/60 : 2,"number",'min="0.5" max="12" step="0.5" required') +
         '<p class="muted">تقدر تعدّل الموعد والساعات لاحقًا من إعدادات خطتك.</p>'],
     ];
     step = Math.max(0, Math.min(2, step));
