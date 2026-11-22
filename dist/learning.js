@@ -35,7 +35,7 @@ export function learningPage(kind) {
     }[kind] || "رحلتك في رُزمة";
   const loading = `<div id="learning-root" aria-live="polite"><div class="dash-skeleton"><span></span><span></span><span></span></div></div>`;
   if (kind === "journey") return studentShell(loading, "journey");
-  const body = `${pageHeading(kind === "settings" ? "إعدادات" : "رحلة مذاكرة على مقاسك", title)}${loading}`;
+  const body = ["welcome","choose"].includes(kind) ? loading : `${pageHeading(kind === "settings" ? "إعدادات" : "رحلة مذاكرة على مقاسك", title)}${loading}`;
   return ["settings"].includes(kind) ? studentShell(body, "journey") : body;
 }
 export function teacherCard(t, trackId = "") {
