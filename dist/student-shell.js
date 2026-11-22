@@ -16,7 +16,7 @@ const initial = () => e((account.user?.name || "ط").trim().slice(0,1));
 
 export function studentHeader(){
  const admin=account.user?.role==="admin";
- return `<header class="rz-topbar"><a class="rz-brand" href="#/dashboard">${logo()}</a><div class="rz-top-context"><span class="rz-live-dot"></span><span>مساحة تعلّمك</span></div><div class="rz-top-actions">${admin?`<a class="rz-icon-link" href="#/admin" aria-label="الإدارة">${icon("settings")}</a>`:""}<button class="rz-icon-link theme-toggle" data-action="theme" aria-label="تبديل الوضع الليلي">${icon(document.documentElement.dataset.theme==="dark"?"sun":"moon")}</button><a class="rz-profile" href="#/subscription"><span class="rz-avatar">${initial()}</span><span class="rz-profile-name">${e(account.user?.name||"حسابي")}</span></a></div></header>`;
+ return `<header class="rz-topbar"><a class="rz-brand" href="#/dashboard">${logo()}</a><button class="rz-icon-link rz-menu-trigger" data-action="student-menu" aria-label="فتح القائمة" aria-expanded="false">${icon("menu")}</button><div class="rz-top-context"><span class="rz-live-dot"></span><span>مساحة تعلّمك</span></div><div class="rz-top-actions">${admin?`<a class="rz-icon-link" href="#/admin" aria-label="الإدارة">${icon("settings")}</a>`:""}<button class="rz-icon-link theme-toggle" data-action="theme" aria-label="تبديل الوضع الليلي">${icon(document.documentElement.dataset.theme==="dark"?"sun":"moon")}</button><a class="rz-profile" href="#/subscription"><span class="rz-avatar">${initial()}</span><span class="rz-profile-name">${e(account.user?.name||"حسابي")}</span></a></div></header>`;
 }
 export function studentSidebar(active){
  const current=activeOf(active);
