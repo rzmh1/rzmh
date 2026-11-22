@@ -187,14 +187,7 @@ export function mountLearning(kind, id, toast, rerender) {
       [
         "dailyMinutes",
         "كم وقت تقدر تخصص للمذاكرة يوميًا؟",
-        field(
-          "hours",
-          "عدد الساعات",
-          p.dailyMinutes ? p.dailyMinutes / 60 : "",
-          "number",
-          'min="0.25" max="12" step="0.25"',
-        ) +
-          '<p class="muted">نحسب المقاطع حسب مددها، ونضيف وقتًا للحل والمراجعة والراحة.</p>',
+        `<div class="study-hour-grid" role="group" aria-label="عدد ساعات المذاكرة">${[1,2,3,4,5,6].map((h) => `<label class="study-hour"><input type="radio" name="hours" value="${h}" ${Number(p.dailyMinutes) === h*60 ? "checked" : ""}><span><b>${h}</b><small>${h===1?"ساعة":"ساعات"}</small></span></label>`).join("")}</div><div class="study-custom-time"><label for="l-hours-custom">مدة أخرى</label><div><input id="l-hours-custom" type="number" min="0.25" max="12" step="0.25" inputmode="decimal" placeholder="مثلاً 1.5" value="${p.dailyMinutes && p.dailyMinutes%60 ? p.dailyMinutes/60 : ""}"><button type="button" class="btn btn-outline" data-welcome-custom-time>اعتماد المدة</button></div></div><p class="muted">نقسم المقاطع على الأيام المتبقية، ونترك وقتًا للحل والمراجعة والراحة.</p>`,
       ],
       [
         "studyDays",
@@ -508,6 +501,20 @@ ${upcoming.length ? `<section class="dash-card"><div class="dash-card-head"><h2>
           block: "start",
         });
       if (b.hasAttribute("data-welcome-skip")) await advance(true);
+      if (b.hasAttribute("data-welcome-custom-time")) {
+        const custom = document.querySelector("#l-hours-custom");
+        if (!custom?.reportValidity() || !custom.value) return;
+        const form = document.querySelector("#welcome-form");
+        let hidden = form.querySelector('input[name="hours"][type="hidden"]');
+        if (!hidden) {
+          hidden = document.createElement("input");
+          hidden.type = "hidden";
+          hidden.name = "hours";
+          form.append(hidden);
+        }
+        hidden.value = custom.value;
+        await advance(false);
+      }
       if (b.dataset.journeyComplete) {
         b.disabled = true;
         await api(
@@ -587,6 +594,14 @@ ${upcoming.length ? `<section class="dash-card"><div class="dash-card-head"><h2>
     }
   };
   const change = (ev) => {
+    if (ev.target.name === "hours" && ev.target.checked) {
+      void advance(false).catch(error);
+      return;
+    }
+    if (["sectionId", "selfLevel", "foundationStarted", "foundationCompleted"].includes(ev.target.name) && ev.target.checked) {
+      void advance(false).catch(error);
+      return;
+    }
     if (ev.target.name === "courseId") {
       ev.target.checked
         ? chosen.add(ev.target.value)
