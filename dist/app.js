@@ -126,7 +126,28 @@ export function render(scroll = true) {
     "forgot-password": "استعادة كلمة المرور",
     "reset-password": "كلمة مرور جديدة",
   };
-  document.title = `رُزمة — ${titles[r] || "مساحة لطموحك"}`;
+  const seoTitle = db.brand.seoTitle || "رُزمة | منصة القدرات والتحصيلي";
+  const seoDescription = db.brand.seoDescription || db.brand.description || "استعد لاختبارات القدرات والتحصيلي مع رُزمة. شروحات وتدريبات واختبارات وخطة مذاكرة في منصة واحدة.";
+  document.title = r === "home" ? seoTitle : `رُزمة — ${titles[r] || "مساحة لطموحك"}`;
+  const updateMeta = (selector, key, value) => {
+    let node = document.querySelector(selector);
+    if (!node) {
+      node = document.createElement("meta");
+      node.setAttribute(key, selector.match(new RegExp(key + '="([^"]+)"'))[1]);
+      document.head.appendChild(node);
+    }
+    node.setAttribute("content", value);
+  };
+  updateMeta('meta[name="description"]', "name", seoDescription);
+  updateMeta('meta[property="og:title"]', "property", seoTitle);
+  updateMeta('meta[property="og:description"]', "property", seoDescription);
+  updateMeta('meta[name="twitter:title"]', "name", seoTitle);
+  updateMeta('meta[name="twitter:description"]', "name", seoDescription);
+  if (db.brand.seoImage) {
+    updateMeta('meta[property="og:image"]', "property", db.brand.seoImage);
+    updateMeta('meta[name="twitter:image"]', "name", db.brand.seoImage);
+  }
+  updateMeta('meta[name="robots"]', "name", db.brand.seoNoIndex ? "noindex,nofollow" : "index,follow,max-image-preview:large");
   const trackKey = route().join("/") || "home";
   if (trackedPage !== trackKey) {
     trackedPage = trackKey;
