@@ -41,7 +41,7 @@ const tabs = [
   ["data", "نسخ البيانات"],
 ];
 export function adminPage() {
-  return `<div class="admin-shell rz-admin-v3"><aside class="admin-nav rz-admin-sidebar"><div class="rz-admin-top"><span class="rz-admin-mark">${icon("layers")}</span><div><b>رُزمة</b><small>مركز الإدارة والتحكم</small></div></div><div class="rz-admin-nav-caption">إدارة المنصة</div><nav class="rz-admin-nav"><div class="admin-nav-brand">${icon("layers")}<div>رُزمة <small>لوحة المالك</small></div></div>${tabs.map(([id, title]) => `<button data-admin-tab="${id}" class="${tab === id ? "active" : ""}">${title}</button>`).join("")}</nav><div class="rz-admin-foot"><span>إدارة آمنة</span><small>تغييراتك تُحفظ حسب صلاحياتك</small></div></aside><section id="admin-content" class="rz-admin-content">${content()}</section></div>`;
+  return `<div class="admin-shell rz-admin-v3"><aside class="admin-nav rz-admin-sidebar"><div class="rz-admin-top"><span class="rz-admin-mark">${icon("layers")}</span><div><b>رُزمة</b><small>مركز الإدارة والتحكم</small></div></div><div class="rz-admin-nav-caption">إدارة المنصة</div><nav class="rz-admin-nav">${tabs.map(([id, title]) => `<button data-admin-tab="${id}" class="${tab === id ? "active" : ""}">${title}</button>`).join("")}</nav><div class="rz-admin-foot"><span>إدارة آمنة</span><small>تغييراتك تُحفظ حسب صلاحياتك</small></div></aside><section id="admin-content" class="rz-admin-content">${content()}</section></div>`;
 }
 const table = (heads, rows) =>
   `<div class="admin-table-wrap"><table><thead><tr>${heads.map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table></div>`;
