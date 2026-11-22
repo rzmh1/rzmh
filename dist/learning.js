@@ -182,45 +182,6 @@ export function mountLearning(kind, id, toast, rerender) {
     const current = choiceStages[choiceStep];
     target.innerHTML = '<div class="welcome-flow-v6"><div class="welcome-flow-top"><span class="eyebrow">اختيار المدرس</span><span class="welcome-flow-progress">' + (choiceStep+1) + " / " + choiceStages.length + '</span></div><div class="welcome-flow-progressbar"><span style="width:' + ((choiceStep+1)/choiceStages.length*100) + '%"></span></div><section class="panel welcome-flow-card"><h1>اختر مدرس ' + stageName(current.stage) + " — " + e(current.track.title) + '</h1><p class="muted">اضغط على المدرس للانتقال مباشرة، أو تخطَّ هذه المرحلة.</p><div class="choice-teachers-v6">' + current.courses.map(course => { const teacher=catalog.instructors.find(t=>t.id===course.instructorId); return '<button type="button" class="welcome-choice choice-teacher-v6" data-choice-course="' + e(course.id) + '"><span class="choice-teacher-avatar">' + e((teacher?.name || "م").slice(0,1)) + '</span><span><b>' + e(teacher?.name || "مصدر مستقل") + '</b><small>' + e(teacher?.specialty || "") + '</small><small>' + e(course.title) + '</small></span>' + icon("arrow") + '</button>'; }).join("") + '</div><div class="welcome-actions welcome-actions-v6">' + (choiceStep ? '<button type="button" class="btn btn-ghost small" data-choice-back>رجوع</button>' : "") + '<button type="button" class="btn btn-ghost small welcome-skip-v6" data-choice-skip>تخطي المرحلة</button></div></section></div>';
     return;
-    const section = me.profile.sectionId,
-      teacher = document.querySelector("#choice-teacher")?.value || "all";
-    const tracks = catalog.tracks.filter(
-      (t) => t.visible && (!section || t.sectionId === section),
-    );
-    target.innerHTML = `${notice("اختر مدرسًا أو مصدرًا مستقلًا لكل مرحلة. يمكنك اختيار أكثر من دورة، أو ترك أي مسار لتكمله لاحقًا. اختيار الدورة لا يتجاوز صلاحيات الاشتراك.")}<div class="choice-toolbar"><div><h2>المحتوى الذي تختاره، هو أساس خطتك.</h2><p>مدد الفيديو معروفة من ملفاتها، وأوقات الحل والمراجعة تقديرات قابلة للتعديل.</p></div><label>تصفية حسب المصدر<select id="choice-teacher"><option value="all">جميع المدرسين والمصادر</option>${catalog.instructors.map((t) => `<option value="${t.id}" ${teacher === t.id ? "selected" : ""}>${e(t.name)}</option>`).join("")}<option value="independent" ${teacher === "independent" ? "selected" : ""}>الدورات المستقلة</option></select></label></div><form id="choices-form">${(me.unavailableCourseChoices || []).length ? `<fieldset class="choice-lane"><legend>اختيارات سابقة غير متاحة حاليًا</legend><p class="muted">تبقى اختياراتك وتقدمك محفوظة عند إخفاء المحتوى. يمكنك إلغاء الاختيار أو الاحتفاظ به حتى يعود.</p>${me.unavailableCourseChoices.map((c) => `<label class="checkbox"><input type="checkbox" name="courseId" value="${e(c.id)}" ${chosen.has(c.id) ? "checked" : ""}><span>${e(c.title)}</span></label>`).join("")}</fieldset>` : ""}${tracks
-      .map(
-        (t) =>
-          `<section class="choice-track"><div class="admin-bar"><h2>${e(t.title)}</h2><a class="text-link" href="#/track/${t.id}">عن المسار ${icon("arrow")}</a></div>${
-            t.coming
-              ? empty(
-                  "المحتوى قادم",
-                  "تقدر تختار مسارًا آخر الآن وتعود عند إطلاقه.",
-                  "language",
-                )
-              : ["foundation", "training", "review"]
-                  .map((stage) => {
-                    const courses = catalog.courses.filter(
-                      (c) =>
-                        c.trackId === t.id &&
-                        c.stage === stage &&
-                        (!c.instructorId ||
-                          catalog.instructors.some(
-                            (t) => t.id === c.instructorId,
-                          ) ||
-                          chosen.has(c.id)) &&
-                        (teacher === "all" ||
-                          (teacher === "independent" && !c.instructorId) ||
-                          c.instructorId === teacher),
-                    );
-                    if (stage === "review" && !courses.length) return "";
-                    return `<fieldset class="choice-lane"><legend>${stageName(stage)}</legend><div class="course-choices">${courses.map(courseChoice).join("") || '<p class="muted">لم تُنشر دورات في هذه المرحلة أو لهذا المصدر بعد. يمكنك تخطيها.</p>'}</div></fieldset>`;
-                  })
-                  .join("")
-          }</section>`,
-      )
-      .join(
-        "",
-      )}<div id="learning-form-error" role="alert" class="form-error"></div><div class="choice-save-bar"><span id="selection-count">${chosen.size} دورات مختارة</span><a class="btn btn-outline" href="#/journey">أكمل الاختيار لاحقًا</a><button type="submit" class="btn btn-primary">احفظ اختياراتي واحسب خطتي ${icon("calendar")}</button></div></form>`;
   }
   function taskLink(t) {
     const s = t.source;
