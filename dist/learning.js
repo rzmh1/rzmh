@@ -53,6 +53,7 @@ const consent = (p) =>
 export function mountLearning(kind, id, toast, rerender) {
   let disposed = false,
     choiceStep = 0,
+    settingsStep = 0,
     choiceStages = [],
     catalog,
     me,
@@ -285,8 +286,33 @@ ${upcoming.length ? `<section class="dash-card"><div class="dash-card-head"><h2>
 </aside></div></div>`;
   }
   function drawSettings() {
-    const p = me.profile;
-    target.innerHTML = `<form id="learning-settings" class="panel"><div class="form-grid">${field("hours", "ساعات المذاكرة يوميًا", p.dailyMinutes ? p.dailyMinutes / 60 : "", "number", 'min="0.25" max="12" step="0.25" required')}${field("examDate", "موعد الاختبار", p.examDate, "date")}${field("targetScore", "الدرجة المستهدفة", p.targetScore, "number", 'min="0" max="100"')}</div><label>أيام المذاكرة</label>${daysInputs(p.studyDays)}${consent(p)}<p class="muted spaced">سيعاد توزيع المتبقي من اليوم وفق وقتك الجديد. ما أنجزته يبقى محفوظًا.</p><button class="btn btn-primary spaced" type="submit">احفظ وأعد حساب خطتي ${icon("calendar")}</button><div id="learning-form-error" class="form-error" role="alert"></div></form>`;
+    const p=me.profile;
+    const titles=["كم ساعة تقدر تذاكر يوميًا؟","متى موعد اختبارك؟","وش الدرجة اللي تستهدفها؟","وش أيام المذاكرة المناسبة لك؟"];
+    const progress=(settingsStep+1)/4*100;
+    let body="";
+    if(settingsStep===0){
+      const hours=p.dailyMinutes?p.dailyMinutes/60:2;
+      body='<div class="welcome-answers settings-hour-options">'+[1,1.5,2,2.5,3,4,5,6].map(v=>'<button type="button" class="welcome-choice '+(hours===v?'is-selected':'')+'" data-settings-hours="'+v+'"><b>'+v+' ساعات</b></button>').join("")+'</div><div class="field"><label for="settings-custom-hours">أو اكتب عدد الساعات</label><input id="settings-custom-hours" type="number" min="0.25" max="12" step="0.25" value="'+e(hours)+'" /></div>';
+    }else if(settingsStep===1){
+      body=field("examDate","موعد الاختبار",p.examDate,"date")+'<p class="muted">اختر التاريخ للانتقال تلقائيًا للخطوة التالية.</p>';
+    }else if(settingsStep===2){
+      body=field("targetScore","الدرجة المستهدفة",p.targetScore??"","number",'min="0" max="100" placeholder="مثال: 90"')+'<p class="muted">تقدر تتخطى تحديد الدرجة إذا ما قررت هدفك بعد.</p>';
+    }else{
+      body=daysInputs(p.studyDays)+'<p class="muted">اختر الأيام التي تناسب جدولك. تقدر تختار أكثر من يوم.</p>'+consent(p);
+    }
+    target.innerHTML='<div class="welcome-flow-v6 settings-wizard"><div class="welcome-flow-top"><span class="eyebrow">تخصيص خطتك</span><span class="welcome-flow-progress">'+(settingsStep+1)+' / 4</span></div><div class="welcome-flow-progressbar"><span style="width:'+progress+'%"></span></div><form id="learning-settings" class="panel welcome-flow-card" data-settings-step="'+settingsStep+'"><h1>'+titles[settingsStep]+'</h1><p class="muted">'+(settingsStep===0?"اختر وقتك اليومي.":settingsStep===1?"حدد تاريخ اختبارك.":settingsStep===2?"حدد هدفًا واقعيًا يناسبك.":"حدد أيام المذاكرة التي تناسبك.")+'</p><div class="welcome-answers">'+body+'</div><div id="learning-form-error" class="form-error" role="alert"></div><div class="welcome-actions welcome-actions-v6">'+(settingsStep?'<button type="button" class="btn btn-ghost small" data-settings-back>رجوع</button>':"")+'<button type="button" class="btn btn-ghost small welcome-skip-v6" data-settings-skip>تخطي</button>'+(settingsStep===3?'<button type="submit" class="btn btn-primary">حفظ الخطة '+icon("arrow")+'</button>':settingsStep===1?'<button type="submit" class="btn btn-primary">متابعة '+icon("arrow")+'</button>':settingsStep===2?'<button type="submit" class="btn btn-primary">متابعة '+icon("arrow")+'</button>':"")+'</div></form></div>';
+  }
+  async function saveSettingsStep(skip=false){
+    const form=document.querySelector("#learning-settings");if(!form)return;
+    const fd=new FormData(form),input={};
+    if(settingsStep===0){const custom=Number(document.querySelector("#settings-custom-hours")?.value||0);if(!skip&&(!Number.isFinite(custom)||custom<0.25||custom>12)){toast("أدخل وقتًا بين 15 دقيقة و12 ساعة.");return;}if(!skip)input.dailyMinutes=Math.round(custom*60);}
+    if(settingsStep===1&&!skip){const date=fd.get("examDate");if(date)input.examDate=date;}
+    if(settingsStep===2&&!skip){const score=fd.get("targetScore");input.targetScore=score?Number(score):null;}
+    if(settingsStep===3&&!skip){input.studyDays=fd.getAll("studyDays").map(Number);input.aiContextConsent=fd.has("aiContextConsent");}
+    if(Object.keys(input).length){const result=await api("/api/learning/profile",{method:"PUT",body:input});me.profile=result.profile;}
+    if(settingsStep<3){settingsStep++;drawSettings();return;}
+    await api("/api/learning/plan",{method:"POST",body:{}});
+    location.hash="#/journey";toast("حُفظت اختياراتك وأُعيد حساب خطتك.");
   }
   async function listTeachers() {
     const q = document.querySelector("#instructor-query")?.value || "",
@@ -393,6 +419,9 @@ ${upcoming.length ? `<section class="dash-card"><div class="dash-card-head"><h2>
     const b = ev.target.closest("button");
     if (!b) return;
     try {
+      if(b.hasAttribute("data-settings-back")){settingsStep=Math.max(0,settingsStep-1);drawSettings();return;}
+      if(b.hasAttribute("data-settings-skip")){await saveSettingsStep(true);return;}
+      if(b.dataset.settingsHours){const v=Number(b.dataset.settingsHours);const result=await api("/api/learning/profile",{method:"PUT",body:{dailyMinutes:Math.round(v*60)}});me.profile=result.profile;settingsStep=1;drawSettings();return;}
       if (b.dataset.choiceTeacher !== undefined) { const stage=choiceStages[choiceStep]; if(stage){ for(const x of stage.courses) chosen.delete(x.id); for(const x of stage.courses) if((x.instructorId || "independent")===b.dataset.choiceTeacher) chosen.add(x.id); await api("/api/learning/selections",{method:"PUT",body:{courseIds:[...chosen]}}); choiceStep++; if(choiceStep>=choiceStages.length) location.hash="#/journey"; else drawChoices(); } return; }
       if (b.hasAttribute("data-choice-skip")) { const stage=choiceStages[choiceStep]; if(stage){for(const x of stage.courses) chosen.delete(x.id); await api("/api/learning/selections",{method:"PUT",body:{courseIds:[...chosen]}}); choiceStep++; if(choiceStep>=choiceStages.length) location.hash="#/journey"; else drawChoices();} return; }
       if (b.hasAttribute("data-choice-back")) { choiceStep=Math.max(0,choiceStep-1); drawChoices(); return; }
@@ -526,22 +555,9 @@ ${upcoming.length ? `<section class="dash-card"><div class="dash-card-head"><h2>
         location.hash = "#/journey";
       }
       if (form.id === "learning-settings") {
-        const fd = new FormData(form);
-        await api("/api/learning/profile", {
-          method: "PUT",
-          body: {
-            dailyMinutes: Math.round(Number(fd.get("hours")) * 60),
-            examDate: fd.get("examDate") || null,
-            targetScore: fd.get("targetScore")
-              ? Number(fd.get("targetScore"))
-              : null,
-            studyDays: fd.getAll("studyDays").map(Number),
-            aiContextConsent: fd.has("aiContextConsent"),
-          },
-        });
-        await api("/api/learning/plan", { method: "POST", body: {} });
-        location.hash = "#/journey";
-        toast("حُفظ وقتك وأعيد حساب المتبقي.");
+        if(settingsStep===1){const fd=new FormData(form);const date=fd.get("examDate");if(!date){toast("اختر موعد الاختبار أو اضغط تخطي.");return;}const result=await api("/api/learning/profile",{method:"PUT",body:{examDate:date}});me.profile=result.profile;settingsStep=2;drawSettings();}
+        else if(settingsStep===2){await saveSettingsStep(false);}
+        else if(settingsStep===3){await saveSettingsStep(false);}
       }
       if (form.id === "instructor-search") await listTeachers();
     } catch (err) {
