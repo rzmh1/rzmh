@@ -23,7 +23,7 @@ import { header, footer, icon, btn, notice, empty, courseCard } from "./ui.js";
 import { inStudentSpace, studentFrame } from "./student-shell.js";
 import * as pages from "./pages.js";
 import { leaksPage, mountLeaks } from "./leaks.js";
-import { mountDrawing } from "./drawing.js";
+import { mountDrawing, mountLessonTools } from "./drawing.js";
 import { adminPage, mountAdmin } from "./admin.js";
 import { api, account, setSession } from "./api.js";
 import {
@@ -426,7 +426,7 @@ export function render(scroll = true) {
     update();
   }
   if (r === "lesson") {
-    if (account.user) cleanups.push(mountLessonStudy(toast));
+    if (account.user) { cleanups.push(mountLessonStudy(toast)); cleanups.push(mountLessonTools(toast)); }
     const params = new URLSearchParams(location.hash.split("?")[1] || ""),
       start = Number(params.get("start"));
     const video = document.querySelector(".lesson-video");
