@@ -855,3 +855,5 @@ body.in-app {
 .lesson-tools-grid button.active{background:var(--purple-light);border-color:var(--purple);color:var(--purple)}
 .lesson-tools-hint{font-size:10px;color:var(--muted);line-height:1.7;margin-top:10px}
 @media(max-width:720px){.ai-chat-app-v6{min-height:calc(100dvh - 140px)}.ai-chat-v6{max-height:calc(100dvh - 290px);min-height:42vh}.tutor-composer-v6{bottom:70px}.lesson-tools-fab{right:16px;bottom:86px;width:50px;height:50px}.lesson-tools-panel{right:12px;bottom:145px}}
+
+.lesson-notebook-list{display:grid;gap:7px;max-height:220px;overflow:auto;margin-top:10px}.lesson-notebook-item{display:flex;align-items:center;gap:9px;padding:7px;border:1px solid var(--border);border-radius:10px;background:var(--bg);text-align:start;font-size:11px}.lesson-notebook-item img{width:56px;height:42px;object-fit:cover;border-radius:6px}.lesson-notebook-item span{overflow-wrap:anywhere}
