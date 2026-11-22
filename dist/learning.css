@@ -1270,3 +1270,18 @@
 .choice-teacher-v6 small{font-size:11px;color:var(--muted)}
 .choice-teacher-avatar{width:42px;height:42px;display:grid;place-items:center;border-radius:50%;background:var(--purple-light);color:var(--purple);font-weight:800}
 @media(max-width:640px){.welcome-flow-v6{min-height:calc(100dvh - 215px)}.welcome-flow-card{padding:20px}.welcome-flow-card h1{font-size:22px}}
+
+/* Compact hour choices in the onboarding wizard */
+.study-hour-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:12px 0 20px}
+.study-hour{position:relative;cursor:pointer;margin:0}
+.study-hour input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
+.study-hour span{min-height:82px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:1px solid var(--border);border-radius:999px;background:var(--surface);transition:border-color .18s,background .18s,transform .18s}
+.study-hour b{font-size:25px;line-height:1.1}
+.study-hour small{font-size:11px;color:var(--muted)}
+.study-hour input:checked+span{border:2px solid var(--purple);background:var(--purple-light);color:var(--purple);transform:translateY(-1px)}
+.study-hour input:focus-visible+span{outline:3px solid var(--purple);outline-offset:3px}
+.study-custom-time{display:flex;align-items:end;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:14px;border:1px solid var(--border);border-radius:14px;background:var(--soft);margin-bottom:12px}
+.study-custom-time>label{font-size:12px;font-weight:600}
+.study-custom-time>div{display:flex;gap:8px;align-items:center;flex:1;max-width:340px}
+.study-custom-time input{width:100%;min-width:90px;min-height:44px;padding:8px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--ink)}
+@media(max-width:560px){.study-hour-grid{gap:9px}.study-hour span{min-height:72px}.study-custom-time>div{max-width:none}.study-custom-time .btn{white-space:nowrap}}
