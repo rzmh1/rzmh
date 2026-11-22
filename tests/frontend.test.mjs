@@ -20,12 +20,35 @@ test("store, routes, mobile styles, paid lesson gate, owner workspace and paymen
     ui = await import("../dist/ui.js"),
     live = await import("../dist/live-pages.js"),
     { account } = await import("../dist/api.js");
+  globalThis.location = { hash: "#/reset-password?email=student%40example.test" };
   const html = pages.home();
   assert(!html.includes("بدايات صغيرة"));
   assert(!html.includes("learning-section"));
   assert(html.includes("استكشف الأقسام"));
   assert(!html.includes("#/discover"));
   assert(html.includes("اشترك في رُزمة"));
+  const tutorHtml = live.tutorLive();
+  assert(tutorHtml.includes("ai-chat-app-v6"));
+  assert(tutorHtml.includes("tutor-composer-v6"));
+  assert(!tutorHtml.includes("tutor-draw-panel"));
+  assert(tutorHtml.includes("إرفاق صورة سؤال"));
+  assert(!tutorHtml.includes("application/pdf"));
+  const boardHtml = live.teacherBoardMarkup("الخطوة الأولى\\nس = ٦");
+  assert(boardHtml.includes("سبورة مدرس رُزمة"));
+  assert(boardHtml.includes("data-board-step"));
+  const drawnBoard = live.teacherBoardMarkup('الحل بالرسم\n```diagram\n{"shapes":[{"type":"line","x1":10,"y1":20,"x2":30,"y2":40}]}\n```');
+  assert(drawnBoard.includes("tutor-teacher-canvas"));
+  assert(drawnBoard.includes("data-teacher-diagram"));
+  const signupHtml = live.authLive(true);
+  const loginHtml = live.authLive();
+  const resetHtml = live.resetPasswordLive();
+  assert(signupHtml.includes('minlength="8"'));
+  assert(signupHtml.includes("٨ أحرف على الأقل"));
+  assert(!signupHtml.includes("١٢ حرفًا"));
+  assert(!loginHtml.includes('minlength="8"'));
+  assert(loginHtml.includes("كلمة المرور المرتبطة بحسابك"));
+  assert(resetHtml.includes('minlength="8"'));
+  assert(resetHtml.includes("٨ أحرف"));
   for (const price of ["19.99", "39.99", "59.99", "99.99"])
     assert(html.includes(price));
   const css = await readFile(
@@ -55,10 +78,12 @@ test("store, routes, mobile styles, paid lesson gate, owner workspace and paymen
     pages.scratchPage(),
     live.authLive(),
     live.authLive(true),
+    live.adminAuthLive(),
     live.reviewOrder("year"),
     live.paymentStatus(true),
     live.paymentStatus(false),
     live.tutorLive(),
+    live.teacherBoardMarkup("الخطوة الأولى\\nس = ٦"),
     pages.aboutPage(),
   ];
   for (const [i, s] of fixtures.entries()) {

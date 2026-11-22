@@ -2,7 +2,7 @@ name: Node 24 production checks
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, codex/ruzmah-full-redesign]
 permissions:
   contents: read
 jobs:

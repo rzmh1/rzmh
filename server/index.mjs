@@ -9,7 +9,7 @@ import http from "node:http";
 import { readFile, stat, mkdir, readdir, unlink } from "node:fs/promises";
 import { resolve, extname, join, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { randomUUID, randomBytes } from "node:crypto";
+import { randomUUID, randomBytes, randomInt, createHmac } from "node:crypto";
 import { config } from "./config.mjs";
 import { openDatabase, saveContent, PLANS } from "./database.mjs";
 import {
@@ -28,6 +28,7 @@ import { checkout, handleStripeWebhook, testPayment } from "./payments.mjs";
 import { testAI, tutor } from "./ai.mjs";
 import { storageService } from "./storage.mjs";
 import { frame, codeInput, saveCode } from "./custom.mjs";
+import { sendEmail, sendBatchEmails, verificationMessage, resetMessage } from "./email.mjs";
 const staticRoot = fileURLToPath(new URL("../dist/", import.meta.url));
 const safeUser = (u) =>
   u ? { id: u.id, name: u.name, email: u.email, role: u.role } : null;
@@ -38,16 +39,26 @@ export function createApp(cfg = config()) {
     storage = storageService(store);
   storage.resume();
   const learning = learningService(store);
+  let lastRateLimitCleanup = 0;
+  const cleanupRateLimits = (force = false) => {
+    const time = Date.now();
+    if (!force && time - lastRateLimitCleanup < 10 * 60 * 1000) return;
+    db.prepare("DELETE FROM rate_limits WHERE expires<=?").run(time);
+    lastRateLimitCleanup = time;
+  };
+  cleanupRateLimits(true);
   const rate = (key, max = 20, window = 60000) => {
+    const now = Date.now();
+    cleanupRateLimits();
     const r = db.prepare("SELECT * FROM rate_limits WHERE key=?").get(key);
-    if (r && r.expires > Date.now()) {
+    if (r && r.expires > now) {
       if (r.count >= max)
         fail(429, "محاولات كثيرة. انتظر قليلًا ثم حاول مجددًا.");
       db.prepare("UPDATE rate_limits SET count=count+1 WHERE key=?").run(key);
     } else
       db.prepare(
         "INSERT INTO rate_limits VALUES(?,1,?) ON CONFLICT(key) DO UPDATE SET count=1,expires=excluded.expires",
-      ).run(key, Date.now() + window);
+      ).run(key, now + window);
   };
   function authenticate(req) {
     const cookie = req.headers.cookie
@@ -202,6 +213,44 @@ export function createApp(cfg = config()) {
       learning: user ? learning.me(user) : null,
     };
   }
+  function createSession(user, res) {
+    db.prepare("DELETE FROM sessions WHERE expires<?").run(Date.now());
+    const t = token(),
+      csrf = token(),
+      expires = Date.now() + 7 * 86400000;
+    db.prepare("INSERT INTO sessions VALUES(?,?,?,?)").run(
+      hash(t),
+      user.id,
+      csrf,
+      expires,
+    );
+    res.setHeader(
+      "Set-Cookie",
+      `ruzmah_session=${t}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800${cfg.production ? "; Secure" : ""}`,
+    );
+    return sessionResponse(user, { csrf });
+  }
+  const broadcastRecipients = () =>
+    db.prepare(
+      "SELECT DISTINCT u.id,u.email FROM users u JOIN subscriptions s ON s.user_id=u.id WHERE u.disabled=0 AND u.email_verified=1 AND s.status='active' AND s.start_at<=? AND s.end_at>? ORDER BY u.email",
+    ).all(now(), now());
+  const codeHash = (code) => hash((cfg.key || "local-only") + ":" + code);
+  async function sendCode(table, user, purpose) {
+    const code = String(randomInt(100000, 1000000));
+    db.prepare(
+      `INSERT INTO ${table}(user_id,code_hash,expires,attempts,created_at) VALUES(?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET code_hash=excluded.code_hash,expires=excluded.expires,attempts=0,created_at=excluded.created_at`,
+    ).run(user.id, codeHash(code), Date.now() + 10 * 60000, 0, now());
+    try {
+      await sendEmail(cfg, {
+        to: user.email,
+        subject: purpose === "verify" ? "رمز التحقق من بريدك — رُزمة" : "رمز استعادة كلمة المرور — رُزمة",
+        text: purpose === "verify" ? verificationMessage(code) : resetMessage(code),
+      });
+    } catch (err) {
+      db.prepare(`DELETE FROM ${table} WHERE user_id=?`).run(user.id);
+      throw err;
+    }
+  }
   async function route(req, res) {
     const url = new URL(req.url, cfg.origin),
       path = url.pathname,
@@ -251,50 +300,145 @@ export function createApp(cfg = config()) {
         return send(sessionResponse(user, session));
       if (path === "/api/content" && method === "GET")
         return send(contentFor(user));
-      if (
-        ["/api/auth/login", "/api/auth/register"].includes(path) &&
-        method === "POST"
-      ) {
+      if (path === "/api/auth/register" && method === "POST") {
         rate("auth:" + clientIp, 12, 900000);
         const b = await jsonBody(req, 16000),
-          mail = email(b.email);
-        let u;
-        if (path.endsWith("register")) {
-          const name = cleanText(b.name, 80);
-          if (!name) fail(400, "أدخل اسم العرض");
-          const pass = await passwordHash(b.password);
-          try {
-            db.prepare(
-              "INSERT INTO users(id,email,name,password_hash,role,created_at) VALUES(?,?,?,?,?,?)",
-            ).run(randomUUID(), mail, name, pass, "student", now());
-          } catch {
-            fail(400, "تعذر إنشاء الحساب بهذا البريد. جرّب تسجيل الدخول.");
-          }
-          u = db.prepare("SELECT * FROM users WHERE email=?").get(mail);
-          store.audit(u.id, "auth.register", u.id);
-        } else {
-          u = db
-            .prepare("SELECT * FROM users WHERE email=? AND disabled=0")
-            .get(mail);
-          if (!u || !(await passwordVerify(b.password, u.password_hash)))
-            fail(401, "البريد الإلكتروني أو كلمة المرور غير صحيحة");
-          store.audit(u.id, "auth.login", u.id);
+          mail = email(b.email),
+          name = cleanText(b.name, 80);
+        if (!name) fail(400, "أدخل اسم العرض");
+        if (cfg.requireEmailVerification && (!cfg.mail?.apiKey || !cfg.mail?.from))
+          fail(503, "التسجيل يحتاج إعداد خدمة البريد أولًا. لم يُنشأ الحساب؛ تواصل مع إدارة رُزمة.");
+        const pass = await passwordHash(b.password),
+          id = randomUUID(),
+          verified = cfg.requireEmailVerification ? 0 : 1;
+        try {
+          db.prepare(
+            "INSERT INTO users(id,email,name,password_hash,role,created_at,email_verified) VALUES(?,?,?,?,?,?,?)",
+          ).run(id, mail, name, pass, "student", now(), verified);
+        } catch {
+          fail(400, "تعذر إنشاء الحساب بهذا البريد. جرّب تسجيل الدخول.");
         }
-        db.prepare("DELETE FROM sessions WHERE expires<?").run(Date.now());
-        const t = token(),
-          csrf = token(),
-          expires = Date.now() + 7 * 86400000;
-        db.prepare("INSERT INTO sessions VALUES(?,?,?,?)").run(
-          hash(t),
-          u.id,
-          csrf,
-          expires,
-        );
-        res.setHeader(
-          "Set-Cookie",
-          `ruzmah_session=${t}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800${cfg.production ? "; Secure" : ""}`,
-        );
-        return send(sessionResponse(u, { csrf }));
+        const u = db.prepare("SELECT * FROM users WHERE id=?").get(id);
+        if (cfg.requireEmailVerification) {
+          try {
+            await sendCode("email_verification_codes", u, "verify");
+          } catch (err) {
+            db.prepare("DELETE FROM users WHERE id=? AND email_verified=0").run(id);
+            throw err;
+          }
+          store.audit(u.id, "auth.register.pending", u.id);
+          return send({ verificationRequired: true, email: mail }, 201);
+        }
+        store.audit(u.id, "auth.register", u.id);
+        return send(createSession(u, res));
+      }
+      if (path === "/api/auth/admin-login" && method === "POST") {
+        rate("admin-auth:" + clientIp, 8, 900000);
+        const b = await jsonBody(req, 16000),
+          mail = email(b.email),
+          u = db
+            .prepare("SELECT * FROM users WHERE email=? AND role='admin' AND disabled=0")
+            .get(mail);
+        if (!u || !(await passwordVerify(b.password, u.password_hash)))
+          fail(401, "بيانات دخول المالك غير صحيحة");
+        if (!u.email_verified)
+          fail(403, "تحقق من بريد المالك أولًا، ثم حاول تسجيل الدخول.");
+        store.audit(u.id, "auth.admin_login", u.id);
+        return send(createSession(u, res));
+      }
+      if (path === "/api/auth/login" && method === "POST") {
+        rate("auth:" + clientIp, 12, 900000);
+        const b = await jsonBody(req, 16000),
+          mail = email(b.email),
+          u = db
+            .prepare("SELECT * FROM users WHERE email=? AND role='student' AND disabled=0")
+            .get(mail);
+        if (!u || !(await passwordVerify(b.password, u.password_hash)))
+          fail(401, "البريد الإلكتروني أو كلمة المرور غير صحيحة");
+        if (!u.email_verified)
+          fail(403, "تحقق من بريدك الإلكتروني أولًا، ثم سجّل الدخول.");
+        store.audit(u.id, "auth.login", u.id);
+        return send(createSession(u, res));
+      }
+      if (path === "/api/auth/verify-email" && method === "POST") {
+        rate("verify-ip:" + clientIp, 20, 900000);
+        const b = await jsonBody(req, 2000),
+          mail = email(b.email),
+          code = cleanText(b.code, 6);
+        rate("verify-email:" + mail, 8, 900000);
+        if (!/^\d{6}$/.test(code)) fail(400, "أدخل رمز التحقق المكوّن من ٦ أرقام.");
+        const u = db.prepare("SELECT * FROM users WHERE email=? AND disabled=0").get(mail),
+          record = u && db.prepare("SELECT * FROM email_verification_codes WHERE user_id=?").get(u.id);
+        if (!u || u.email_verified || !record) fail(400, "الرمز غير صالح أو انتهت صلاحيته. اطلب رمزًا جديدًا.");
+        if (record.expires <= Date.now()) {
+          db.prepare("DELETE FROM email_verification_codes WHERE user_id=?").run(u.id);
+          fail(400, "انتهت صلاحية الرمز. اطلب رمزًا جديدًا.");
+        }
+        if (!equal(codeHash(code), record.code_hash)) {
+          if (record.attempts + 1 >= 5)
+            db.prepare("DELETE FROM email_verification_codes WHERE user_id=?").run(u.id);
+          else
+            db.prepare("UPDATE email_verification_codes SET attempts=attempts+1 WHERE user_id=?").run(u.id);
+          fail(400, "رمز التحقق غير صحيح.");
+        }
+        db.prepare("UPDATE users SET email_verified=1 WHERE id=?").run(u.id);
+        db.prepare("DELETE FROM email_verification_codes WHERE user_id=?").run(u.id);
+        store.audit(u.id, "auth.email_verified", u.id);
+        const verifiedUser = db.prepare("SELECT * FROM users WHERE id=?").get(u.id);
+        return send(createSession(verifiedUser, res));
+      }
+      if (path === "/api/auth/resend-verification" && method === "POST") {
+        rate("verify-resend-ip:" + clientIp, 5, 900000);
+        const b = await jsonBody(req, 1000), mail = email(b.email);
+        rate("verify-resend-email:" + mail, 3, 900000);
+        const u = db.prepare("SELECT * FROM users WHERE email=? AND disabled=0 AND email_verified=0").get(mail);
+        if (u && cfg.mail?.apiKey && cfg.mail?.from)
+          await sendCode("email_verification_codes", u, "verify");
+        return send({ ok: true, message: "إذا كان الحساب يحتاج تحققًا، فسيصلك رمز جديد." });
+      }
+      if (path === "/api/auth/forgot-password" && method === "POST") {
+        rate("forgot-ip:" + clientIp, 8, 900000);
+        const b = await jsonBody(req, 1000), mail = email(b.email);
+        rate("forgot-email:" + mail, 3, 900000);
+        const u = db.prepare("SELECT * FROM users WHERE email=? AND disabled=0 AND email_verified=1").get(mail);
+        if (u && cfg.mail?.apiKey && cfg.mail?.from) {
+          try {
+            await sendCode("password_reset_codes", u, "reset");
+            store.audit(u.id, "auth.password_reset_requested", u.id);
+          } catch {
+            // Keep the same public response for existing and unknown addresses.
+          }
+        }
+        return send({ ok: true, message: "إذا كان البريد مسجلًا ومؤكدًا، فستصلك رسالة برمز الاستعادة." });
+      }
+      if (path === "/api/auth/reset-password" && method === "POST") {
+        rate("reset-ip:" + clientIp, 10, 900000);
+        const b = await jsonBody(req, 3000),
+          mail = email(b.email),
+          code = cleanText(b.code, 6),
+          newHash = await passwordHash(b.password);
+        rate("reset-email:" + mail, 8, 900000);
+        if (!/^\d{6}$/.test(code)) fail(400, "أدخل رمز الاستعادة المكوّن من ٦ أرقام.");
+        const u = db.prepare("SELECT * FROM users WHERE email=? AND disabled=0 AND email_verified=1").get(mail),
+          record = u && db.prepare("SELECT * FROM password_reset_codes WHERE user_id=?").get(u.id);
+        if (!u || !record) fail(400, "رمز الاستعادة غير صالح أو انتهت صلاحيته.");
+        if (record.expires <= Date.now()) {
+          db.prepare("DELETE FROM password_reset_codes WHERE user_id=?").run(u.id);
+          fail(400, "انتهت صلاحية الرمز. اطلب الاستعادة مجددًا.");
+        }
+        if (!equal(codeHash(code), record.code_hash)) {
+          if (record.attempts + 1 >= 5)
+            db.prepare("DELETE FROM password_reset_codes WHERE user_id=?").run(u.id);
+          else
+            db.prepare("UPDATE password_reset_codes SET attempts=attempts+1 WHERE user_id=?").run(u.id);
+          fail(400, "رمز الاستعادة غير صحيح.");
+        }
+        db.prepare("UPDATE users SET password_hash=? WHERE id=?").run(newHash, u.id);
+        db.prepare("DELETE FROM sessions WHERE user_id=?").run(u.id);
+        db.prepare("DELETE FROM password_reset_codes WHERE user_id=?").run(u.id);
+        db.prepare("DELETE FROM email_verification_codes WHERE user_id=?").run(u.id);
+        store.audit(u.id, "auth.password_reset_completed", u.id);
+        return send({ ok: true });
       }
       if (path === "/api/auth/logout" && method === "POST") {
         if (session)
@@ -570,8 +714,12 @@ export function createApp(cfg = config()) {
           await tutor(
             store,
             user,
-            await jsonBody(req, 20000),
+            await jsonBody(req, 8 * 1024 * 1024),
             learning.permittedContext(user),
+            {
+              ...learning.catalog(user),
+              files: store.getContent().files,
+            },
           ),
         );
       }
@@ -616,6 +764,214 @@ export function createApp(cfg = config()) {
         if (!/^[a-z-]{1,30}$/.test(b.page)) fail(400, "صفحة غير صالحة");
         store.audit(user?.id || null, "page.view", b.page);
         return send({ ok: true });
+      }
+      if (path === "/api/leaks" && method === "GET") {
+        required(user);
+        if (user.role !== "admin" && !store.entitled(user))
+          fail(403, "قسم التسريبات متاح ضمن اشتراك رُزمة");
+        const rows = db
+          .prepare(
+            "SELECT id,track,subject,public_topic AS topic,public_description AS description,exam_date,created_at FROM leak_reports WHERE status='approved' AND public_topic IS NOT NULL AND public_description IS NOT NULL ORDER BY created_at DESC LIMIT 200",
+          )
+          .all();
+        const counts = new Map(
+          db.prepare(
+            "SELECT track,subject,lower(trim(public_topic)) AS topic,count(*) AS total FROM leak_reports WHERE status='approved' AND public_topic IS NOT NULL GROUP BY track,subject,lower(trim(public_topic))",
+          ).all().map((row) => [
+            [row.track, row.subject, row.topic].join("\u0000"),
+            row.total,
+          ]),
+        );
+        return send({
+          items: rows.map((row) => ({
+            ...row,
+            similarCount: counts.get(
+              [row.track, row.subject, row.topic.trim().toLocaleLowerCase()].join("\u0000"),
+            ) || 1,
+          })),
+        });
+      }
+      if (path === "/api/leaks" && method === "POST") {
+        required(user);
+        if (user.role !== "admin" && !store.entitled(user))
+          fail(403, "إرسال الإفادات متاح ضمن اشتراك رُزمة");
+        rate("leaks:create:" + user.id, 5, 3600000);
+        const b = await jsonBody(req, 6000);
+        const track = cleanText(b.track, 20),
+          subject = cleanText(b.subject, 30),
+          topic = cleanText(b.topic, 100),
+          description = cleanText(b.description, 1200),
+          examDate = b.examDate ? cleanText(b.examDate, 10) : null;
+        if (!["qudrat", "tahsili", "step"].includes(track))
+          fail(400, "اختر مسارًا تعليميًا صحيحًا");
+        if (
+          !["quantitative", "verbal", "math", "physics", "chemistry", "biology", "english", "other"].includes(subject)
+        )
+          fail(400, "اختر تصنيفًا صحيحًا");
+        if (topic.length < 2 || description.length < 25)
+          fail(400, "اكتب موضوعًا ووصفًا واضحًا لا يقل عن ٢٥ حرفًا");
+        if (examDate && (!/^\d{4}-\d{2}-\d{2}$/.test(examDate) || Number.isNaN(Date.parse(examDate + "T00:00:00Z"))))
+          fail(400, "تاريخ التجربة غير صالح");
+        if (b.rightsConfirmed !== true)
+          fail(400, "أكد أن المشاركة لا تتضمن نصًا أو صورة سرية أو محمية");
+        const id = randomUUID();
+        db.prepare(
+          "INSERT INTO leak_reports(id,user_id,track,subject,topic,description,exam_date,rights_confirmed,created_at) VALUES(?,?,?,?,?,?,?,?,?)",
+        ).run(id, user.id, track, subject, topic, description, examDate, 1, now());
+        store.audit(user.id, "leak.submit", id, { track, subject });
+        return send({ id, status: "pending" }, 201);
+      }
+      const leakFlagMatch = /^\/api\/leaks\/([\w-]+)\/report$/.exec(path);
+      if (leakFlagMatch && method === "POST") {
+        required(user);
+        if (user.role !== "admin" && !store.entitled(user))
+          fail(403, "الإبلاغ متاح ضمن اشتراك رُزمة");
+        rate("leaks:report:" + user.id, 10, 3600000);
+        const b = await jsonBody(req, 1000),
+          reason = cleanText(b.reason || "", 100);
+        if (!["inaccurate", "privacy", "copyright", "other"].includes(reason))
+          fail(400, "اختر سببًا صحيحًا للإبلاغ");
+        const id = randomUUID();
+        try {
+          db.prepare(
+            "INSERT INTO leak_flags(id,leak_id,user_id,reason,created_at) SELECT ?,id,?,?,? FROM leak_reports WHERE id=? AND status='approved'",
+          ).run(id, user.id, reason, now(), leakFlagMatch[1]);
+        } catch {
+          fail(409, "سبق أن أبلغت عن هذه المشاركة");
+        }
+        const flag = db.prepare("SELECT changes() AS n").get();
+        if (!flag.n) fail(404, "المشاركة غير موجودة");
+        store.audit(user.id, "leak.report", leakFlagMatch[1], { reason });
+        return send({ ok: true });
+      }
+      if (path === "/api/admin/broadcasts" && method === "GET") {
+        return send(
+          db.prepare(
+            "SELECT id,subject,recipient_count,sent_count,status,created_at,sent_at FROM broadcasts ORDER BY created_at DESC LIMIT 30",
+          ).all(),
+        );
+      }
+      if (path === "/api/admin/broadcasts/preview" && method === "POST") {
+        const b = await jsonBody(req, 6000),
+          subject = cleanText(b.subject || "", 120),
+          message = cleanText(b.message || "", 4000);
+        if (subject.length < 3 || message.length < 20)
+          fail(400, "اكتب عنوانًا واضحًا ورسالة لا تقل عن ٢٠ حرفًا.");
+        if (b.serviceOnly !== true)
+          fail(400, "أكد أن الرسالة تشغيلية ومخصصة للمشتركين الحاليين.");
+        const recipients = broadcastRecipients(),
+          expires = Date.now() + 5 * 60000,
+          fingerprint = hash(recipients.map((recipient) => recipient.id).join(","));
+        const previewPayload = JSON.stringify({
+          adminId: user.id,
+          subject,
+          message,
+          recipientCount: recipients.length,
+          fingerprint,
+          expires,
+        });
+        const previewToken =
+          expires + "." +
+          createHmac("sha256", cfg.key).update(previewPayload).digest("hex");
+        return send({ recipientCount: recipients.length, subject, message, previewToken, mailConfigured: !!cfg.mail?.apiKey && !!cfg.mail?.from });
+      }
+      if (path === "/api/admin/broadcasts/send" && method === "POST") {
+        if (!cfg.mail?.apiKey || !cfg.mail?.from)
+          fail(503, "أضف إعدادات البريد وتحقق من نطاق الإرسال قبل إرسال الرسائل.");
+        const b = await jsonBody(req, 6000),
+          subject = cleanText(b.subject || "", 120),
+          message = cleanText(b.message || "", 4000),
+          confirmCount = Number(b.confirmCount),
+          previewToken = cleanText(b.previewToken || "", 200);
+        if (subject.length < 3 || message.length < 20 || b.serviceOnly !== true)
+          fail(400, "بيانات الرسالة أو تأكيد طبيعتها التشغيلية غير مكتمل.");
+        if (!Number.isInteger(confirmCount) || confirmCount < 1)
+          fail(400, "اعرض عدد المستلمين وراجعه قبل الإرسال.");
+        const recipients = broadcastRecipients();
+        if (recipients.length !== confirmCount)
+          fail(409, "تغير عدد المشتركين المؤهلين منذ المعاينة. أعد المعاينة قبل الإرسال.");
+        if (!recipients.length) fail(400, "لا يوجد مشتركون نشطون ببريد مؤكد.");
+        const [expiryText, signature] = previewToken.split("."),
+          expires = Number(expiryText),
+          fingerprint = hash(recipients.map((recipient) => recipient.id).join(","));
+        if (!Number.isSafeInteger(expires) || expires <= Date.now() || !/^[a-f0-9]{64}$/.test(signature || ""))
+          fail(409, "انتهت المعاينة أو لم تعد صالحة. أعد المعاينة قبل الإرسال.");
+        const previewPayload = JSON.stringify({
+          adminId: user.id,
+          subject,
+          message,
+          recipientCount: recipients.length,
+          fingerprint,
+          expires,
+        });
+        const expectedSignature = createHmac("sha256", cfg.key).update(previewPayload).digest("hex");
+        if (!equal(signature, expectedSignature))
+          fail(409, "تغير نص الرسالة أو بيانات المعاينة. أعد المعاينة قبل الإرسال.");
+        rate("broadcast:" + user.id, 1, 3600000);
+        const id = randomUUID();
+        db.prepare(
+          "INSERT INTO broadcasts(id,subject,message,recipient_count,status,created_by,created_at) VALUES(?,?,?,?,?,?,?)",
+        ).run(id, subject, message, recipients.length, "sending", user.id, now());
+        try {
+          const result = await sendBatchEmails(cfg, recipients, {
+            subject,
+            text: message,
+            batchId: id,
+          });
+          db.prepare(
+            "UPDATE broadcasts SET sent_count=?,status=?,provider_ids=?,sent_at=? WHERE id=?",
+          ).run(
+            result.sentCount,
+            result.sentCount === recipients.length ? "sent" : "partial",
+            JSON.stringify(result.providerIds),
+            now(),
+            id,
+          );
+          store.audit(user.id, "broadcast.sent", id, {
+            recipients: recipients.length,
+            sent: result.sentCount,
+          });
+          return send({ id, recipientCount: recipients.length, sentCount: result.sentCount, status: result.sentCount === recipients.length ? "sent" : "partial" }, 201);
+        } catch (err) {
+          const sentCount = Number(err.sentCount || 0);
+          db.prepare(
+            "UPDATE broadcasts SET sent_count=?,status=?,sent_at=? WHERE id=?",
+          ).run(sentCount, sentCount ? "partial" : "failed", now(), id);
+          store.audit(user.id, sentCount ? "broadcast.partial" : "broadcast.failed", id, {
+            recipients: recipients.length,
+            sent: sentCount,
+          });
+          throw err;
+        }
+      }
+      if (path === "/api/admin/leaks" && method === "GET") {
+        return send(
+          db.prepare(
+            "SELECT r.*,u.name AS submitter,(SELECT count(*) FROM leak_flags f WHERE f.leak_id=r.id) AS report_count FROM leak_reports r LEFT JOIN users u ON u.id=r.user_id ORDER BY CASE r.status WHEN 'pending' THEN 0 WHEN 'needs_changes' THEN 1 WHEN 'approved' THEN 2 ELSE 3 END,r.created_at DESC LIMIT 300",
+          ).all(),
+        );
+      }
+      const leakReviewMatch = /^\/api\/admin\/leaks\/([\w-]+)\/review$/.exec(path);
+      if (leakReviewMatch && method === "POST") {
+        const b = await jsonBody(req, 4000),
+          status = cleanText(b.status, 20),
+          note = cleanText(b.note || "", 500);
+        if (!["approved", "rejected", "needs_changes", "hidden"].includes(status))
+          fail(400, "حالة مراجعة غير صالحة");
+        let publicTopic = null,
+          publicDescription = null;
+        if (status === "approved") {
+          publicTopic = cleanText(b.publicTopic || "", 100);
+          publicDescription = cleanText(b.publicDescription || "", 1200);
+          if (publicTopic.length < 2 || publicDescription.length < 25)
+            fail(400, "اكتب عنوانًا ووصفًا منقحين قبل اعتماد المشاركة");
+        }
+        const update = db.prepare(
+          "UPDATE leak_reports SET status=?,public_topic=?,public_description=?,review_note=?,reviewed_at=?,reviewed_by=? WHERE id=? AND rights_confirmed=1",
+        ).run(status, publicTopic, publicDescription, note, now(), user.id, leakReviewMatch[1]);
+        if (!update.changes) fail(404, "المشاركة غير موجودة أو لم تؤكد شروط النشر");
+        store.audit(user.id, "leak.review." + status, leakReviewMatch[1]);
+        return send({ ok: true, status });
       }
       if (path === "/api/custom" && method === "GET")
         return send(

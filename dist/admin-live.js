@@ -80,6 +80,29 @@ export function mountAdminLive(tab, toast, render) {
             "user",
           );
       }
+      if (tab === "leaks") {
+        const reports = await api("/api/admin/leaks");
+        if (disposed) return;
+        const labels = {
+          pending: "بانتظار المراجعة",
+          approved: "معتمد",
+          rejected: "مرفوض",
+          needs_changes: "يحتاج تعديلًا",
+          hidden: "مخفي",
+        };
+        target.innerHTML =
+          "<h2>مراجعة إفادات الطلاب</h2>" +
+          notice("لا تُنشر الإفادة إلا بعد مراجعة الحقوق والخصوصية وصياغة عنوان ووصف عام منقّح. لا تعتمد نصًا حرفيًا أو صورة لسؤال سري.") +
+          (reports.length
+            ? reports.map((r) => `<article class="panel spaced" data-leak-card="${e(r.id)}"><div class="admin-bar"><div><h3>${e(r.topic)}</h3><small>${e(r.submitter || "حساب محذوف")} · ${date(r.created_at)} · ${e(r.track)} / ${e(r.subject)}</small></div><span class="badge ${r.status === "approved" ? "badge-purple" : ""}">${e(labels[r.status] || r.status)}</span></div><p>${e(r.description)}</p><div class="smalltext">تاريخ التجربة: ${e(r.exam_date || "غير محدد")} · بلاغات: ${r.report_count}</div><div class="form-grid spaced"><div class="field"><label>العنوان العام بعد إزالة أي بيانات شخصية</label><input data-leak-topic value="${e(r.public_topic || r.topic)}" maxlength="100"></div><div class="field"><label>الوصف العام المنقّح قبل النشر</label><textarea data-leak-description maxlength="1200">${e(r.public_description || r.description)}</textarea></div><div class="field"><label>ملاحظة داخلية (اختياري)</label><input data-leak-note value="${e(r.review_note || "")}" maxlength="500"></div></div><div class="table-actions"><button class="btn btn-primary btn-sm" data-leak-review="${e(r.id)}" data-status="approved" ${r.rights_confirmed ? "" : "disabled"}>اعتماد ونشر</button><button class="btn btn-outline btn-sm" data-leak-review="${e(r.id)}" data-status="needs_changes">طلب تعديل</button><button class="btn btn-outline btn-sm danger" data-leak-review="${e(r.id)}" data-status="rejected">رفض</button><button class="btn btn-ghost btn-sm" data-leak-review="${e(r.id)}" data-status="hidden">إخفاء</button></div>${r.rights_confirmed ? "" : '<p class="danger smalltext">لم يؤكد المرسل شروط الحقوق؛ لا يمكن اعتماد المشاركة.</p>'}</article>`).join("")
+            : empty("لا توجد مشاركات", "ستظهر هنا إفادات الطلاب الجديدة بعد إرسالها.", "file"));
+      }
+      if (tab === "broadcasts") {
+        const history = await api("/api/admin/broadcasts");
+        if (disposed) return;
+        const labels = { sending: "جارٍ الإرسال", sent: "أُرسلت", partial: "إرسال جزئي", failed: "فشل الإرسال" };
+        target.innerHTML = `<h2>رسالة تشغيلية للمشتركين</h2>${notice("تصل الرسالة إلى أصحاب الاشتراكات النشطة فقط ممن أكدوا بريدهم. لا تستخدم هذا القسم للإعلانات التسويقية أو الرسائل غير الضرورية. تتم المعاينة أولًا، ولا يُرسل شيء قبل التأكيد النهائي.", "info")}<form id="broadcast-form" class="panel"><div class="form-grid"><div class="field"><label for="broadcast-subject">عنوان البريد</label><input id="broadcast-subject" name="subject" maxlength="120" required></div><div class="field full"><label for="broadcast-message">نص الرسالة</label><textarea id="broadcast-message" name="message" rows="6" maxlength="4000" minlength="20" placeholder="اكتب تحديثًا مهمًا يخص الاشتراك أو تشغيل المنصة..." required></textarea></div></div>${check("serviceOnly", "أؤكد أن الرسالة تشغيلية ومخصصة للمشتركين الحاليين، وليست إعلانًا تسويقيًا.", false)}<div class="modal-actions"><button class="btn btn-outline" type="button" data-broadcast-preview>معاينة عدد المستلمين</button><button class="btn btn-primary" id="broadcast-send" type="submit" disabled>إرسال بعد التأكيد ${icon("send")}</button></div><div id="broadcast-preview" class="broadcast-preview" role="status" aria-live="polite">لن يتم الإرسال قبل عرض عدد المستلمين.</div><label class="checkbox spaced"><input type="checkbox" name="confirmSend"><span>راجعت عدد المستلمين ونص الرسالة وأوافق على إرسالها الآن.</span></label></form><h3 class="spaced">سجل الرسائل السابقة</h3>${table(["العنوان","المستلمون","المرسل فعليًا","الحالة","التاريخ"],history.map((r)=>`<tr><td>${e(r.subject)}</td><td>${r.recipient_count}</td><td>${r.sent_count}</td><td>${e(labels[r.status]||r.status)}</td><td>${date(r.sent_at||r.created_at)}</td></tr>`))}`;
+      }
       if (tab === "uploads") {
         const [assets, storage] = await Promise.all([
           api("/api/admin/assets"),
@@ -135,6 +158,19 @@ export function mountAdminLive(tab, toast, render) {
             ["lesson", "صفحات الدروس"],
             ["pricing", "الباقات"],
             ["tutor", "المدرس"],
+            ["track", "مسارات المواد"],
+            ["instructor", "صفحات المدرسين"],
+            ["tests", "الاختبارات"],
+            ["quiz", "صفحة الاختبار"],
+            ["results", "النتائج"],
+            ["dashboard", "لوحة الطالب"],
+            ["journey", "رحلة الطالب"],
+            ["choose", "اختيار الدورات"],
+            ["bank", "بنك الأسئلة"],
+            ["mistakes", "دفتر الأخطاء"],
+            ["tools", "الأدوات"],
+            ["updates", "التحديثات"],
+            ["about", "من نحن"],
           ],
           draft.scope,
         )}${field("height", "ارتفاع المساحة بالبكسل", draft.height, "number", 'min="180" max="1600"')}</div><div class="editor-toolbar"><div class="editor-tabs">${["html", "css", "js"].map((l) => `<button class="tab ${l === "html" ? "active" : ""}" data-code-tab="${l}">${l === "js" ? "JavaScript" : l.toUpperCase()} Editor</button>`).join("")}</div><div><button class="icon-btn" data-code-tool="search" aria-label="بحث داخل الكود">${icon("search")}</button><button class="icon-btn" data-code-tool="undo" aria-label="تراجع">${icon("undo")}</button><button class="icon-btn" data-code-tool="redo" aria-label="إعادة التعديل">↪</button></div></div>${["html", "css", "js"].map((l) => `<div id="editor-${l}" class="code-editor ${l === "html" ? "" : "hidden"}" dir="ltr"></div>`).join("")}<div class="modal-actions"><button class="btn btn-outline" data-code-save="draft">حفظ مسودة</button><button class="btn btn-primary" data-code-save="publish">نشر التعديلات ${icon("upload")}</button><button class="btn btn-light" data-code-preview>تحديث المعاينة</button></div><p class="muted spaced" id="code-status">المعاينة تتحدث بعد الكتابة. Ctrl/Cmd+F للبحث، وCtrl/Cmd+Z للتراجع.</p><iframe id="code-preview" title="معاينة الأكواد المعزولة" sandbox="allow-scripts" referrerpolicy="no-referrer" class="custom-frame" height="400"></iframe></div><h3 class="spaced">سجل النسخ والرجوع</h3>${table(
@@ -259,6 +295,52 @@ export function mountAdminLive(tab, toast, render) {
       const b = ev.target.closest("button");
       if (!b) return;
       const d = b.dataset;
+      if (b.hasAttribute("data-broadcast-preview")) {
+        const form = document.querySelector("#broadcast-form");
+        if (!form) return;
+        const preview = document.querySelector("#broadcast-preview"),
+          sendButton = document.querySelector("#broadcast-send"),
+          values = Object.fromEntries(new FormData(form));
+        values.serviceOnly = form.elements.serviceOnly.checked;
+        b.disabled = true;
+        sendButton.disabled = true;
+        try {
+          const result = await api("/api/admin/broadcasts/preview", {
+            method: "POST",
+            body: values,
+          });
+          form.dataset.recipientCount = String(result.recipientCount);
+          form.dataset.previewToken = result.previewToken;
+          preview.textContent = result.recipientCount
+            ? "سيتم إرسال «" + result.subject + "» إلى " + result.recipientCount + " مشتركًا نشطًا ببريد مؤكد." + (result.mailConfigured ? "" : " لكن يلزم إعداد Resend في الاستضافة قبل الإرسال.")
+            : "لا يوجد مشتركون مؤهلون حاليًا. لم يتم إرسال أي رسالة.";
+          sendButton.disabled = !result.recipientCount || !values.serviceOnly || !result.mailConfigured;
+        } catch (err) {
+          delete form.dataset.recipientCount;
+          delete form.dataset.previewToken;
+          preview.textContent = err.message;
+        } finally {
+          b.disabled = false;
+        }
+        return;
+      }
+      if (d.leakReview) {
+        const card = b.closest("[data-leak-card]");
+        if (!card) return;
+        b.disabled = true;
+        await api("/api/admin/leaks/" + encodeURIComponent(d.leakReview) + "/review", {
+          method: "POST",
+          body: {
+            status: d.status,
+            publicTopic: card.querySelector("[data-leak-topic]")?.value || "",
+            publicDescription: card.querySelector("[data-leak-description]")?.value || "",
+            note: card.querySelector("[data-leak-note]")?.value || "",
+          },
+        });
+        toast(d.status === "approved" ? "تم اعتماد الإفادة بعد تنقيحها." : "تم تحديث حالة المراجعة.");
+        await load();
+        return;
+      }
       if (d.probeVideo) {
         b.disabled = true;
         const meta = await api("/api/admin/assets/" + d.probeVideo + "/probe", {
@@ -382,6 +464,15 @@ export function mountAdminLive(tab, toast, render) {
     }
   };
   const settingsDirty = (ev) => {
+    const broadcastForm = ev.target.closest("#broadcast-form");
+    if (tab === "broadcasts" && broadcastForm && ["subject", "message"].includes(ev.target.name)) {
+      delete broadcastForm.dataset.recipientCount;
+      delete broadcastForm.dataset.previewToken;
+      const sendButton = document.querySelector("#broadcast-send"),
+        preview = document.querySelector("#broadcast-preview");
+      if (sendButton) sendButton.disabled = true;
+      if (preview) preview.textContent = "تغير نص الرسالة؛ أعد معاينة عدد المستلمين.";
+    }
     const form = ev.target.closest("#settings-form");
     if (!form) return;
     const test = form.querySelector("[data-test-connection]");
@@ -392,6 +483,15 @@ export function mountAdminLive(tab, toast, render) {
         "احفظ التغييرات أولًا، ثم اختبر الاتصال بالإعدادات المحفوظة.";
   };
   const change = (ev) => {
+    if (tab === "broadcasts" && ev.target.closest("#broadcast-form") && ["subject", "message", "serviceOnly"].includes(ev.target.name)) {
+      const form = document.querySelector("#broadcast-form");
+      delete form.dataset.recipientCount;
+      delete form.dataset.previewToken;
+      const sendButton = document.querySelector("#broadcast-send"),
+        preview = document.querySelector("#broadcast-preview");
+      if (sendButton) sendButton.disabled = true;
+      if (preview) preview.textContent = "تغيرت الرسالة؛ أعد معاينة عدد المستلمين.";
+    }
     if (ev.target.name === "courseId" && tab === "uploads") {
       const c = db.courses.find((c) => c.id === ev.target.value);
       document.querySelector("[name=lessonId]").innerHTML =
@@ -406,7 +506,7 @@ export function mountAdminLive(tab, toast, render) {
   const submit = async (ev) => {
     const form = ev.target;
     if (
-      !["settings-form", "upload-form", "user-search"].includes(form.id) &&
+      !["settings-form", "upload-form", "user-search", "broadcast-form"].includes(form.id) &&
       !form.matches(".grant-sub")
     )
       return;
@@ -415,6 +515,27 @@ export function mountAdminLive(tab, toast, render) {
     button.disabled = true;
     try {
       const values = Object.fromEntries(new FormData(form));
+      if (form.id === "broadcast-form") {
+        const recipientCount = Number(form.dataset.recipientCount);
+        if (!recipientCount)
+          throw Error("اعرض عدد المستلمين أولًا قبل الإرسال.");
+        if (!form.elements.serviceOnly.checked || !form.elements.confirmSend.checked)
+          throw Error("أكد أن الرسالة تشغيلية وراجع عدد المستلمين قبل الإرسال.");
+        if (!confirm("سيتم إرسال هذه الرسالة إلى " + recipientCount + " مشتركًا نشطًا ببريد مؤكد. هل تريد المتابعة؟"))
+          return;
+        const result = await api("/api/admin/broadcasts/send", {
+          method: "POST",
+          body: {
+            subject: values.subject,
+            message: values.message,
+            serviceOnly: true,
+            confirmCount: recipientCount,
+            previewToken: form.dataset.previewToken,
+          },
+        });
+        toast("اكتمل إرسال " + result.sentCount + " من " + result.recipientCount + " رسالة.");
+        await load();
+      }
       if (form.id === "settings-form") {
         values.enabled = new FormData(form).has("enabled");
         await api("/api/admin/settings/" + form.dataset.type, {

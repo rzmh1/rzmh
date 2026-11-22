@@ -7,6 +7,7 @@ import {
   createDecipheriv,
 } from "node:crypto";
 import { promisify } from "node:util";
+import { domainToASCII } from "node:url";
 const scrypt = promisify(sc);
 export const token = () => randomBytes(32).toString("hex");
 export const hash = (s) => createHash("sha256").update(s).digest("hex");
@@ -16,10 +17,10 @@ export function fail(status, message) {
 export async function passwordHash(password) {
   if (
     typeof password !== "string" ||
-    password.length < 12 ||
+    password.length < 8 ||
     password.length > 200
   )
-    fail(400, "كلمة المرور يجب أن تكون بين ١٢ و٢٠٠ حرف");
+    fail(400, "كلمة المرور يجب أن تكون بين ٨ و٢٠٠ حرف");
   const salt = randomBytes(16).toString("hex");
   const key = await scrypt(password, salt, 64);
   return salt + ":" + key.toString("hex");
@@ -62,9 +63,31 @@ export function cleanText(v, max = 5000) {
 }
 export function email(v) {
   const x = cleanText(v, 254).toLowerCase();
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x))
+  const at = x.lastIndexOf("@");
+  const local = x.slice(0, at);
+  const domain = domainToASCII(x.slice(at + 1)).toLowerCase();
+  const labels = domain ? domain.split(".") : [];
+  if (
+    at <= 0 ||
+    at !== x.indexOf("@") ||
+    at > 64 ||
+    !/^[a-z0-9.!#$%&'*+/=?^_{|}~-]+$/i.test(local) ||
+    local.startsWith(".") ||
+    local.endsWith(".") ||
+    local.includes("..") ||
+    !domain ||
+    domain.length > 253 ||
+    labels.length < 2 ||
+    labels.some(
+      (label) =>
+        !label ||
+        label.length > 63 ||
+        !/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i.test(label),
+    ) ||
+    !/^(?:[a-z]{2,63}|xn--[a-z0-9-]{2,59})$/i.test(labels.at(-1))
+  )
     fail(400, "البريد الإلكتروني غير صالح");
-  return x;
+  return local + "@" + domain;
 }
 export async function jsonBody(req, limit = 2 * 1024 * 1024) {
   let size = 0;

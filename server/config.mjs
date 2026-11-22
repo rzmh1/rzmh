@@ -15,6 +15,14 @@ export function config(env = process.env) {
     throw Error(
       "Production requires HTTPS APP_ORIGIN and a 32-byte base64 APP_KEY",
     );
+  const requireEmailVerification =
+      production || env.REQUIRE_EMAIL_VERIFICATION === "1",
+    mail = {
+      apiKey: env.RESEND_API_KEY || "",
+      from: env.EMAIL_FROM || "",
+    };
+  if (mail.apiKey && !mail.from)
+    throw Error("EMAIL_FROM is required when RESEND_API_KEY is configured");
   const port = Number(env.PORT || 3000),
     storage = env.STORAGE_DRIVER || "local",
     maxUpload = Number(env.MAX_UPLOAD_BYTES || 2147483648),
@@ -34,6 +42,8 @@ export function config(env = process.env) {
     trustProxy: env.TRUST_PROXY === "1",
     production,
     origin,
+    requireEmailVerification,
+    mail,
     port,
     host: env.HOST || "0.0.0.0",
     dataDir: resolve(env.DATA_DIR || "./runtime"),

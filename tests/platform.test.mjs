@@ -6,11 +6,13 @@ import { join } from "node:path";
 import { randomBytes, randomUUID, createHmac } from "node:crypto";
 import { createApp } from "../server/index.mjs";
 import { config } from "../server/config.mjs";
+import { openDatabase } from "../server/database.mjs";
 import {
   passwordHash,
   passwordVerify,
   encrypt,
   decrypt,
+  email,
 } from "../server/security.mjs";
 import { addMonths, activateOrder, verifyStripeSignature } from "../server/payments.mjs";
 import { frame } from "../server/custom.mjs";
@@ -85,11 +87,66 @@ async function browser(f) {
   };
 }
 
+test("email syntax is normalized and rejects malformed or incomplete domains", () => {
+  assert.equal(email("  Student+1@Example.COM  "), "student+1@example.com");
+  assert.equal(email("student@bücher.example"), "student@xn--bcher-kva.example");
+  for (const value of [
+    "not-an-email",
+    "student@localhost",
+    "student@example..com",
+    "student@-example.com",
+    "student@example-.com",
+    "student..name@example.com",
+    "@example.com",
+    "student@example.c",
+    "student name@example.com",
+  ]) assert.throws(() => email(value), value);
+});
+
+test("production always requires email verification", () => {
+  const valid = {
+    NODE_ENV: "production",
+    APP_ORIGIN: "https://ruzmah.example",
+    APP_KEY: randomBytes(32).toString("base64"),
+    REQUIRE_EMAIL_VERIFICATION: "0",
+  };
+  assert.equal(config(valid).requireEmailVerification, true);
+  assert.equal(
+    config({ APP_ORIGIN: "http://localhost:3000", REQUIRE_EMAIL_VERIFICATION: "0" })
+      .requireEmailVerification,
+    false,
+  );
+});
+
+test("expired rate-limit rows are cleaned at startup and the expiry column is indexed", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "ruzmah-rate-cleanup-"));
+  const cfg = config({
+    DATA_DIR: dir,
+    APP_KEY: randomBytes(32).toString("base64"),
+    APP_ORIGIN: "http://127.0.0.1:3000",
+  });
+  const seed = openDatabase(cfg);
+  seed.db.prepare("INSERT INTO rate_limits VALUES(?,?,?)").run("expired:test", 3, Date.now() - 1000);
+  seed.db.prepare("INSERT INTO rate_limits VALUES(?,?,?)").run("active:test", 1, Date.now() + 60000);
+  seed.close();
+  const app = createApp(cfg);
+  try {
+    const keys = app.store.db.prepare("SELECT key FROM rate_limits ORDER BY key").all().map((row) => row.key);
+    assert.deepEqual(keys, ["active:test"]);
+    const indexes = app.store.db.prepare("PRAGMA index_list(rate_limits)").all();
+    assert(indexes.some((index) => index.name === "rate_limits_expires"));
+  } finally {
+    app.store.close();
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("real auth, role checks, shared content, fixed prices, CSRF, grading, protected uploads and custom code", async () => {
   const f = await fixture();
   try {
     const owner = await browser(f),
       student = await browser(f),
+      studentSignIn = await browser(f),
       guest = await browser(f);
     assert.equal((await guest.request("/api/admin/stats")).status, 401);
     assert.equal(
@@ -106,10 +163,58 @@ test("real auth, role checks, shared content, fixed prices, CSRF, grading, prote
       ).data.user.role,
       "student",
     );
+    const studentLogin = await studentSignIn.request("/api/auth/login", {
+      method: "POST",
+      body: {
+        email: "student@example.test",
+        password: "a-long-student-password",
+      },
+    });
+    assert.equal(studentLogin.status, 200);
+    assert.equal(studentLogin.data.user.role, "student");
     assert.equal((await student.request("/api/admin/stats")).status, 403);
     assert.equal(
       (
-        await owner.request("/api/auth/login", {
+        await student.request("/api/auth/admin-login", {
+          method: "POST",
+          body: {
+            email: "student@example.test",
+            password: "a-long-student-password",
+          },
+        })
+      ).status,
+      401,
+      "student credentials must never authenticate through the owner login endpoint",
+    );
+    assert.equal(
+      (
+        await guest.request("/api/auth/login", {
+          method: "POST",
+          body: {
+            email: "owner@example.test",
+            password: "a-very-long-test-password",
+          },
+        })
+      ).status,
+      401,
+      "owner accounts must not authenticate through the student login endpoint",
+    );
+    assert.equal(
+      (
+        await guest.request("/api/auth/admin-login", {
+          method: "POST",
+          body: {
+            email: "owner@example.test",
+            password: "incorrect-owner-password",
+          },
+        })
+      ).status,
+      401,
+      "an owner email without the correct password must be rejected",
+    );
+    assert.equal(
+      (
+        await owner.request("/api/auth/admin-login", {
           method: "POST",
           body: {
             email: "owner@example.test",
@@ -446,10 +551,39 @@ test("AI Responses payload, saved context, service errors and atomic daily limit
         { status: 200, headers: { "content-type": "application/json" } },
       );
     };
-    const value = await tutor(f.store, user, { message: "اشرح النسبة" });
+    const value = await tutor(
+      f.store,
+      user,
+      { message: "اشرح النسبة" },
+      null,
+      {
+        instructors: [
+          {
+            id: "teacher-rz",
+            name: "مدرس رُزمة للاختبار",
+            specialty: "الكمي",
+            kind: "teacher",
+            bio: "شرح النسب والتناسب من منهج رُزمة.",
+            published: true,
+          },
+        ],
+        files: [
+          {
+            title: "ملف مراجعة رُزمة",
+            description: "مراجعة النسب والتناسب",
+            url: "https://private.example.test/do-not-send.pdf",
+            visible: true,
+          },
+        ],
+      },
+    );
     assert.equal(value.remaining, 0);
     assert.equal(body.store, false);
     assert(body.instructions.includes("رُزمة"));
+    assert(body.instructions.includes("مدرس رُزمة للاختبار"));
+    assert(body.instructions.includes("ملف مراجعة رُزمة"));
+    assert(body.instructions.includes("بياناتها الوصفية"));
+    assert(!body.instructions.includes("https://private.example.test/do-not-send.pdf"));
     assert.equal(
       f.store.db.prepare("SELECT count(*) n FROM messages").get().n,
       2,
@@ -472,6 +606,9 @@ test("secrets use authenticated encryption and custom frames isolate scripts", a
   assert(!cipher.includes("private-key"));
   assert.equal(decrypt(cipher, key), "private-key");
   assert.throws(() => decrypt(cipher, randomBytes(32).toString("base64")));
+  await assert.rejects(passwordHash("1234567"), /٨ و٢٠٠/);
+  const eightCharacterHash = await passwordHash("12345678");
+  assert(await passwordVerify("12345678", eightCharacterHash));
   const hashed = await passwordHash("a-strong-test-password");
   assert(await passwordVerify("a-strong-test-password", hashed));
   assert(!(await passwordVerify("different", hashed)));
@@ -482,4 +619,504 @@ test("secrets use authenticated encryption and custom frames isolate scripts", a
   });
   assert(out.csp.includes("default-src 'none'"));
   assert(out.html.includes("nonce="));
+});
+
+
+test("student reports stay private until moderator review and publish only redacted copy", async () => {
+  const f = await fixture();
+  try {
+    const owner = await browser(f),
+      student = await browser(f),
+      guest = await browser(f);
+    await owner.request("/api/auth/admin-login", {
+      method: "POST",
+      body: {
+        email: "owner@example.test",
+        password: "a-very-long-test-password",
+      },
+    });
+    const registration = await student.request("/api/auth/register", {
+      method: "POST",
+      body: {
+        email: "reports@example.test",
+        name: "طالب تجريبي",
+        password: "a-long-student-password",
+      },
+    });
+    assert.equal(registration.status, 200);
+    assert.equal((await guest.request("/api/leaks")).status, 401);
+    assert.equal(
+      (
+        await student.request("/api/leaks", {
+          method: "POST",
+          body: {
+            track: "qudrat",
+            subject: "quantitative",
+            topic: "النسب",
+            description: "أتذكر أن الفكرة كانت عن التناسب العكسي وتغير الكميات.",
+            rightsConfirmed: true,
+          },
+        })
+      ).status,
+      403,
+    );
+    const userId = registration.data.user.id;
+    assert.equal(
+      (
+        await owner.request("/api/admin/subscriptions", {
+          method: "POST",
+          body: { userId, planId: "month", days: 30 },
+        })
+      ).status,
+      200,
+    );
+    const submission = await student.request("/api/leaks", {
+      method: "POST",
+      body: {
+        track: "qudrat",
+        subject: "quantitative",
+        topic: "النسب",
+        description: "أتذكر أن الفكرة كانت عن التناسب العكسي وتغير الكميات.",
+        examDate: "2026-11-20",
+        rightsConfirmed: true,
+      },
+    });
+    assert.equal(submission.status, 201);
+    assert.equal(submission.data.status, "pending");
+    assert.equal((await student.request("/api/leaks")).data.items.length, 0);
+    const pending = await owner.request("/api/admin/leaks");
+    assert.equal(pending.data.length, 1);
+    assert.equal(pending.data[0].status, "pending");
+    assert.equal(pending.data[0].submitter, "طالب تجريبي");
+    assert.equal(
+      (
+        await owner.request("/api/admin/leaks/" + submission.data.id + "/review", {
+          method: "POST",
+          body: { status: "approved" },
+        })
+      ).status,
+      400,
+    );
+    assert.equal(
+      (
+        await owner.request("/api/admin/leaks/" + submission.data.id + "/review", {
+          method: "POST",
+          body: {
+            status: "approved",
+            publicTopic: "التناسب العكسي",
+            publicDescription: "تجربة طالب حول مهارة التناسب العكسي وتغير الكميات.",
+          },
+        })
+      ).status,
+      200,
+    );
+    const published = await student.request("/api/leaks");
+    assert.equal(published.data.items.length, 1);
+    assert.equal(published.data.items[0].topic, "التناسب العكسي");
+    assert.equal(
+      published.data.items[0].description,
+      "تجربة طالب حول مهارة التناسب العكسي وتغير الكميات.",
+    );
+    assert.equal(
+      (
+        await student.request("/api/leaks/" + submission.data.id + "/report", {
+          method: "POST",
+          body: { reason: "inaccurate" },
+        })
+      ).status,
+      200,
+    );
+    assert.equal(
+      (
+        await student.request("/api/leaks/" + submission.data.id + "/report", {
+          method: "POST",
+          body: { reason: "inaccurate" },
+        })
+      ).status,
+      409,
+    );
+    assert.equal(
+      (
+        await student.request("/api/leaks", {
+          method: "POST",
+          body: {
+            track: "qudrat",
+            subject: "quantitative",
+            topic: "موضوع آخر",
+            description: "وصف واضح لتجربة الطالب مع موضوع تدريبي مختلف.",
+            rightsConfirmed: false,
+          },
+        })
+      ).status,
+      400,
+    );
+  } finally {
+    await f.close();
+  }
+});
+
+
+test("email verification and password recovery require one-time expiring codes", async () => {
+  const f = await fixture(),
+    originalFetch = globalThis.fetch;
+  let sent = [];
+  try {
+    f.cfg.requireEmailVerification = true;
+    f.cfg.mail = {
+      apiKey: "test-resend-key",
+      from: "رُزمة <noreply@example.test>",
+    };
+    globalThis.fetch = async (url, options) => {
+      if (url === "https://api.resend.com/emails") {
+        assert.equal(options.headers.Authorization, "Bearer test-resend-key");
+        const payload = JSON.parse(options.body);
+        sent.push(payload);
+        return new Response(JSON.stringify({ id: "email_test" }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      return originalFetch(url, options);
+    };
+    const student = await browser(f);
+    const registration = await student.request("/api/auth/register", {
+      method: "POST",
+      body: {
+        email: "verify@example.test",
+        name: "طالب تحقق",
+        password: "a-long-student-password",
+      },
+    });
+    assert.equal(registration.status, 201);
+    assert.equal(registration.data.verificationRequired, true);
+    assert.equal(registration.data.email, "verify@example.test");
+    assert.equal(sent.length, 1);
+    assert.match(sent[0].text, /\d{6}/);
+    assert.equal(
+      (
+        await student.request("/api/auth/login", {
+          method: "POST",
+          body: {
+            email: "verify@example.test",
+            password: "a-long-student-password",
+          },
+        })
+      ).status,
+      403,
+    );
+    const verificationCode = sent[0].text.match(/(\d{6})/)[1];
+    assert.equal(
+      (
+        await student.request("/api/auth/verify-email", {
+          method: "POST",
+          body: { email: "verify@example.test", code: "000000" },
+        })
+      ).status,
+      400,
+    );
+    const verified = await student.request("/api/auth/verify-email", {
+      method: "POST",
+      body: { email: "verify@example.test", code: verificationCode },
+    });
+    assert.equal(verified.status, 200);
+    assert.equal(verified.data.user.email, "verify@example.test");
+    assert(student.cookie.startsWith("ruzmah_session="));
+    assert.equal(
+      (
+        await student.request("/api/auth/verify-email", {
+          method: "POST",
+          body: { email: "verify@example.test", code: verificationCode },
+        })
+      ).status,
+      400,
+    );
+
+    const requested = await student.request("/api/auth/forgot-password", {
+      method: "POST",
+      body: { email: "verify@example.test" },
+    });
+    assert.equal(requested.status, 200);
+    assert.match(requested.data.message, /إذا كان البريد/);
+    assert.equal(sent.length, 2);
+    const resetCode = sent[1].text.match(/(\d{6})/)[1];
+    const reset = await student.request("/api/auth/reset-password", {
+      method: "POST",
+      body: {
+        email: "verify@example.test",
+        code: resetCode,
+        password: "a-new-strong-password",
+      },
+    });
+    assert.equal(reset.status, 200);
+    assert.equal((await student.request("/api/session")).data.user, null);
+    const login = await browser(f);
+    assert.equal(
+      (
+        await login.request("/api/auth/login", {
+          method: "POST",
+          body: {
+            email: "verify@example.test",
+            password: "a-long-student-password",
+          },
+        })
+      ).status,
+      401,
+    );
+    assert.equal(
+      (
+        await login.request("/api/auth/login", {
+          method: "POST",
+          body: {
+            email: "verify@example.test",
+            password: "a-new-strong-password",
+          },
+        })
+      ).status,
+      200,
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+    await f.close();
+  }
+});
+
+test("production email verification refuses signup when mail delivery is not configured", async () => {
+  const f = await fixture();
+  try {
+    f.cfg.requireEmailVerification = true;
+    f.cfg.mail = { apiKey: "", from: "" };
+    const student = await browser(f);
+    const result = await student.request("/api/auth/register", {
+      method: "POST",
+      body: {
+        email: "not-created@example.test",
+        name: "حساب غير منشأ",
+        password: "a-long-student-password",
+      },
+    });
+    assert.equal(result.status, 503);
+    assert.equal(
+      f.store.db.prepare("SELECT count(*) n FROM users WHERE email=?").get("not-created@example.test").n,
+      0,
+    );
+  } finally {
+    await f.close();
+  }
+});
+
+
+test("AI tutor accepts bounded educational image input without storing image bytes", async () => {
+  const f = await fixture(),
+    originalFetch = globalThis.fetch;
+  let requestBody;
+  try {
+    const settings = f.store.setting("ai");
+    f.store.saveSetting(
+      "ai",
+      { ...settings, secrets: undefined, enabled: true, dailyLimit: 3 },
+      { apiKey: "not-a-real-key" },
+    );
+    const user = f.store.db.prepare("SELECT * FROM users WHERE id=?").get(f.adminId);
+    globalThis.fetch = async (url, options) => {
+      assert.equal(url, "https://api.openai.com/v1/responses");
+      requestBody = JSON.parse(options.body);
+      return new Response(
+        JSON.stringify({
+          id: "resp_image_mock",
+          output: [{ type: "message", content: [{ type: "output_text", text: "قرأت السؤال في الصورة." }] }],
+          usage: { input_tokens: 20, output_tokens: 10 },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    };
+    const png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j1XcAAAAASUVORK5CYII=";
+    const result = await tutor(f.store, user, {
+      message: "استخرج السؤال واشرح الإجابة الصحيحة.",
+      image: { name: "question.png", mimeType: "image/png", data: png },
+    });
+    assert.equal(result.text, "قرأت السؤال في الصورة.");
+    const content = requestBody.input.at(-1).content;
+    assert.equal(content[0].type, "input_text");
+    assert.equal(content[1].type, "input_image");
+    assert(content[1].image_url.startsWith("data:image/png;base64,"));
+    const saved = f.store.db.prepare("SELECT content FROM messages WHERE role='user'").get().content;
+    assert(saved.includes("question.png"));
+    assert(!saved.includes(png));
+    await assert.rejects(
+      tutor(f.store, user, {
+        message: "حل الصورة",
+        image: { name: "spoof.jpg", mimeType: "image/jpeg", data: png },
+      }),
+      (err) => err.status === 400,
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+    await f.close();
+  }
+});
+
+
+test("AI tutor rejects full PDF uploads; students send one short question or image instead", async () => {
+  const f = await fixture();
+  try {
+    const settings = f.store.setting("ai");
+    f.store.saveSetting("ai", { ...settings, secrets: undefined, enabled: true, dailyLimit: 3 }, { apiKey: "not-a-real-key" });
+    const user = f.store.db.prepare("SELECT * FROM users WHERE id=?").get(f.adminId);
+    await assert.rejects(
+      tutor(f.store, user, {
+        message: "اشرح الملف كاملًا",
+        file: { name: "lesson.pdf", mimeType: "application/pdf", data: Buffer.from("%PDF-1.4").toString("base64") },
+      }),
+      (err) => err.status === 400 && /سؤال واحد/.test(err.message),
+    );
+  } finally {
+    await f.close();
+  }
+});
+
+
+test("admin broadcasts only to active verified subscribers after fresh preview and confirmation", async () => {
+  const f = await fixture(),
+    originalFetch = globalThis.fetch;
+  let batchPayload = null,
+    batchCalls = 0;
+  try {
+    f.cfg.mail = {
+      apiKey: "test-resend-key",
+      from: "رُزمة <noreply@example.test>",
+    };
+    globalThis.fetch = async (url, options) => {
+      if (url === "https://api.resend.com/emails/batch") {
+        batchCalls += 1;
+        assert.equal(options.headers.Authorization, "Bearer test-resend-key");
+        assert.match(options.headers["Idempotency-Key"], /^broadcast\//);
+        batchPayload = JSON.parse(options.body);
+        return new Response(
+          JSON.stringify({ data: batchPayload.map((_, i) => ({ id: "batch_email_" + i })) }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+      return originalFetch(url, options);
+    };
+    const admin = await browser(f);
+    await admin.request("/api/auth/admin-login", {
+      method: "POST",
+      body: { email: "owner@example.test", password: "a-very-long-test-password" },
+    });
+    const active = await browser(f),
+      pending = await browser(f);
+    const activeUser = await active.request("/api/auth/register", {
+      method: "POST",
+      body: { email: "active-broadcast@example.test", name: "مشترك نشط", password: "a-long-student-password" },
+    });
+    const pendingUser = await pending.request("/api/auth/register", {
+      method: "POST",
+      body: { email: "unverified-broadcast@example.test", name: "بريد غير مؤكد", password: "a-long-student-password" },
+    });
+    for (const userId of [activeUser.data.user.id, pendingUser.data.user.id]) {
+      assert.equal(
+        (
+          await admin.request("/api/admin/subscriptions", {
+            method: "POST",
+            body: { userId, planId: "month", days: 30 },
+          })
+        ).status,
+        200,
+      );
+    }
+    f.store.db.prepare("UPDATE users SET email_verified=0 WHERE id=?").run(pendingUser.data.user.id);
+    const draft = {
+      subject: "تحديث مهم في رُزمة",
+      message: "تمت إضافة تحسينات مهمة إلى المنصة. افتح حسابك للاطلاع على التفاصيل.",
+      serviceOnly: true,
+    };
+    const preview = await admin.request("/api/admin/broadcasts/preview", {
+      method: "POST",
+      body: draft,
+    });
+    assert.equal(preview.status, 200);
+    assert.equal(preview.data.recipientCount, 1);
+    assert.match(preview.data.previewToken, /^[0-9]+[.][a-f0-9]{64}$/);
+    assert.equal(batchCalls, 0);
+    assert.equal(
+      (
+        await admin.request("/api/admin/broadcasts/send", {
+          method: "POST",
+          body: { ...draft, confirmCount: 2, previewToken: preview.data.previewToken },
+        })
+      ).status,
+      409,
+    );
+    assert.equal(batchCalls, 0);
+    assert.equal(
+      (
+        await admin.request("/api/admin/broadcasts/send", {
+          method: "POST",
+          body: { ...draft, confirmCount: preview.data.recipientCount },
+        })
+      ).status,
+      409,
+    );
+    assert.equal(batchCalls, 0);
+    const sent = await admin.request("/api/admin/broadcasts/send", {
+      method: "POST",
+      body: { ...draft, confirmCount: preview.data.recipientCount, previewToken: preview.data.previewToken },
+    });
+    assert.equal(sent.status, 201, JSON.stringify(sent.data));
+    assert.equal(sent.data.sentCount, 1);
+    assert.equal(batchCalls, 1);
+    assert.equal(batchPayload.length, 1);
+    assert.deepEqual(batchPayload[0].to, ["active-broadcast@example.test"]);
+    const history = await admin.request("/api/admin/broadcasts");
+    assert.equal(history.data[0].status, "sent");
+    assert.equal(history.data[0].recipient_count, 1);
+    assert.equal(
+      (
+        await admin.request("/api/admin/broadcasts/send", {
+          method: "POST",
+          body: { ...draft, confirmCount: 1, previewToken: preview.data.previewToken },
+        })
+      ).status,
+      429,
+    );
+    assert.equal(batchCalls, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+    await f.close();
+  }
+});
+
+
+test("Resend broadcast delivery chunks recipients into idempotent batches of at most 100", async () => {
+  const { sendBatchEmails } = await import("../server/email.mjs"),
+    originalFetch = globalThis.fetch,
+    sizes = [],
+    keys = [];
+  try {
+    globalThis.fetch = async (url, options) => {
+      assert.equal(url, "https://api.resend.com/emails/batch");
+      const payload = JSON.parse(options.body);
+      sizes.push(payload.length);
+      keys.push(options.headers["Idempotency-Key"]);
+      return new Response(
+        JSON.stringify({ data: payload.map((_, i) => ({ id: "id_" + sizes.length + "_" + i })) }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    };
+    const recipients = Array.from({ length: 101 }, (_, i) => ({
+      id: "student_" + i,
+      email: "student" + i + "@example.test",
+    }));
+    const result = await sendBatchEmails(
+      { mail: { apiKey: "test-key", from: "رُزمة <noreply@example.test>" } },
+      recipients,
+      { subject: "تحديث", text: "رسالة تشغيلية للمشتركين.", batchId: "broadcast-test-id" },
+    );
+    assert.deepEqual(sizes, [100, 1]);
+    assert.equal(new Set(keys).size, 2);
+    assert.equal(result.sentCount, 101);
+    assert.equal(result.providerIds.length, 101);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });

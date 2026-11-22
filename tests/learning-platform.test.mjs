@@ -80,7 +80,7 @@ test("real student journey: dynamic instructors, independent four-stage choices,
     const owner = client(f),
       student = client(f),
       other = client(f);
-    await owner.ok("/api/auth/login", "POST", {
+    await owner.ok("/api/auth/admin-login", "POST", {
       email: "learning-owner@example.test",
       password: "owner-test-password-123",
     });

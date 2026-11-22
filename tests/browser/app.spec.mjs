@@ -33,11 +33,14 @@ const test = base.extend({
   }, { scope: 'worker' }],
 });
 async function login(page, app, email) {
-  await page.goto(`${app.url}/#/login`);
-  await page.locator('#auth-form input[name=email]').fill(email);
-  await page.locator('#auth-form input[name=password]').fill(app.password);
-  await page.locator('#auth-form button[type=submit]').click();
-  await expect(page.locator('#auth-form')).toHaveCount(0);
+  const owner = email === "admin@example.test";
+  const route = owner ? "admin-login" : "login";
+  const form = owner ? "#admin-auth-form" : "#auth-form";
+  await page.goto(`${app.url}/#/${route}`);
+  await page.locator(`${form} input[name=email]`).fill(email);
+  await page.locator(`${form} input[name=password]`).fill(app.password);
+  await page.locator(`${form} button[type=submit]`).click();
+  await expect(page.locator(form)).toHaveCount(0);
 }
 function trackFailures(page) {
   const failures = [];
@@ -52,7 +55,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
   test(`public RTL pages render without missing resources at ${viewport.width}px`, async ({ page, app }) => {
     const failures = trackFailures(page);
     await page.setViewportSize(viewport);
-    for (const route of ['', 'sections', 'section/qudrat', 'section/tahsili', 'section/step', 'instructors', 'course/quant-basics', 'pricing', 'subscription/year', 'updates', 'about', 'login', 'signup']) {
+    for (const route of ['', 'sections', 'section/qudrat', 'section/tahsili', 'section/step', 'instructors', 'course/quant-basics', 'pricing', 'subscription/year', 'updates', 'about', 'login', 'signup', 'admin-login']) {
       await page.goto(`${app.url}/#/${route}`);
       await expect(page.locator('#main')).toBeVisible();
       await expect(page.locator('#main')).not.toContainText('تعذر الاتصال');
@@ -133,18 +136,25 @@ test('subscribed student completes onboarding, saves choices and replans real co
   const failures = trackFailures(page);
   await login(page, app, 'student@example.test');
   await page.goto(`${app.url}/#/welcome`);
-  const keys = ['sectionId', 'foundationStarted', 'foundationCompleted', 'selfLevel', 'targetScore', 'examDate', 'dailyMinutes', 'studyDays'];
-  for (const key of keys) {
-    await expect(page.locator('#welcome-form')).toHaveAttribute('data-key', key);
-    if (key === 'sectionId') await page.locator('input[name=sectionId][value=qudrat]').check();
-    if (key === 'dailyMinutes') await page.locator('input[name=hours]').fill('2');
-    if (key === 'studyDays')
-      for (const input of await page.locator('input[name=studyDays]').all()) await input.check();
-    await page.locator('#welcome-form button[type=submit]').click();
-  }
+  await expect(page.locator('#welcome-form')).toBeVisible();
+  await page.locator('input[name=sectionId][value=qudrat]').check();
+  await expect(page.locator('input[name=studyMode]')).toHaveCount(3);
+  await page.locator('input[name=studyMode][value=both]').check();
+  await expect(page.locator('input[name=examDate]')).toBeVisible();
+  await page.locator('input[name=examDate]').fill('2027-01-01');
+  await page.locator('input[name=hours]').fill('2');
+  await page.locator('#welcome-form button[type=submit]').click();
   await expect(page).toHaveURL(/#\/choose$/);
-  await page.locator('input[name=courseId][value=quant-basics]').check();
-  await page.locator('#choices-form button[type=submit]').click();
+  const catalog = await page.evaluate(() => fetch('/api/learning/catalog').then(r => r.json()));
+  const targetCourse = catalog.courses.find(course => course.id === 'quant-basics');
+  expect(targetCourse).toBeTruthy();
+  const targetTeacher = targetCourse.instructorId || 'independent';
+  for (let i = 0; i < 10 && !page.url().endsWith('#/journey'); i++) {
+    const targetChoice = page.locator('[data-choice-teacher="' + targetTeacher + '"]');
+    if (await targetChoice.count()) await targetChoice.first().click();
+    else await page.locator('[data-choice-skip]').click();
+    await page.waitForTimeout(250);
+  }
   await expect(page).toHaveURL(/#\/journey$/);
   await expect(page.locator('#learning-root')).toContainText('الأساس الذي تبني عليه');
   for (const route of ['learning-settings', 'bank', 'tests', 'mistakes', 'scratch', 'subscription', 'tutor']) {

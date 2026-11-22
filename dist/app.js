@@ -22,16 +22,21 @@ import {
 import { header, footer, icon, btn, notice, empty, courseCard } from "./ui.js";
 import { inStudentSpace, studentFrame } from "./student-shell.js";
 import * as pages from "./pages.js";
-import { mountDrawing } from "./drawing.js";
+import { leaksPage, mountLeaks } from "./leaks.js";
+import { mountDrawing, mountLessonTools } from "./drawing.js";
 import { adminPage, mountAdmin } from "./admin.js";
 import { api, account, setSession } from "./api.js";
 import {
   authLive,
+  adminAuthLive,
   reviewOrder,
   paymentStatus,
   loadPaymentStatus,
   tutorLive,
   mountTutor,
+  verifyEmailLive,
+  forgotPasswordLive,
+  resetPasswordLive,
 } from "./live-pages.js";
 const app = document.querySelector("#app");
 let trackedPage = null;
@@ -112,9 +117,14 @@ export function render(scroll = true) {
     tests: "الاختبارات",
     scratch: "ورقة المسودة",
     admin: "لوحة الإدارة",
+    "admin-login": "دخول المالك",
     tutor: "المدرس الذكي",
+    leaks: "التسريبات",
     login: "تسجيل الدخول",
     signup: "إنشاء حساب",
+    "verify-email": "تأكيد البريد",
+    "forgot-password": "استعادة كلمة المرور",
+    "reset-password": "كلمة مرور جديدة",
   };
   document.title = `رُزمة — ${titles[r] || "مساحة لطموحك"}`;
   const trackKey = route().join("/") || "home";
@@ -140,6 +150,7 @@ export function render(scroll = true) {
     "plan",
     "progress",
     "tutor",
+    "leaks",
   ];
   if (privatePages.includes(r) && !account.user) {
     content = empty(
@@ -165,6 +176,7 @@ export function render(scroll = true) {
       "plan",
       "progress",
       "tutor",
+      "leaks",
     ].includes(r)
   ) {
     content = empty(
@@ -273,11 +285,29 @@ export function render(scroll = true) {
         case "tutor":
           content = tutorLive();
           break;
+        case "leaks":
+          content = leaksPage();
+          break;
+        case "admin-login":
+          content =
+            account.user?.role === "admin"
+              ? adminPage()
+              : adminAuthLive();
+          break;
         case "login":
           content = authLive();
           break;
         case "signup":
           content = authLive(true);
+          break;
+        case "verify-email":
+          content = verifyEmailLive();
+          break;
+        case "forgot-password":
+          content = forgotPasswordLive();
+          break;
+        case "reset-password":
+          content = resetPasswordLive();
           break;
         case "subscription":
           content = reviewOrder(id);
@@ -290,7 +320,7 @@ export function render(scroll = true) {
                   "دخول خاص بمالك المنصة",
                   "تحتاج تسجيل الدخول بحساب مدير. لا تمنح حسابات الطلاب صلاحية الإدارة.",
                   "lock",
-                  btn("تسجيل الدخول", "#/login"),
+                  btn("دخول المالك", "#/admin-login"),
                 );
           break;
         case "payment":
@@ -320,6 +350,7 @@ export function render(scroll = true) {
   if (r === "admin" && account.user?.role === "admin")
     cleanups.push(mountAdmin(toast, render));
   if (r === "tutor" && account.user) cleanups.push(mountTutor(toast));
+  if (r === "leaks" && account.user) cleanups.push(mountLeaks(toast));
   if (r === "payment")
     void loadPaymentStatus(toast).then((cleanup) => cleanups.push(cleanup));
   void mountCustom(r);
@@ -395,7 +426,7 @@ export function render(scroll = true) {
     update();
   }
   if (r === "lesson") {
-    if (account.user) cleanups.push(mountLessonStudy(toast));
+    if (account.user) { cleanups.push(mountLessonStudy(toast)); cleanups.push(mountLessonTools(toast)); }
     const params = new URLSearchParams(location.hash.split("?")[1] || ""),
       start = Number(params.get("start"));
     const video = document.querySelector(".lesson-video");
@@ -635,27 +666,121 @@ document.addEventListener("submit", async (ev) => {
     render(false);
     toast("أُضيفت خطوتك القادمة");
   }
+  if (form.id === "admin-auth-form") {
+    ev.preventDefault();
+    const button = form.querySelector("button[type=submit]"),
+      values = Object.fromEntries(new FormData(form));
+    button.disabled = true;
+    try {
+      const result = await api("/api/auth/admin-login", {
+        method: "POST",
+        body: values,
+      });
+      if (result.user?.role !== "admin")
+        throw Error("هذا الحساب غير مخوّل لدخول لوحة الإدارة.");
+      await initialize();
+      if (account.user?.role !== "admin")
+        throw Error("تعذر التحقق من صلاحية المالك. حاول مرة أخرى.");
+      location.hash = "#/admin";
+      render();
+      toast("أهلًا بك في إدارة رُزمة");
+    } catch (err) {
+      const error = document.querySelector("#admin-form-error");
+      if (error) error.textContent = err.message;
+    } finally {
+      button.disabled = false;
+    }
+  }
   if (form.id === "auth-form") {
     ev.preventDefault();
-    const button = form.querySelector("button[type=submit]");
+    const button = form.querySelector("button[type=submit]"),
+      values = Object.fromEntries(new FormData(form)),
+      next = new URLSearchParams(location.hash.split("?")[1] || "").get("next");
     button.disabled = true;
-    const values = Object.fromEntries(new FormData(form));
     try {
-      await api(
+      const result = await api(
         form.dataset.signup === "true"
           ? "/api/auth/register"
           : "/api/auth/login",
         { method: "POST", body: values },
       );
+      if (result.verificationRequired) {
+        const params = new URLSearchParams({ email: result.email });
+        if (next) params.set("next", next);
+        location.hash = "#/verify-email?" + params.toString();
+        toast("أرسلنا رمز التحقق إلى بريدك الإلكتروني.");
+        return;
+      }
       await initialize();
-      location.hash = afterAuthRoute(
-        account,
-        new URLSearchParams(location.hash.split("?")[1] || "").get("next"),
-      );
+      location.hash = afterAuthRoute(account, next);
       render();
       toast("أهلًا بك في رُزمة");
     } catch (err) {
       document.querySelector("#form-error").textContent = err.message;
+    } finally {
+      button.disabled = false;
+    }
+  }
+  if (form.id === "verify-email-form") {
+    ev.preventDefault();
+    const button = form.querySelector("button[type=submit]"),
+      values = Object.fromEntries(new FormData(form)),
+      next = new URLSearchParams(location.hash.split("?")[1] || "").get("next");
+    button.disabled = true;
+    try {
+      await api("/api/auth/verify-email", { method: "POST", body: values });
+      await initialize();
+      location.hash = afterAuthRoute(account, next);
+      render();
+      toast("تم تأكيد بريدك. أهلًا بك في رُزمة.");
+    } catch (err) {
+      document.querySelector("#verify-error").textContent = err.message;
+    } finally {
+      button.disabled = false;
+    }
+  }
+  if (form.id === "verify-resend-form") {
+    ev.preventDefault();
+    const button = form.querySelector("button[type=submit]"),
+      status = document.querySelector("#verify-resend-status"),
+      values = Object.fromEntries(new FormData(form));
+    values.email = document.querySelector("#verify-email")?.value || values.email;
+    button.disabled = true;
+    try {
+      const result = await api("/api/auth/resend-verification", { method: "POST", body: values });
+      status.textContent = result.message;
+    } catch (err) {
+      status.textContent = err.message;
+    } finally {
+      button.disabled = false;
+    }
+  }
+  if (form.id === "forgot-password-form") {
+    ev.preventDefault();
+    const button = form.querySelector("button[type=submit]"),
+      values = Object.fromEntries(new FormData(form));
+    button.disabled = true;
+    try {
+      const result = await api("/api/auth/forgot-password", { method: "POST", body: values });
+      location.hash = "#/reset-password?email=" + encodeURIComponent(values.email);
+      toast(result.message);
+    } catch (err) {
+      document.querySelector("#forgot-error").textContent = err.message;
+    } finally {
+      button.disabled = false;
+    }
+  }
+  if (form.id === "reset-password-form") {
+    ev.preventDefault();
+    const button = form.querySelector("button[type=submit]"),
+      values = Object.fromEntries(new FormData(form));
+    button.disabled = true;
+    try {
+      await api("/api/auth/reset-password", { method: "POST", body: values });
+      location.hash = "#/login";
+      toast("تم تغيير كلمة المرور. سجّل الدخول بكلمتك الجديدة.");
+    } catch (err) {
+      document.querySelector("#reset-error").textContent = err.message;
     } finally {
       button.disabled = false;
     }

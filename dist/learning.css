@@ -1246,3 +1246,27 @@
   flex-wrap: wrap;
   margin-bottom: 18px;
 }
+
+
+/* Compact, single-screen onboarding and stage choices */
+.welcome-flow-v6{width:min(100%,680px);min-height:calc(100vh - 230px);margin:0 auto;display:flex;flex-direction:column;justify-content:center;gap:14px}
+.welcome-flow-top{display:flex;align-items:center;justify-content:space-between;color:var(--muted);font-size:12px}
+.welcome-flow-progress{font-weight:700;color:var(--purple)}
+.welcome-flow-progressbar{height:4px;background:var(--border);border-radius:99px;overflow:hidden}
+.welcome-flow-progressbar span{display:block;height:100%;background:var(--purple);border-radius:99px;transition:width .2s}
+.welcome-flow-card{padding:clamp(20px,4vw,34px);display:grid;gap:14px}
+.welcome-flow-card h1{font-size:clamp(22px,3vw,30px);line-height:1.5}
+.welcome-flow-card>.muted{line-height:1.8}
+.welcome-flow-card .welcome-answers{display:grid;gap:10px}
+.welcome-choice-v6{min-height:68px}
+.welcome-choice-v6 span{display:grid;gap:3px}
+.welcome-choice-v6 small{font-size:11px;color:var(--muted);font-weight:400}
+.welcome-actions-v6{display:flex;align-items:center;gap:8px;margin-top:8px}
+.welcome-skip-v6{margin-inline-start:auto;font-size:12px;padding:7px 12px;min-height:34px}
+.choice-teachers-v6{display:grid;gap:10px}
+.choice-teacher-v6{width:100%;display:flex;align-items:center;gap:12px;text-align:start;padding:14px;border:1px solid var(--border);border-radius:14px;background:var(--surface);cursor:pointer}
+.choice-teacher-v6:hover{border-color:var(--purple);background:var(--soft)}
+.choice-teacher-v6>span:nth-child(2){display:grid;gap:4px;flex:1}
+.choice-teacher-v6 small{font-size:11px;color:var(--muted)}
+.choice-teacher-avatar{width:42px;height:42px;display:grid;place-items:center;border-radius:50%;background:var(--purple-light);color:var(--purple);font-weight:800}
+@media(max-width:640px){.welcome-flow-v6{min-height:calc(100dvh - 215px)}.welcome-flow-card{padding:20px}.welcome-flow-card h1{font-size:22px}}

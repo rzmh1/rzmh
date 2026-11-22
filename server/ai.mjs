@@ -88,12 +88,36 @@ export async function testAI(store, user) {
     message: "نجح طلب حقيقي إلى Responses API.",
   };
 }
-export async function tutor(store, user, input, educationContext = null) {
+export async function tutor(store, user, input, educationContext = null, resources = null) {
   const s = store.setting("ai");
   if (!s.enabled) fail(503, "خدمة المدرس غير مفعلة حاليًا");
   if (!store.entitled(user)) fail(403, "المدرس الذكي متاح باشتراك نشط");
-  const message = cleanText(input.message, 4000);
-  if (!message) fail(400, "اكتب سؤالك أولًا");
+  const message = cleanText(input.message || "", 4000);
+  const image = input.image || null,
+    file = input.file || null;
+  if (file) fail(400, "أرسل صورة سؤال واحد فقط أو اكتب سؤالك؛ لا ترفع ملفًا كاملًا.");
+  if (!message && !image) fail(400, "اكتب سؤالك أو أرفق صورة سؤال واحد.");
+  let imageInput = null;
+  if (image !== null) {
+    if (!image || typeof image !== "object" || Array.isArray(image))
+      fail(400, "مرفق الصورة غير صالح.");
+    const name = cleanText(image.name || "صورة تعليمية", 120),
+      mimeType = cleanText(image.mimeType || "", 40),
+      data = image.data;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(mimeType))
+      fail(400, "ارفع صورة JPG أو PNG أو WebP فقط.");
+    if (typeof data !== "string" || data.length > 6 * 1024 * 1024 || !/^[A-Za-z0-9+/]+={0,2}$/.test(data))
+      fail(400, "بيانات الصورة غير صالحة.");
+    const bytes = Buffer.from(data, "base64");
+    if (!bytes.length || bytes.length > 4 * 1024 * 1024 || bytes.toString("base64").replace(/=+$/, "") !== data.replace(/=+$/, ""))
+      fail(413, "حجم الصورة أكبر من ٤ ميجابايت أو صيغة الملف غير صحيحة.");
+    const validImage =
+      (mimeType === "image/jpeg" && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) ||
+      (mimeType === "image/png" && bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) ||
+      (mimeType === "image/webp" && bytes.toString("ascii", 0, 4) === "RIFF" && bytes.toString("ascii", 8, 12) === "WEBP");
+    if (!validImage) fail(400, "نوع الصورة لا يطابق محتوى الملف.");
+    imageInput = { name, mimeType, data: bytes.toString("base64") };
+  }
   const day = new Date().toLocaleDateString("en-CA", {
       timeZone: "Asia/Riyadh",
     }),
@@ -143,25 +167,104 @@ export async function tutor(store, user, input, educationContext = null) {
       )
       .all(conversationId, user.id);
     const content = store.getContent();
+    const instructors = (resources?.instructors || [])
+      .filter((item) => item && item.published !== false && item.deleted !== true)
+      .slice(0, 40);
+    const instructorById = new Map(instructors.map((item) => [item.id, item]));
+    const courseContext = content.courses
+      .filter((c) => courseVisible(content, c))
+      .flatMap((c) =>
+        c.lessons
+          .filter((l) => l.visible !== false)
+          .map((l) => {
+            const instructor = instructorById.get(c.instructorId);
+            const source = instructor
+              ? "\nالمدرس/المصدر: " +
+                cleanText(instructor.name || "", 120) +
+                " — " +
+                cleanText(instructor.specialty || "", 160) +
+                "\n" +
+                cleanText(instructor.bio || "", 500)
+              : "";
+            return (
+              "الدورة: " +
+              cleanText(c.title || "", 160) +
+              source +
+              "\nالدرس: " +
+              cleanText(l.title || "", 160) +
+              "\n" +
+              cleanText(l.body || "", 3500) +
+              "\n" +
+              cleanText(l.example || "", 1200)
+            );
+          }),
+      )
+      .join("\n---\n")
+      .slice(0, 14000);
+    const instructorContext = instructors
+      .map(
+        (item) =>
+          (item.kind === "source" ? "مصدر تعليمي: " : "مدرس رُزمة: ") +
+          cleanText(item.name || "", 120) +
+          " — " +
+          cleanText(item.specialty || "", 160) +
+          "\n" +
+          cleanText(item.bio || "", 500),
+      )
+      .join("\n")
+      .slice(0, 3500);
+    const files = (resources?.files || content.files || [])
+      .filter((item) => item && item.visible !== false && item.published !== false)
+      .slice(0, 40);
+    const fileContext = files
+      .map(
+        (item) =>
+          "ملف رُزمة منشور: " +
+          cleanText(item.title || item.name || "ملف تعليمي", 160) +
+          (item.description
+            ? " — " + cleanText(item.description, 400)
+            : "") +
+          (item.courseTitle
+            ? " — الدورة: " + cleanText(item.courseTitle, 120)
+            : ""),
+      )
+      .join("\n")
+      .slice(0, 3500);
+    const lessonAttachments = content.courses
+      .filter((c) => courseVisible(content, c))
+      .flatMap((c) =>
+        c.lessons
+          .filter((l) => l.visible !== false)
+          .flatMap((l) =>
+            (l.fileAssetIds || []).map((id) => {
+              const asset = store.db
+                .prepare("SELECT name FROM assets WHERE id=? AND status='ready'")
+                .get(id);
+              return asset
+                ? "مرفق درس: " +
+                    cleanText(asset.name, 120) +
+                    " — " +
+                    cleanText(c.title, 120) +
+                    " / " +
+                    cleanText(l.title, 120)
+                : "";
+            }),
+          ),
+      )
+      .filter(Boolean)
+      .slice(0, 50)
+      .join("\n")
+      .slice(0, 2500);
+    const referenceContext =
+      "\nمدرسو ومصادر رُزمة المنشورة:\n" +
+      (instructorContext || "لا توجد ملفات تعريف مدرسين/مصادر منشورة في السياق الحالي.") +
+      "\nفهرس الملفات التعليمية في رُزمة:\n" +
+      (fileContext || "لا توجد ملفات منشورة في فهرس الملفات الحالي.") +
+      "\nمرفقات الدروس الجاهزة:\n" +
+      (lessonAttachments || "لا توجد مرفقات دروس جاهزة مرتبطة بالدورات الظاهرة.");
     const context =
-      content.courses
-        .filter((c) => courseVisible(content, c))
-        .flatMap((c) =>
-          c.lessons
-            .filter((l) => l.visible !== false)
-            .map(
-              (l) =>
-                c.title +
-                ": " +
-                l.title +
-                "\n" +
-                l.body +
-                "\n" +
-                (l.example || ""),
-            ),
-        )
-        .join("\n")
-        .slice(0, 14000) +
+      "محتوى الدورات والدروس المنشور في رُزمة:\n" +
+      courseContext +
       "\nأسئلة مرجعية من بنك رُزمة:\n" +
       content.questions
         .filter((q) => questionVisible(content, q))
@@ -169,13 +272,26 @@ export async function tutor(store, user, input, educationContext = null) {
         .map((q) => q.text + "\n" + q.explanation)
         .join("\n")
         .slice(0, 5000) +
+      referenceContext +
       (educationContext
         ? "\nمعلومات الطالب التعليمية التي وافق على مشاركتها:\n" +
           JSON.stringify(educationContext)
         : "\nلا توجد موافقة لمشاركة ملف الطالب أو خطته؛ لا تدّع الاطلاع عليهما.");
+    const userMessage = imageInput
+      ? [
+          { type: "input_text", text: message || "حلّل صورة السؤال التعليمي واشرح خطوات الحل." },
+          ...(imageInput
+            ? [{
+                type: "input_image",
+                image_url: "data:" + imageInput.mimeType + ";base64," + imageInput.data,
+                detail: "high",
+              }]
+            : []),
+        ]
+      : message;
     const response = await responses(
       s,
-      aiRequest(s, [...history, { role: "user", content: message }], context),
+      aiRequest(s, [...history, { role: "user", content: userMessage }], context),
     );
     const inp = response.usage.input_tokens || 0,
       out = response.usage.output_tokens || 0,
@@ -185,7 +301,7 @@ export async function tutor(store, user, input, educationContext = null) {
           : null;
     store.transaction(() => {
       for (const [role, text] of [
-        ["user", message],
+        ["user", message + (imageInput ? "\n[مرفق صورة سؤال: " + imageInput.name + "]" : "")],
         ["assistant", response.text],
       ])
         store.db

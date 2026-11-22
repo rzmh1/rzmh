@@ -4,6 +4,8 @@ import { icon, btn, notice, empty, pageHeading } from "./ui.js";
 import { studentShell } from "./pages.js";
 export const stageName = (s) =>
   ({ foundation: "التأسيس", training: "التدريب", review: "المراجعة" })[s] || s;
+export const courseGroupName = (course) =>
+  String(course?.groupTitle || "").trim() || stageName(course?.stage);
 const minutes = (n) => Math.ceil((n || 0) / 60),
   dayLabel = (d) =>
     new Date(d + "T12:00Z").toLocaleDateString("ar-SA", {
@@ -33,14 +35,14 @@ export function learningPage(kind) {
     }[kind] || "رحلتك في رُزمة";
   const loading = `<div id="learning-root" aria-live="polite"><div class="dash-skeleton"><span></span><span></span><span></span></div></div>`;
   if (kind === "journey") return studentShell(loading, "journey");
-  const body = `${pageHeading(kind === "settings" ? "إعدادات" : "رحلة مذاكرة على مقاسك", title)}${loading}`;
+  const body = ["welcome","choose"].includes(kind) ? loading : `${pageHeading(kind === "settings" ? "إعدادات" : "رحلة مذاكرة على مقاسك", title)}${loading}`;
   return ["settings"].includes(kind) ? studentShell(body, "journey") : body;
 }
-export function teacherCard(t) {
+export function teacherCard(t, trackId = "") {
   const image = t.imageAssetId
     ? "/api/media/" + e(t.imageAssetId)
     : safeUrl(t.imageUrl);
-  return `<a href="#/instructor/${e(t.id)}" class="teacher-card"><div class="teacher-portrait">${image ? `<img src="${image}" alt="${e(t.name)}" loading="lazy">` : `<span aria-hidden="true">${e(t.name.slice(0, 1))}</span>`}</div><div><span class="badge">${t.kind === "source" ? "مصدر تعليمي" : "مدرّس"}</span><h3>${e(t.name)}</h3><p>${e(t.specialty)}</p><small>${t.courseIds.length} دورات منشورة · ${t.videoCount} مقاطع${t.videoSeconds ? ` · ${minutes(t.videoSeconds)} دقيقة فيديو معروفة` : ""}</small></div>${icon("arrow")}</a>`;
+  return `<a href="#/instructor/${e(t.id)}${trackId ? "?track=" + encodeURIComponent(trackId) : ""}" class="teacher-card"><div class="teacher-portrait">${image ? `<img src="${image}" alt="${e(t.name)}" loading="lazy">` : `<span aria-hidden="true">${e(t.name.slice(0, 1))}</span>`}</div><div><span class="badge">${t.kind === "source" ? "مصدر تعليمي" : "مدرّس"}</span><h3>${e(t.name)}</h3><p>${e(t.specialty)}</p><small>${t.courseIds.length} دورات منشورة · ${t.videoCount} مقاطع${t.videoSeconds ? ` · ${minutes(t.videoSeconds)} دقيقة فيديو معروفة` : ""}</small></div>${icon("arrow")}</a>`;
 }
 const field = (name, label, value = "", type = "text", extra = "") =>
   `<div class="field"><label for="l-${name}">${label}</label><input id="l-${name}" name="${name}" type="${type}" value="${e(value ?? "")}" ${extra}></div>`;
@@ -50,6 +52,8 @@ const consent = (p) =>
   `<label class="checkbox learning-consent"><input name="aiContextConsent" type="checkbox" ${p.aiContextConsent ? "checked" : ""}><span>أسمح للمدرس الذكي بالاطلاع على اختياراتي التعليمية وخطتي وأخطائي ونتائج اختباراتي المسجلة لمساعدتي. يمكن تغيير ذلك لاحقًا.</span></label>`;
 export function mountLearning(kind, id, toast, rerender) {
   let disposed = false,
+    choiceStep = 0,
+    choiceStages = [],
     catalog,
     me,
     progress,
@@ -106,137 +110,63 @@ export function mountLearning(kind, id, toast, rerender) {
   function drawWizard() {
     const p = me.profile;
     const questions = [
-      [
-        "sectionId",
-        "ما الاختبار الذي تستعد له؟",
-        catalog.sections
-          .map((s) =>
-            option(
-              "sectionId",
-              s.id,
-              e(s.title) + (s.status === "coming" ? " — المحتوى قادم" : ""),
-              p.sectionId === s.id,
-            ),
-          )
-          .join(""),
-      ],
-      [
-        "foundationStarted",
-        "هل بدأت التأسيس؟",
-        [
-          ["true", "بدأت وأريد أكمل"],
-          ["false", "لم أبدأ بعد"],
-        ]
-          .map(([v, t]) =>
-            option(
-              "foundationStarted",
-              v,
-              t,
-              String(p.foundationStarted) === v,
-            ),
-          )
-          .join(""),
-      ],
-      [
-        "foundationCompleted",
-        "هل أنهيت مرحلة التأسيس؟",
-        [
-          ["true", "نعم، وأحتاج تدريبًا ومراجعة"],
-          ["false", "لا، ما زلت أبني الأساس"],
-        ]
-          .map(([v, t]) =>
-            option(
-              "foundationCompleted",
-              v,
-              t,
-              String(p.foundationCompleted) === v,
-            ),
-          )
-          .join(""),
-      ],
-      [
-        "selfLevel",
-        "كيف تقيّم مستواك؟",
-        [
-          ["beginner", "أبدأ من المفاهيم الأولى"],
-          ["intermediate", "أفهم الأساس وأحتاج تدريبًا"],
-          ["advanced", "أحتاج قياسًا ومراجعة مركّزة"],
-          ["unknown", "أفضل أن أكتشفه بالاختبارات"],
-        ]
-          .map(([v, t]) => option("selfLevel", v, t, p.selfLevel === v))
-          .join(""),
-      ],
-      [
-        "targetScore",
-        "ما الدرجة التي تطمح إليها؟",
-        field(
-          "targetScore",
-          "درجتك المستهدفة",
-          p.targetScore,
-          "number",
-          'min="0" max="100" step="1"',
-        ),
-      ],
-      [
-        "examDate",
-        "متى موعد اختبارك؟",
-        field("examDate", "موعد الاختبار", p.examDate, "date"),
-      ],
-      [
-        "dailyMinutes",
-        "كم وقت تقدر تخصص للمذاكرة يوميًا؟",
-        field(
-          "hours",
-          "عدد الساعات",
-          p.dailyMinutes ? p.dailyMinutes / 60 : "",
-          "number",
-          'min="0.25" max="12" step="0.25"',
-        ) +
-          '<p class="muted">نحسب المقاطع حسب مددها، ونضيف وقتًا للحل والمراجعة والراحة.</p>',
-      ],
-      [
-        "studyDays",
-        "ما الأيام المناسبة لك؟",
-        daysInputs(p.studyDays) + consent(p),
-      ],
+      ["sectionId", "وش اختبارك؟", catalog.sections.filter((s) => s.status !== "coming").map((s) =>
+        option("sectionId", s.id, e(s.title), p.sectionId === s.id)).join("")],
+      ["studyMode", "وش تحتاج في رحلتك؟", [
+        ["both", "تأسيس وتدريب", "أبني الأساس ثم أتدرّب"],
+        ["foundation", "تأسيس فقط", "أحتاج أفهم الأساس أولًا"],
+        ["training", "تدريب فقط", "عندي أساس وأحتاج حل أسئلة"],
+      ].map(([v,t,d]) => `<label class="welcome-choice welcome-choice-v6"><input type="radio" name="studyMode" value="${v}"><span><b>${t}</b><small>${d}</small></span>${icon("check")}</label>`).join("")],
+      ["schedule", "متى اختبارك؟ وكم تقدر تذاكر؟",
+        field("examDate","موعد الاختبار",p.examDate,"date",'required') +
+        field("hours","ساعات المذاكرة يوميًا",p.dailyMinutes ? p.dailyMinutes/60 : 2,"number",'min="0.5" max="12" step="0.5" required') +
+        '<p class="muted">تقدر تعدّل الموعد والساعات لاحقًا من إعدادات خطتك.</p>'],
     ];
-    step = Math.max(0, Math.min(7, step));
-    const [key, title, body] = questions[step];
-    target.innerHTML = `<div class="welcome-layout"><aside><span class="eyebrow">نرتّب البداية، ثم تختار بنفسك</span><h2>وقتك مختلف.<br>ورحلتك تستحق<br>خطة تناسبه.</h2><p>سؤال واحد في كل خطوة. تقدر تتخطى السؤال وتكمل بياناتك لاحقًا.</p><div class="welcome-step-indicator">${step + 1}<small> / ٨</small></div><div class="progress-track"><span style="width:${((step + 1) / 8) * 100}%"></span></div><small>تقييمك الذاتي لا يُعتبر نتيجة اختبار أو دليل إتقان.</small></aside><form id="welcome-form" class="panel" data-key="${key}"><span class="eyebrow">خطوتك ${step + 1} من ٨</span><h2>${title}</h2><div class="welcome-answers">${body}</div><div id="learning-form-error" class="form-error" role="alert"></div><div class="welcome-actions"><button type="button" class="btn btn-outline" data-welcome-back ${step === 0 ? "disabled" : ""}>السابق</button><button type="button" class="btn btn-ghost" data-welcome-skip>تخطي</button><button type="submit" class="btn btn-primary">${step === 7 ? "إلى اختيار الدورات" : "التالي"} ${icon("arrow")}</button></div></form></div>`;
+    step = Math.max(0, Math.min(2, step));
+    const [key,title,body] = questions[step];
+    target.innerHTML = `<div class="welcome-flow-v6">
+      <div class="welcome-flow-top"><span class="eyebrow">إعداد خطتك</span><span class="welcome-flow-progress">${step+1} / 3</span></div>
+      <div class="welcome-flow-progressbar"><span style="width:${((step+1)/3)*100}%"></span></div>
+      <form id="welcome-form" class="panel welcome-flow-card" data-key="${key}">
+        <h1>${title}</h1>
+        <p class="muted">${step===0?"اختر المسار، وسننتقل مباشرة.":step===1?"اختر المرحلة التي تحتاجها، وسننتقل مباشرة.":"حدد الموعد والوقت المناسب لك."}</p>
+        <div class="welcome-answers">${body}</div>
+        <div id="learning-form-error" class="form-error" role="alert"></div>
+        <div class="welcome-actions welcome-actions-v6">
+          ${step ? '<button type="button" class="btn btn-ghost small" data-welcome-back>رجوع</button>' : ""}
+          <button type="button" class="btn btn-ghost small welcome-skip-v6" data-welcome-skip>تخطي</button>
+          ${step===2 ? '<button type="submit" class="btn btn-primary">إنشاء خطتي '+icon("arrow")+'</button>' : ""}
+        </div>
+      </form>
+    </div>`;
   }
   async function advance(skip = false) {
-    const form = document.querySelector("#welcome-form"),
-      key = form.dataset.key,
-      fd = new FormData(form),
-      input = { onboardingStep: Math.min(7, step + 1) };
+    const form = document.querySelector("#welcome-form");
+    if (!form) return;
+    const key = form.dataset.key, fd = new FormData(form);
+    const input = { onboardingStep: Math.min(2, step + 1) };
     if (!skip) {
       if (!form.reportValidity()) return;
-      const value = fd.get(key);
-      if (["foundationStarted", "foundationCompleted"].includes(key)) {
-        if (value !== null) input[key] = value === "true";
-      } else if (key === "dailyMinutes") {
-        const hours = fd.get("hours");
-        input.dailyMinutes = hours ? Math.round(Number(hours) * 60) : null;
-      } else if (key === "studyDays") {
-        input.studyDays = fd.getAll("studyDays").map(Number);
-        input.aiContextConsent = fd.has("aiContextConsent");
-      } else if (key === "targetScore")
-        input.targetScore = value ? Number(value) : null;
-      else if (key === "sectionId" || key === "examDate")
-        input[key] = value || null;
-      else if (value !== null) input[key] = value;
+      if (step === 0) input.sectionId = fd.get("sectionId");
+      if (step === 1) {
+        const mode = fd.get("studyMode");
+        if (!mode) return;
+        input.foundationStarted = mode === "training";
+        input.foundationCompleted = mode === "training";
+        input.selfLevel = mode === "training" ? "advanced" : mode === "foundation" ? "beginner" : "intermediate";
+      }
+      if (step === 2) {
+        input.examDate = fd.get("examDate") || null;
+        input.dailyMinutes = Math.round(Number(fd.get("hours")) * 60);
+        input.onboardingCompleted = true;
+      }
+    } else if (step === 2) {
+      input.onboardingCompleted = true;
     }
-    if (step === 7) input.onboardingCompleted = true;
-    const result = await api("/api/learning/profile", {
-      method: "PUT",
-      body: input,
-    });
+    const result = await api("/api/learning/profile", { method:"PUT", body:input });
     me.profile = result.profile;
-    if (step === 7) location.hash = "#/choose";
-    else {
-      step++;
-      drawWizard();
-    }
+    if (step === 2) location.hash = "#/choose";
+    else { step++; drawWizard(); }
   }
   function courseChoice(c) {
     const teacher = catalog.instructors.find((t) => t.id === c.instructorId),
@@ -244,45 +174,17 @@ export function mountLearning(kind, id, toast, rerender) {
     return `<label class="course-choice"><input type="checkbox" name="courseId" value="${e(c.id)}" ${chosen.has(c.id) ? "checked" : ""}><span class="course-choice-body"><small>${teacher ? e(teacher.name) : c.instructorId ? "مصدر مؤرشف، والاختيار السابق محفوظ" : "دورة مستقلة — المصدر غير محدد"}</small><b>${e(c.title)}</b><p>${e(c.description)}</p><span class="choice-metrics">${m.videoCount} مقاطع فيديو · ${m.lessonCount - m.videoCount} دروس نصية${m.videoSeconds ? ` · ${minutes(m.videoSeconds)} دقيقة فيديو معروفة` : ""}${m.estimatedSeconds ? ` · ${minutes(m.estimatedSeconds)} دقيقة تقديرية للمحتوى` : ""}</span>${m.unknownVideoCount ? `<em>${m.unknownVideoCount} مقاطع لم تُستخرج مدتها بعد</em>` : ""}<span class="choice-links"><a href="#/course/${c.id}">عرض المحتوى ${icon("arrow")}</a>${teacher ? `<a href="#/instructor/${teacher.id}">عن المدرّس</a>` : ""}</span></span>${icon("check")}</label>`;
   }
   function drawChoices() {
-    const section = me.profile.sectionId,
-      teacher = document.querySelector("#choice-teacher")?.value || "all";
-    const tracks = catalog.tracks.filter(
-      (t) => t.visible && (!section || t.sectionId === section),
-    );
-    target.innerHTML = `${notice("اختر مدرسًا أو مصدرًا مستقلًا لكل مرحلة. يمكنك اختيار أكثر من دورة، أو ترك أي مسار لتكمله لاحقًا. اختيار الدورة لا يتجاوز صلاحيات الاشتراك.")}<div class="choice-toolbar"><div><h2>المحتوى الذي تختاره، هو أساس خطتك.</h2><p>مدد الفيديو معروفة من ملفاتها، وأوقات الحل والمراجعة تقديرات قابلة للتعديل.</p></div><label>تصفية حسب المصدر<select id="choice-teacher"><option value="all">جميع المدرسين والمصادر</option>${catalog.instructors.map((t) => `<option value="${t.id}" ${teacher === t.id ? "selected" : ""}>${e(t.name)}</option>`).join("")}<option value="independent" ${teacher === "independent" ? "selected" : ""}>الدورات المستقلة</option></select></label></div><form id="choices-form">${(me.unavailableCourseChoices || []).length ? `<fieldset class="choice-lane"><legend>اختيارات سابقة غير متاحة حاليًا</legend><p class="muted">تبقى اختياراتك وتقدمك محفوظة عند إخفاء المحتوى. يمكنك إلغاء الاختيار أو الاحتفاظ به حتى يعود.</p>${me.unavailableCourseChoices.map((c) => `<label class="checkbox"><input type="checkbox" name="courseId" value="${e(c.id)}" ${chosen.has(c.id) ? "checked" : ""}><span>${e(c.title)}</span></label>`).join("")}</fieldset>` : ""}${tracks
-      .map(
-        (t) =>
-          `<section class="choice-track"><div class="admin-bar"><h2>${e(t.title)}</h2><a class="text-link" href="#/track/${t.id}">عن المسار ${icon("arrow")}</a></div>${
-            t.coming
-              ? empty(
-                  "المحتوى قادم",
-                  "تقدر تختار مسارًا آخر الآن وتعود عند إطلاقه.",
-                  "language",
-                )
-              : ["foundation", "training", "review"]
-                  .map((stage) => {
-                    const courses = catalog.courses.filter(
-                      (c) =>
-                        c.trackId === t.id &&
-                        c.stage === stage &&
-                        (!c.instructorId ||
-                          catalog.instructors.some(
-                            (t) => t.id === c.instructorId,
-                          ) ||
-                          chosen.has(c.id)) &&
-                        (teacher === "all" ||
-                          (teacher === "independent" && !c.instructorId) ||
-                          c.instructorId === teacher),
-                    );
-                    if (stage === "review" && !courses.length) return "";
-                    return `<fieldset class="choice-lane"><legend>${stageName(stage)}</legend><div class="course-choices">${courses.map(courseChoice).join("") || '<p class="muted">لم تُنشر دورات في هذه المرحلة أو لهذا المصدر بعد. يمكنك تخطيها.</p>'}</div></fieldset>`;
-                  })
-                  .join("")
-          }</section>`,
-      )
-      .join(
-        "",
-      )}<div id="learning-form-error" role="alert" class="form-error"></div><div class="choice-save-bar"><span id="selection-count">${chosen.size} دورات مختارة</span><a class="btn btn-outline" href="#/journey">أكمل الاختيار لاحقًا</a><button type="submit" class="btn btn-primary">احفظ اختياراتي واحسب خطتي ${icon("calendar")}</button></div></form>`;
+    const section = me.profile.sectionId;
+    const tracks = catalog.tracks.filter(t => t.visible && (!section || t.sectionId === section));
+    const onlyFoundation = me.profile.selfLevel === "beginner";
+    const onlyTraining = me.profile.foundationStarted && me.profile.foundationCompleted;
+    if (onlyFoundation || onlyTraining) for (const course of catalog.courses) if ((onlyFoundation && course.stage === "training") || (onlyTraining && course.stage === "foundation")) chosen.delete(course.id);
+    choiceStages = tracks.flatMap(track => ["foundation","training"].map(stage => ({track,stage,courses:catalog.courses.filter(course => course.trackId === track.id && course.stage === stage && (!course.instructorId || catalog.instructors.some(t => t.id === course.instructorId && !t.deleted) || chosen.has(course.id)))}))).filter(item => item.courses.length && (!onlyFoundation || item.stage === "foundation") && (!onlyTraining || item.stage === "training"));
+    if (!choiceStages.length) { void api("/api/learning/selections",{method:"PUT",body:{courseIds:[...chosen]}}).catch(error); target.innerHTML = '<div class="welcome-flow-v6"><div class="panel welcome-flow-card"><h2>لا توجد مصادر منشورة حاليًا.</h2><a class="btn btn-primary" href="#/journey">تخطي إلى خطتي</a></div></div>'; return; }
+    choiceStep = Math.min(choiceStep, choiceStages.length - 1);
+    const current = choiceStages[choiceStep];
+    target.innerHTML = '<div class="welcome-flow-v6"><div class="welcome-flow-top"><span class="eyebrow">اختيار المدرس</span><span class="welcome-flow-progress">' + (choiceStep+1) + " / " + choiceStages.length + '</span></div><div class="welcome-flow-progressbar"><span style="width:' + ((choiceStep+1)/choiceStages.length*100) + '%"></span></div><section class="panel welcome-flow-card"><h1>اختر مدرس ' + stageName(current.stage) + " — " + e(current.track.title) + '</h1><p class="muted">اضغط على المدرس للانتقال مباشرة، أو تخطَّ هذه المرحلة.</p><div class="choice-teachers-v6">' + [...new Set(current.courses.map(course => course.instructorId || "independent"))].map(teacherId => { const courses=current.courses.filter(course=>(course.instructorId || "independent")===teacherId); const teacher=courses[0].instructorId?catalog.instructors.find(t=>t.id===courses[0].instructorId):null; return '<button type="button" class="welcome-choice choice-teacher-v6" data-choice-teacher="' + e(teacherId) + '"><span class="choice-teacher-avatar">' + e((teacher?.name || "م").slice(0,1)) + '</span><span><b>' + e(teacher?.name || "مصدر مستقل") + '</b><small>' + e(teacher?.specialty || "مصدر تعليمي") + '</small><small>' + courses.map(course=>e(course.title)).join("، ") + '</small></span>' + icon("arrow") + '</button>'; }).join("") + '</div><div class="welcome-actions welcome-actions-v6">' + (choiceStep ? '<button type="button" class="btn btn-ghost small" data-choice-back>رجوع</button>' : "") + '<button type="button" class="btn btn-ghost small welcome-skip-v6" data-choice-skip>تخطي المرحلة</button></div></section></div>';
+    return;
   }
   function taskLink(t) {
     const s = t.source;
@@ -409,68 +311,58 @@ ${upcoming.length ? `<section class="dash-card"><div class="dash-card-head"><h2>
   async function drawTeacher() {
     const t = await api("/api/instructors/" + encodeURIComponent(id));
     if (disposed) return;
-    target.innerHTML = `<div class="teacher-profile">${teacherCard(t)}<div class="panel"><h2>عن ${e(t.name)}</h2><p>${e(t.bio || "لم تُضف نبذة بعد.")}</p>${t.unknownVideoCount ? notice("بعض المقاطع لم تُستخرج مدتها بعد؛ لا نعرض مدة إجمالية مكتملة قبل توفرها.") : ""}</div></div><h2 class="spaced">الدورات التابعة للمصدر</h2><div class="teacher-courses">${
-      t.courses
-        .map(
-          (c) =>
-            `<article class="panel"><span class="badge">${stageName(c.stage)} · ${e(catalog.tracks.find((t) => t.id === c.trackId)?.title || c.subject)}</span><h3 class="spaced">${e(c.title)}</h3><p>${e(c.description)}</p><p>${c.metrics.videoCount} مقاطع · ${c.metrics.lessonCount} دروس · ${c.metrics.attachments} مرفقات</p><div class="spaced">${btn("عرض الدورة", "#/course/" + c.id, "outline")} ${btn("اختر ضمن خطتك", "#/choose", "light")}</div><div class="stack spaced">${c.lessons
-              .filter((l) => l.free)
-              .map(
-                (l) =>
-                  `<a class="text-link" href="#/lesson/${c.id}/${l.id}">${icon("play")} معاينة مجانية: ${e(l.title)}</a>`,
-              )
-              .join("")}</div></article>`,
-        )
-        .join("") ||
-      empty(
-        "لا توجد دورات منشورة لهذا المصدر بعد.",
-        "تظهر الدورات بعد ربطها ونشرها.",
-      )
-    }</div><section class="panel spaced"><h2>الاختبارات المرتبطة</h2>${
-      catalog.tests
-        .filter((test) => t.courseIds.includes(test.courseId))
-        .map(
-          (test) =>
-            `<a class="list-row" href="#/tests/${test.id}"><span>${e(test.title)}</span>${icon("arrow")}</a>`,
-        )
-        .join("") || "<p>لم تُنشر اختبارات مرتبطة بهذا المصدر بعد.</p>"
-    }</section>`;
+    const trackId = new URLSearchParams(location.hash.split("?")[1] || "").get("track") || "";
+    const courses = t.courses.filter((course) => !trackId || course.trackId === trackId)
+      .sort((a, b) => (a.order || 0) - (b.order || 0));
+    const courseIds = new Set(courses.map((course) => course.id));
+    const groups = new Map();
+    for (const course of courses) {
+      const name = courseGroupName(course);
+      if (!groups.has(name)) groups.set(name, []);
+      groups.get(name).push(course);
+    }
+    const tests = catalog.tests.filter((test) => courseIds.has(test.courseId));
+    const linkedFiles = courses.flatMap((course) => {
+      const source = db.courses.find((item) => item.id === course.id);
+      return (source?.lessons || []).flatMap((lesson) =>
+        (lesson.fileAssetIds || []).map((assetId, index) => ({
+          id: assetId, course: course.title, lesson: lesson.title, index: index + 1,
+        })),
+      );
+    });
+    target.innerHTML = `<div class="teacher-profile">${teacherCard(t, trackId)}<div class="panel"><h2>عن ${e(t.name)}</h2><p>${e(t.bio || "لم تُضف نبذة بعد.")}</p>${t.unknownVideoCount ? notice("بعض المقاطع لم تُستخرج مدتها بعد؛ لا نعرض مدة إجمالية مكتملة قبل توفرها.") : ""}</div></div>
+      <nav class="teacher-resource-nav" aria-label="محتوى المصدر">
+        <button type="button" data-teacher-jump="teacher-lessons">${icon("play-circle")} الدروس والشروحات</button>
+        <button type="button" data-teacher-jump="teacher-files">${icon("files")} الملفات <span>${linkedFiles.length}</span></button>
+        <button type="button" data-teacher-jump="teacher-tests">${icon("clipboard-check")} الاختبارات <span>${tests.length}</span></button>
+        <a href="#/tutor">${icon("bot")} اسأل مدرس رُزمة</a>
+      </nav>
+      <section id="teacher-lessons" class="spaced"><h2>الدروس والشروحات</h2>
+        ${[...groups.entries()].map(([name, items]) => `<section class="journey-section"><h3>${e(name)}</h3><div class="teacher-courses">${items.map((course) => `<article class="panel"><span class="badge">${e(catalog.tracks.find((track) => track.id === course.trackId)?.title || course.subject)}</span><h3 class="spaced">${e(course.title)}</h3><p>${e(course.description)}</p><p>${course.metrics.videoCount} مقاطع · ${course.metrics.lessonCount} دروس · ${course.metrics.attachments} مرفقات</p><div class="stack spaced">${course.lessons.map((lesson) => `<a class="list-row" href="#/lesson/${course.id}/${lesson.id}"><span>${icon(lesson.video ? "play-circle" : "book-open")} ${e(lesson.title)}</span>${icon("arrow")}</a>`).join("")}</div><div class="spaced">${btn("فتح الدورة كاملة", "#/course/" + course.id, "outline")}</div></article>`).join("")}</div></section>`).join("") || empty("لا توجد دروس منشورة لهذا المصدر في هذا المسار.", "يمكن للإدارة إضافة الدورات وربطها بهذا المصدر من لوحة المالك.") }
+      </section>
+      <section id="teacher-files" class="panel spaced"><h2>الملفات التعليمية</h2>
+        ${linkedFiles.map((file) => `<a class="list-row" href="/api/media/${e(file.id)}" target="_blank" rel="noopener noreferrer"><span>${icon("file-pdf")} ملف ${file.index} · ${e(file.lesson)}<br><small>${e(file.course)}</small></span>${icon("external-link")}</a>`).join("") || "<p>لا توجد ملفات مرتبطة بدروس هذا المصدر بعد.</p>"}
+      </section>
+      <section id="teacher-tests" class="panel spaced"><h2>الاختبارات</h2>
+        ${tests.map((test) => `<a class="list-row" href="#/tests/${test.id}"><span>${e(test.title)}<br><small>${test.count} أسئلة · ${minutes(test.duration)} دقائق</small></span>${icon("arrow")}</a>`).join("") || "<p>لم تُنشر اختبارات مرتبطة بهذا المصدر بعد.</p>"}
+      </section>`;
   }
   function drawTrack() {
-    const t = catalog.tracks.find((t) => t.id === id);
-    if (!t) {
-      target.innerHTML = empty(
-        "المسار غير متاح.",
-        "قد يكون مخفيًا أو غير منشور.",
-      );
+    const track = catalog.tracks.find((item) => item.id === id);
+    if (!track) {
+      target.innerHTML = empty("المسار غير متاح.", "قد يكون مخفيًا أو غير منشور.");
       return;
     }
-    const courses = catalog.courses.filter((c) => c.trackId === id);
-    target.innerHTML = `<div class="track-welcome"><span class="eyebrow">${e(catalog.sections.find((s) => s.id === t.sectionId)?.title || "")}</span><h2>${e(t.title)}</h2><p>اختيارات مستقلة للتأسيس والتدريب، مع أسئلة واختبارات ومراجعة أخطاء.</p><div class="hero-actions">${btn("اختر مدرسك ودورتك", "#/choose")}${btn("بنك أسئلة المسار", "#/bank?track=" + id, "outline")}</div></div><div class="track-shortcuts">${[
-      ["التأسيس", "#track-foundation"],
-      ["التدريب", "#track-training"],
-      ["المدرسون", "#/instructors"],
-      ["الاختبارات", "#/tests"],
-      ["مراجعة الأخطاء", "#/mistakes"],
-    ]
-      .map(([name, href]) =>
-        href.startsWith("#track")
-          ? `<button type="button" data-track-jump="${href.slice(1)}">${name}</button>`
-          : `<a href="${href}">${name} ${icon("arrow")}</a>`,
-      )
-      .join(
-        "",
-      )}${id === "qudrat-verbal" ? `<a href="#/bank?track=${id}&topic=vocabulary">المفردات ${icon("book")}</a><a href="#/bank?track=${id}&topic=reading">استيعاب المقروء ${icon("book")}</a>` : ""}</div>${[
-      "foundation",
-      "training",
-      "review",
-    ]
-      .map((stage) => {
-        const list = courses.filter((c) => c.stage === stage);
-        if (stage === "review" && !list.length) return "";
-        return `<section class="journey-section" id="track-${stage}"><h2>${stageName(stage)}</h2><div class="teacher-courses">${list.map((c) => `<article class="panel"><small class="muted">${e(catalog.instructors.find((t) => t.id === c.instructorId)?.name || "دورة مستقلة")}</small><h3>${e(c.title)}</h3><p>${e(c.description)}</p><p>${c.metrics.videoCount} مقاطع · ${c.metrics.videoSeconds ? minutes(c.metrics.videoSeconds) + " دقيقة فيديو معروفة" : "المدة تتحدد من المحتوى المتاح"}</p><div class="spaced">${btn("عرض الدروس", "#/course/" + c.id, "outline")}</div></article>`).join("") || empty("المرحلة في انتظار محتواها.", "يمكن للإدارة إضافة عدة مدرسين ودورات لهذا المسار.")}</div></section>`;
-      })
-      .join("")}`;
+    const courses = catalog.courses.filter((course) => course.trackId === id);
+    const sourceIds = new Set(courses.map((course) => course.instructorId).filter(Boolean));
+    const sources = catalog.instructors.filter((source) => sourceIds.has(source.id));
+    const independent = courses.filter((course) => !course.instructorId);
+    target.innerHTML = `<div class="track-welcome"><span class="eyebrow">${e(catalog.sections.find((item) => item.id === track.sectionId)?.title || "")}</span><h2>${e(track.title)}</h2><p>اختر المدرس أو المصدر التعليمي الذي تريد الدراسة معه.</p></div>
+      <section class="spaced"><div class="admin-bar"><h2>المدرسون والمصادر</h2><span class="muted">${sources.length} مصادر منشورة</span></div>
+        <div class="teacher-grid">${sources.map((source) => teacherCard(source, id)).join("") || empty("لا توجد مصادر منشورة لهذا المسار بعد.", "يمكن للإدارة إضافة مدرس وربطه بدورات هذا المسار.")}</div>
+      </section>
+      ${independent.length ? `<section class="spaced"><h2>دورات مستقلة</h2><div class="teacher-courses">${independent.map((course) => `<article class="panel"><span class="badge">${e(courseGroupName(course))}</span><h3>${e(course.title)}</h3><p>${e(course.description)}</p>${btn("عرض الدروس والملفات والاختبارات", "#/course/" + course.id, "outline")}</article>`).join("")}</div></section>` : ""}
+      <div class="track-shortcuts spaced"><a href="#/bank?track=${encodeURIComponent(id)}">بنك أسئلة المسار ${icon("arrow")}</a><a href="#/tests">الاختبارات العامة ${icon("arrow")}</a><a href="#/mistakes">دفتر الأخطاء ${icon("arrow")}</a>${id === "qudrat-verbal" ? `<a href="#/bank?track=${id}&topic=vocabulary">المفردات ${icon("book")}</a><a href="#/bank?track=${id}&topic=reading">استيعاب المقروء ${icon("book")}</a>` : ""}</div>`;
   }
   function drawDiscover() {
     const tests = catalog.tests.filter(
@@ -501,10 +393,15 @@ ${upcoming.length ? `<section class="dash-card"><div class="dash-card-head"><h2>
     const b = ev.target.closest("button");
     if (!b) return;
     try {
+      if (b.dataset.choiceTeacher !== undefined) { const stage=choiceStages[choiceStep]; if(stage){ for(const x of stage.courses) chosen.delete(x.id); for(const x of stage.courses) if((x.instructorId || "independent")===b.dataset.choiceTeacher) chosen.add(x.id); await api("/api/learning/selections",{method:"PUT",body:{courseIds:[...chosen]}}); choiceStep++; if(choiceStep>=choiceStages.length) location.hash="#/journey"; else drawChoices(); } return; }
+      if (b.hasAttribute("data-choice-skip")) { const stage=choiceStages[choiceStep]; if(stage){for(const x of stage.courses) chosen.delete(x.id); await api("/api/learning/selections",{method:"PUT",body:{courseIds:[...chosen]}}); choiceStep++; if(choiceStep>=choiceStages.length) location.hash="#/journey"; else drawChoices();} return; }
+      if (b.hasAttribute("data-choice-back")) { choiceStep=Math.max(0,choiceStep-1); drawChoices(); return; }
       if (b.hasAttribute("data-welcome-back")) {
         step = Math.max(0, step - 1);
         drawWizard();
       }
+      if (b.dataset.teacherJump)
+        document.getElementById(b.dataset.teacherJump)?.scrollIntoView({ behavior: "smooth", block: "start" });
       if (b.dataset.trackJump)
         document.getElementById(b.dataset.trackJump)?.scrollIntoView({
           behavior: window.matchMedia("(prefers-reduced-motion: reduce)")
@@ -601,6 +498,9 @@ ${upcoming.length ? `<section class="dash-card"><div class="dash-card-head"><h2>
       if (count) count.textContent = chosen.size + " دورات مختارة";
     }
     if (ev.target.id === "choice-teacher") drawChoices();
+    if (kind === "welcome" && ["sectionId","studyMode"].includes(ev.target.name)) {
+      void advance(false).catch(error);
+    }
   };
   const submit = async (ev) => {
     const form = ev.target;
@@ -617,7 +517,7 @@ ${upcoming.length ? `<section class="dash-card"><div class="dash-card-head"><h2>
     const button = form.querySelector("button[type=submit]");
     if (button) button.disabled = true;
     try {
-      if (form.id === "welcome-form") await advance(false);
+      if (form.id === "welcome-form" && step === 2) await advance(false);
       if (form.id === "choices-form") {
         await api("/api/learning/selections", {
           method: "PUT",

@@ -26,6 +26,8 @@ const tabs = [
   ["questions", "بنك الأسئلة"],
   ["tests", "الاختبارات"],
   ["updates", "التحديثات والتجميعات"],
+  ["leaks", "إدارة التسريبات"],
+  ["broadcasts", "رسائل المشتركين"],
   ["uploads", "الفيديوهات والملفات"],
   ["brand", "الهوية والرئيسية"],
   ["storefront", "إدارة واجهة المتجر"],
@@ -56,6 +58,8 @@ function content() {
       "learning-tracks",
       "scheduler",
       "students",
+      "leaks",
+      "broadcasts",
       "uploads",
       "custom",
       "payment",
@@ -433,6 +437,7 @@ async function editForm(type, id, courseId) {
         (db.tracks || []).map((t) => [t.id, t.title]),
         r.trackId,
       ) +
+      field("groupTitle", "اسم المجموعة الظاهر للطالب (اختياري، مثل زبدة المنصف)", r.groupTitle || "", "text", 'maxlength="80"') +
       select(
         "stage",
         "مرحلة الدورة",
@@ -779,6 +784,7 @@ export function mountAdmin(toast, rerender) {
         Object.assign(obj, {
           trackId: get("trackId"),
           stage: get("stage"),
+          groupTitle: get("groupTitle"),
           instructorId: get("instructorId"),
           previewLessonId: get("previewLessonId") || null,
         });

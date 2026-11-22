@@ -15,7 +15,22 @@ export function authLive(signup = false) {
         ? null
         : new URLSearchParams(location.hash.split("?")[1] || "").get("next"),
     next = safeNext(rawNext)?.slice(1) || "/sections";
-  return `<div class="auth-layout"><div class="auth-art">${icon("play")}<h2>تعرّف على الشرح.<br>قبل أن تختار.</h2><p>حساب مجاني لمعاينة المحتوى المتاح، ثم اشتراك شامل عندما تكون مستعدًا.</p><a class="text-link" href="#/sections">استعرض الدورات ${icon("arrow")}</a></div><div class="auth-form"><span class="eyebrow">${signup ? "حساب مجاني. بداية واضحة." : "أهلًا بعودتك إلى رُزمة"}</span><h1>${signup ? "خلّنا نبدأ." : "نكمل من مكانك."}</h1><p>${rawNext ? "بعد الدخول نعيدك إلى المحتوى الذي اخترته." : signup ? "أنشئ حسابك لاستكشاف المعاينات المتاحة." : "سجل الدخول لمتابعة استكشافك أو دراستك."}</p><form id="auth-form" data-signup="${signup}">${signup ? '<div class="field"><label for="display-name">اسم العرض</label><input id="display-name" name="name" maxlength="80" autocomplete="name" required></div>' : ""}<div class="field"><label for="auth-email">البريد الإلكتروني</label><input id="auth-email" name="email" type="email" dir="ltr" autocomplete="email" required maxlength="254"></div><div class="field"><label for="auth-password">كلمة المرور</label><input id="auth-password" name="password" type="password" minlength="12" maxlength="200" autocomplete="${signup ? "new-password" : "current-password"}" required><small>${signup ? "١٢ حرفًا على الأقل. لا يتطلب الحساب المجاني بيانات بطاقة." : "استعادة كلمة المرور عبر مالك المنصة عند اعتماد البريد الرسمي."}</small></div><div id="form-error" class="form-error" role="alert"></div><button class="btn btn-primary" type="submit">${signup ? "إنشاء حساب مجاني" : "تسجيل الدخول"} ${icon("arrow")}</button></form><div class="auth-switch">${signup ? "لديك حساب؟" : "أول مرة هنا؟"} <a href="${authLink(!signup, next)}">${signup ? "تسجيل الدخول" : "إنشاء حساب مجاني"}</a></div></div></div>`;
+  return `<div class="auth-layout"><div class="auth-art">${icon("play")}<h2>تعرّف على الشرح.<br>قبل أن تختار.</h2><p>حساب مجاني لمعاينة المحتوى المتاح، ثم اشتراك شامل عندما تكون مستعدًا.</p><a class="text-link" href="#/sections">استعرض الدورات ${icon("arrow")}</a></div><div class="auth-form"><span class="eyebrow">${signup ? "حساب مجاني. بداية واضحة." : "أهلًا بعودتك إلى رُزمة"}</span><h1>${signup ? "خلّنا نبدأ." : "نكمل من مكانك."}</h1><p>${rawNext ? "بعد الدخول نعيدك إلى المحتوى الذي اخترته." : signup ? "أنشئ حسابك لاستكشاف المعاينات المتاحة." : "سجل الدخول لمتابعة استكشافك أو دراستك."}</p><form id="auth-form" data-signup="${signup}">${signup ? '<div class="field"><label for="display-name">اسم العرض</label><input id="display-name" name="name" maxlength="80" autocomplete="name" required></div>' : ""}<div class="field"><label for="auth-email">البريد الإلكتروني</label><input id="auth-email" name="email" type="email" dir="ltr" autocomplete="email" required maxlength="254"></div><div class="field"><label for="auth-password">كلمة المرور</label><input id="auth-password" name="password" type="password" ${signup ? 'minlength="8"' : ""} maxlength="200" autocomplete="${signup ? "new-password" : "current-password"}" required><small>${signup ? "٨ أحرف على الأقل. سنرسل رمز تحقق إلى بريدك تلقائيًا بعد المتابعة." : "أدخل كلمة المرور المرتبطة بحسابك."}</small></div><div id="form-error" class="form-error" role="alert"></div><button class="btn btn-primary" type="submit">${signup ? "إنشاء حساب مجاني" : "تسجيل الدخول"} ${icon("arrow")}</button></form>${signup ? "" : `<p class="smalltext spaced"><a class="text-link" href="#/forgot-password">نسيت كلمة المرور؟</a> · <a class="text-link" href="#/verify-email">إعادة إرسال رمز التحقق</a></p>`}<div class="auth-switch">${signup ? "لديك حساب؟" : "أول مرة هنا؟"} <a href="${authLink(!signup, next)}">${signup ? "تسجيل الدخول" : "إنشاء حساب مجاني"}</a></div></div></div>`;
+}
+export function adminAuthLive() {
+  return `<div class="auth-layout"><div class="auth-art">${icon("shield-check")}<h2>مساحة إدارة رُزمة.</h2><p>هذه الصفحة مخصصة لمالك المنصة فقط. حسابات الطلاب لا تملك صلاحية الدخول إلى الإدارة.</p><a class="text-link" href="#/login">العودة إلى دخول الطلاب ${icon("arrow")}</a></div><div class="auth-form"><span class="eyebrow">دخول المالك</span><h1>إدارة رُزمة.</h1><p>استخدم البريد وكلمة المرور اللذين تم إعداد حساب المالك بهما.</p><form id="admin-auth-form"><div class="field"><label for="admin-auth-email">بريد المالك</label><input id="admin-auth-email" name="email" type="email" dir="ltr" autocomplete="username" maxlength="254" required></div><div class="field"><label for="admin-auth-password">كلمة المرور</label><input id="admin-auth-password" name="password" type="password" autocomplete="current-password" maxlength="200" required></div><div id="admin-form-error" class="form-error" role="alert"></div><button class="btn btn-primary" type="submit">${icon("lock")} دخول لوحة الإدارة</button></form><div class="auth-switch"><a href="#/login">تسجيل دخول الطالب</a></div></div></div>`;
+}
+export function verifyEmailLive() {
+  const params = new URLSearchParams(location.hash.split("?")[1] || ""),
+    mail = params.get("email") || "";
+  return `<div class="auth-layout"><div class="auth-art">${icon("mail")}<h2>بريدك هو مفتاح حسابك.</h2><p>نرسل رمزًا قصير الصلاحية للتأكد من أنك تملك البريد المسجل.</p></div><div class="auth-form"><span class="eyebrow">خطوة أمان إضافية</span><h1>تحقق من بريدك.</h1><p>أدخل الرمز المكوّن من ٦ أرقام الذي أرسلناه إلى بريدك. تنتهي صلاحيته خلال ١٠ دقائق.</p><form id="verify-email-form"><div class="field"><label for="verify-email">البريد الإلكتروني</label><input id="verify-email" name="email" type="email" dir="ltr" maxlength="254" value="${e(mail)}" required></div><div class="field"><label for="verify-code">رمز التحقق</label><input id="verify-code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" minlength="6" dir="ltr" required></div><div id="verify-error" class="form-error" role="alert"></div><button class="btn btn-primary" type="submit">تأكيد البريد والمتابعة ${icon("arrow")}</button></form><form id="verify-resend-form" class="spaced"><input type="hidden" name="email" value="${e(mail)}"><button class="btn btn-outline" type="submit">إعادة إرسال الرمز</button><p id="verify-resend-status" class="smalltext" aria-live="polite"></p></form><div class="auth-switch"><a href="#/login">العودة لتسجيل الدخول</a></div></div></div>`;
+}
+export function forgotPasswordLive() {
+  return `<div class="auth-layout"><div class="auth-art">${icon("lock")}<h2>نساعدك ترجع لحسابك.</h2><p>نرسل رمز استعادة إلى البريد المؤكد المرتبط بالحساب.</p></div><div class="auth-form"><span class="eyebrow">استعادة الحساب</span><h1>نسيت كلمة المرور؟</h1><p>أدخل بريدك الإلكتروني، وسنرسل رمزًا إذا كان الحساب مسجلًا ومؤكدًا.</p><form id="forgot-password-form"><div class="field"><label for="forgot-email">البريد الإلكتروني</label><input id="forgot-email" name="email" type="email" dir="ltr" autocomplete="email" maxlength="254" required></div><div id="forgot-error" class="form-error" role="alert"></div><button class="btn btn-primary" type="submit">إرسال رمز الاستعادة ${icon("arrow")}</button></form><div class="auth-switch"><a href="#/login">العودة لتسجيل الدخول</a></div></div></div>`;
+}
+export function resetPasswordLive() {
+  const mail = new URLSearchParams(location.hash.split("?")[1] || "").get("email") || "";
+  return `<div class="auth-layout"><div class="auth-art">${icon("shield-check")}<h2>حسابك يبقى لك.</h2><p>رمز واحد، صالح لعشر دقائق، ويُستخدم مرة واحدة.</p></div><div class="auth-form"><span class="eyebrow">تعيين كلمة مرور جديدة</span><h1>استعد حسابك.</h1><p>أدخل رمز البريد وكلمة مرور جديدة لا تقل عن ٨ أحرف.</p><form id="reset-password-form"><div class="field"><label for="reset-email">البريد الإلكتروني</label><input id="reset-email" name="email" type="email" dir="ltr" maxlength="254" value="${e(mail)}" required></div><div class="field"><label for="reset-code">رمز الاستعادة</label><input id="reset-code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" minlength="6" maxlength="6" dir="ltr" required></div><div class="field"><label for="reset-password">كلمة المرور الجديدة</label><input id="reset-password" name="password" type="password" minlength="8" maxlength="200" autocomplete="new-password" required></div><div id="reset-error" class="form-error" role="alert"></div><button class="btn btn-primary" type="submit">حفظ كلمة المرور ${icon("check")}</button></form><div class="auth-switch"><a href="#/forgot-password">طلب رمز جديد</a> · <a href="#/login">تسجيل الدخول</a></div></div></div>`;
 }
 export function reviewOrder(id) {
   const p = db.plans.find((p) => p.id === id);
@@ -71,15 +86,111 @@ export async function loadPaymentStatus(toast) {
   };
 }
 export function tutorLive() {
-  return `<div class="ai-full">${pageHeading("مدرّسك في رُزمة", "نفهم الفكرة. ثم نبني عليها.", "اسأل عن مفهوم، ارفع مستوى تدريبك، أو رتّب خطتك. استجابات من OpenAI عبر الخادم.")}<div class="notice">${icon("spark")}<p>المدرس قد يخطئ. راجع الحل والمراجع المعتمدة. الحد الافتراضي ٧ طلبات يوميًا، ويمكن للمالك تعديله. لا ترسل بيانات شخصية حساسة. <a class="text-link" href="#/learning-settings">إعداد مشاركة خطتك ونتائجك مع المدرس</a></p></div><div class="tutor-layout"><div class="panel"><div class="admin-bar"><h2>محادثاتك</h2><button class="btn btn-outline btn-sm" data-ai-new>محادثة جديدة ${icon("plus")}</button></div><div id="conversation-list"></div></div><div class="panel"><div id="ai-chat" class="ai-chat" aria-live="polite"><div class="chat-welcome">${icon("spark")}<h3>بأي فكرة نبدأ اليوم؟</h3><p>جرّب: كيف أفهم النسب؟ أو كيف أراجع أخطائي قبل الاختبار؟</p></div></div><form id="tutor-form"><label for="tutor-input">سؤالك</label><textarea id="tutor-input" name="message" required maxlength="4000" placeholder="اكتب سؤالك أو خطوات حلك…"></textarea><div class="admin-bar spaced"><small id="ai-quota" class="muted">يُتحقق من صلاحية الاشتراك والحد اليومي على الخادم.</small><button class="btn btn-primary" type="submit">اسأل المدرس ${icon("arrow")}</button></div><p id="ai-error" class="form-error" role="alert"></p></form></div></div></div>`;
+  return '<div class="tutor-topbar-v6"><b>مدرّس رُزمة</b><small>اسأل، أرفق صورة، وشاهد خطوات الحل والرسومات داخل المحادثة.</small></div>' +
+    '<div class="ai-chat-app-v6"><details class="tutor-history-v6"><summary>' + icon("messages-square") + " محادثاتي السابقة" + '</summary><div id="conversation-list"></div></details>' +
+    '<div id="ai-chat" class="ai-chat ai-chat-v6" aria-live="polite"><div class="chat-welcome">' + icon("spark") + '<h3>وش حاب تفهم اليوم؟</h3><p>اكتب سؤالك أو أرفق صورة. يقدر المدرّس يرسم الأشكال الهندسية ويوضح خطوات الحل داخل المحادثة.</p></div></div>' +
+    '<form id="tutor-form" class="tutor-composer-v6"><textarea id="tutor-input" name="message" maxlength="1200" placeholder="اسأل مدرس رُزمة..." aria-label="اكتب سؤالك"></textarea><div class="tutor-composer-actions"><label for="tutor-attachment" class="tutor-round-action" title="إرفاق صورة">' + icon("image") + '</label><input id="tutor-attachment" name="attachment" type="file" accept="image/jpeg,image/png,image/webp" hidden><small id="tutor-file-name" class="muted">إرفاق صورة سؤال</small><span class="spacer"></span><small id="ai-quota" class="muted">يُتحقق من صلاحية الاشتراك والحد اليومي على الخادم.</small><button class="tutor-send-v6" type="submit" aria-label="إرسال السؤال">' + icon("arrow-up") + '</button></div><p id="ai-error" class="form-error" role="alert"></p></form>' +
+    '<div class="tutor-draw-storage" aria-hidden="true"><input id="tutor-pen-color" type="color" value="#594775"><input id="tutor-pen-size" type="range" min="2" max="12" value="4"><canvas id="tutor-drawing-canvas" width="900" height="340"></canvas></div></div>';
+}
+export function teacherBoardMarkup(text) {
+  const raw = String(text || "");
+  const match = raw.match(/```diagram\s*([\s\S]*?)```/i);
+  let diagram = null;
+  if (match) {
+    try {
+      const value = JSON.parse(match[1]);
+      if (value && Array.isArray(value.shapes)) {
+        diagram = {
+          shapes: value.shapes.slice(0, 50).filter((shape) =>
+            shape && ["line", "arrow", "circle", "rect", "point", "text", "polyline", "polygon", "axes"].includes(shape.type)
+          ),
+        };
+      }
+    } catch {}
+  }
+  const clean = raw.replace(/```diagram\s*[\s\S]*?```/gi, "").trim();
+  const lines = clean.split(/\n+/)
+    .map((line) => line.replace(/^\s*(?:[-*•]|\d+[.)、])\s*/, "").trim())
+    .filter(Boolean).slice(0, 30);
+  const steps = lines.length ? lines : [clean || "اتبع الرسم التوضيحي ثم راجع خطوات الحل."];
+  const canvas = diagram?.shapes.length
+    ? `<canvas class="tutor-teacher-canvas" width="1000" height="600" data-teacher-diagram="${e(JSON.stringify(diagram))}" aria-label="رسم توضيحي من مدرس رُزمة"></canvas>`
+    : "";
+  return `<section class="tutor-solution-board" dir="rtl"><div class="tutor-board-heading"><span>${icon("presentation")} سبورة مدرس رُزمة</span><small>${steps.length} خطوات</small></div>${canvas}<div class="tutor-board-steps">${steps.map((line, index) => `<div class="tutor-board-step" data-board-step="${index}" ${index ? "hidden" : ""}><b>${index + 1}</b><p dir="auto">${e(line)}</p></div>`).join("")}</div><div class="tutor-board-controls"><button type="button" class="btn btn-outline btn-sm" data-board-next ${steps.length <= 1 ? "hidden" : ""}>الخطوة التالية</button><button type="button" class="btn btn-ghost btn-sm" data-board-all ${steps.length <= 1 ? "hidden" : ""}>عرض كل الحل</button></div></section>`;
 }
 export function mountTutor(toast) {
   let conversationId = null,
     disposed = false;
   const list = document.querySelector("#conversation-list"),
-    chat = document.querySelector("#ai-chat");
+    chat = document.querySelector("#ai-chat"),
+    canvas = document.querySelector("#tutor-drawing-canvas"),
+    penColor = document.querySelector("#tutor-pen-color"),
+    penSize = document.querySelector("#tutor-pen-size");
+  let strokes = [], activeStroke = null, hasDrawing = false, baseImage = null, imageLoading = Promise.resolve(), drawTool = "pen";
+  const ctx = canvas?.getContext("2d");
+  const renderMessage = (item) => message(item.role, item.content) + (item.role === "assistant" ? teacherBoardMarkup(item.content) : "");
+  const drawTeacherDiagrams = (root = chat) => {
+    for (const board of root.querySelectorAll("canvas[data-teacher-diagram]")) {
+      let diagram;
+      try { diagram = JSON.parse(board.dataset.teacherDiagram); } catch { continue; }
+      const ctx = board.getContext("2d");
+      if (!ctx || !Array.isArray(diagram?.shapes)) continue;
+      const dpr = window.devicePixelRatio || 1, rect = board.getBoundingClientRect();
+      const width = Math.max(1, Math.round(rect.width * dpr)), height = Math.max(1, Math.round(rect.width * 0.6 * dpr));
+      if (board.width !== width || board.height !== height) { board.width = width; board.height = height; }
+      ctx.setTransform(dpr * rect.width / 1000, 0, 0, dpr * rect.width / 1000, 0, 0);
+      ctx.clearRect(0, 0, 1000, 600);
+      ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, 1000, 600);
+      const coord = (v, fallback = 0) => Number.isFinite(Number(v)) ? Math.max(0, Math.min(1000, Number(v))) : fallback;
+      const color = (v) => /^#[0-9a-f]{6}$/i.test(String(v || "")) ? v : "#594775";
+      const line = (shape, arrow = false) => {
+        const x1 = coord(shape.x1), y1 = coord(shape.y1), x2 = coord(shape.x2), y2 = coord(shape.y2);
+        ctx.strokeStyle = color(shape.color); ctx.lineWidth = Math.max(1, Math.min(12, Number(shape.width) || 4));
+        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+        if (arrow) {
+          const angle = Math.atan2(y2 - y1, x2 - x1), size = 18;
+          ctx.beginPath(); ctx.moveTo(x2, y2); ctx.lineTo(x2 - size * Math.cos(angle - Math.PI / 6), y2 - size * Math.sin(angle - Math.PI / 6)); ctx.lineTo(x2 - size * Math.cos(angle + Math.PI / 6), y2 - size * Math.sin(angle + Math.PI / 6)); ctx.closePath(); ctx.fillStyle = color(shape.color); ctx.fill();
+        }
+      };
+      for (const shape of diagram.shapes.slice(0, 50)) {
+        if (!shape || typeof shape !== "object") continue;
+        ctx.strokeStyle = color(shape.color); ctx.fillStyle = color(shape.color); ctx.lineWidth = Math.max(1, Math.min(12, Number(shape.width) || 4));
+        const x = coord(shape.x), y = coord(shape.y);
+        if (shape.type === "line" || shape.type === "arrow") line(shape, shape.type === "arrow");
+        else if (shape.type === "circle") { ctx.beginPath(); ctx.arc(x, y, Math.max(2, Math.min(250, Number(shape.r) || 24)), 0, Math.PI * 2); ctx.stroke(); }
+        else if (shape.type === "rect") ctx.strokeRect(x, y, Math.max(1, Math.min(1000, Number(shape.w) || 80)), Math.max(1, Math.min(600, Number(shape.h) || 60)));
+        else if (shape.type === "point") { ctx.beginPath(); ctx.arc(x, y, Math.max(3, Math.min(20, Number(shape.r) || 7)), 0, Math.PI * 2); ctx.fill(); if (shape.label) { ctx.font = "bold 25px sans-serif"; ctx.fillText(String(shape.label).slice(0, 35), x + 14, y - 12); } }
+        else if (shape.type === "text") { ctx.font = ` ${Math.max(14, Math.min(42, Number(shape.size) || 24))}px sans-serif`; ctx.fillText(String(shape.text || "").slice(0, 90), x, y); }
+        else if (shape.type === "polyline" || shape.type === "polygon") {
+          if (!Array.isArray(shape.points) || shape.points.length < (shape.type === "polygon" ? 3 : 2)) continue;
+          ctx.beginPath(); shape.points.slice(0, 100).forEach((p, i) => i ? ctx.lineTo(coord(p?.[0]), coord(p?.[1])) : ctx.moveTo(coord(p?.[0]), coord(p?.[1])));
+          if (shape.type === "polygon") ctx.closePath(); ctx.stroke();
+        } else if (shape.type === "axes") {
+          const ox = coord(shape.x, 500), oy = coord(shape.y, 300);
+          line({ x1: 70, y1: oy, x2: 940, y2: oy, color: shape.color, width: 3 }, true);
+          line({ x1: ox, y1: 540, x2: ox, y2: 45, color: shape.color, width: 3 }, true);
+          ctx.font = "bold 24px sans-serif"; ctx.fillText(String(shape.xLabel || "س").slice(0, 10), 920, oy - 14); ctx.fillText(String(shape.yLabel || "ص").slice(0, 10), ox + 12, 45);
+        }
+      }
+    }
+  };
+  const paintDrawing = () => {
+    if (!canvas || !ctx) return;
+    const rect = canvas.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+    const width = Math.max(1, Math.round(rect.width * dpr)), height = Math.round(220 * dpr);
+    if (canvas.width !== width || canvas.height !== height) { canvas.width = width; canvas.height = height; }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, rect.width, 220); ctx.lineCap = "round"; ctx.lineJoin = "round";
+    if (baseImage) { const scale = Math.min(rect.width / baseImage.width, 220 / baseImage.height); const w = baseImage.width * scale, h = baseImage.height * scale; ctx.drawImage(baseImage, (rect.width - w) / 2, (220 - h) / 2, w, h); }
+    for (const stroke of strokes) { ctx.save(); ctx.strokeStyle = stroke.color; ctx.lineWidth = stroke.tool === "marker" ? stroke.size * 3 : stroke.size; if (stroke.tool === "marker") ctx.globalAlpha = 0.28; ctx.beginPath(); stroke.points.forEach((p, i) => i ? ctx.lineTo(p.x * rect.width, p.y * 220) : ctx.moveTo(p.x * rect.width, p.y * 220)); if (stroke.points.length === 1) { const p = stroke.points[0]; ctx.beginPath(); ctx.arc(p.x * rect.width, p.y * 220, stroke.size / 2, 0, Math.PI * 2); ctx.fillStyle = stroke.color; ctx.fill(); } else ctx.stroke(); ctx.restore(); }
+  };
+  const drawingPoint = (event) => { const rect = canvas.getBoundingClientRect(); return { x: Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)), y: Math.max(0, Math.min(1, (event.clientY - rect.top) / 220)) }; };
+  const pointerDown = (event) => { if (event.button !== 0 || !canvas) return; event.preventDefault(); activeStroke = { color: penColor?.value || "#594775", size: Number(penSize?.value || 4), tool: drawTool, points: [drawingPoint(event)] }; strokes.push(activeStroke); hasDrawing = true; canvas.setPointerCapture(event.pointerId); paintDrawing(); };
+  const pointerMove = (event) => { if (!activeStroke || !canvas) return; for (const point of event.getCoalescedEvents?.() || [event]) activeStroke.points.push(drawingPoint(point)); paintDrawing(); };
+  const pointerEnd = () => { activeStroke = null; };
+  canvas?.addEventListener("pointerdown", pointerDown); canvas?.addEventListener("pointermove", pointerMove); canvas?.addEventListener("pointerup", pointerEnd); canvas?.addEventListener("pointercancel", pointerEnd);
+  const resizeObserver = canvas ? new ResizeObserver(paintDrawing) : null; resizeObserver?.observe(canvas); paintDrawing();
   const message = (role, text) =>
-    `<div class="live-message ${role}"><b>${role === "user" ? "أنت" : "مدرّس رُزمة"}</b><p>${e(text).replace(/\n/g, "<br>")}</p></div>`;
+    `<div class="live-message ${role}"><b>${role === "user" ? "أنت" : "مدرّس رُزمة"}</b><p>${e(String(text || "").replace(/```diagram[\s\S]*?```/gi, "").trim()).replace(/\n/g, "<br>")}</p></div>`;
   async function load() {
     try {
       const conversations = await api("/api/conversations");
@@ -97,6 +208,14 @@ export function mountTutor(toast) {
   }
   void load();
   const click = async (ev) => {
+    const drawAction = ev.target.closest("[data-tutor-draw]")?.dataset.tutorDraw;
+    if (drawAction === "pen" || drawAction === "marker") { drawTool = drawAction; document.querySelectorAll("[data-tutor-draw=pen], [data-tutor-draw=marker]").forEach((button) => button.classList.toggle("active", button.dataset.tutorDraw === drawTool)); }
+    if (drawAction === "undo") { strokes.pop(); hasDrawing = strokes.length > 0 || !!baseImage; paintDrawing(); }
+    if (drawAction === "clear") { strokes = []; hasDrawing = !!baseImage; paintDrawing(); }
+    const next = ev.target.closest("[data-board-next]");
+    if (next) { const board = next.closest(".tutor-solution-board"); const hidden = board.querySelector("[data-board-step][hidden]"); if (hidden) hidden.hidden = false; if (!board.querySelector("[data-board-step][hidden]")) next.hidden = true; }
+    const all = ev.target.closest("[data-board-all]");
+    if (all) { const board = all.closest(".tutor-solution-board"); board.querySelectorAll("[data-board-step]").forEach((step) => step.hidden = false); board.querySelector("[data-board-next]")?.setAttribute("hidden", ""); all.hidden = true; }
     const c = ev.target.closest("[data-conversation]");
     if (c) {
       try {
@@ -105,9 +224,8 @@ export function mountTutor(toast) {
         );
         if (disposed) return;
         conversationId = c.dataset.conversation;
-        chat.innerHTML = messages
-          .map((m) => message(m.role, m.content))
-          .join("");
+        chat.innerHTML = messages.map(renderMessage).join("");
+        drawTeacherDiagrams(chat);
       } catch (err) {
         toast(err.message);
       }
@@ -115,6 +233,7 @@ export function mountTutor(toast) {
     if (ev.target.closest("[data-ai-new]")) {
       conversationId = null;
       chat.innerHTML = "<p>محادثة جديدة. اكتب سؤالك أدناه.</p>";
+      strokes = []; baseImage = null; hasDrawing = false; imageInputReset(); paintDrawing();
     }
   };
   const submit = async (ev) => {
@@ -122,21 +241,39 @@ export function mountTutor(toast) {
     ev.preventDefault();
     const form = ev.target,
       button = form.querySelector("button[type=submit]"),
-      text = form.message.value.trim();
-    if (!text) return;
+      text = form.message.value.trim(),
+      file = form.attachment.files?.[0] || null;
+    if (!text && !file && !hasDrawing) return;
     button.disabled = true;
     const error = document.querySelector("#ai-error");
     error.textContent = "";
-    chat.innerHTML += message("user", text);
     try {
+      let image = null;
+      await imageLoading;
+      if (file && baseImage && hasDrawing) {
+        image = { name: file.name, mimeType: "image/png", data: canvas.toDataURL("image/png").split(",")[1] };
+      } else if (file) {
+        if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) throw Error("أرفق صورة سؤال بصيغة JPG أو PNG أو WebP فقط.");
+        if (file.size > 4 * 1024 * 1024) throw Error("حجم صورة السؤال يجب ألا يتجاوز ٤ ميجابايت.");
+        const data = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => { const value = String(reader.result || ""); const comma = value.indexOf(","); if (comma < 0) reject(Error("تعذرت قراءة الصورة.")); else resolve(value.slice(comma + 1)); }; reader.onerror = () => reject(Error("تعذرت قراءة الصورة.")); reader.readAsDataURL(file); });
+        image = { name: file.name, mimeType: file.type, data };
+      } else if (hasDrawing && canvas) {
+        image = { name: "student-question-drawing.png", mimeType: "image/png", data: canvas.toDataURL("image/png").split(",")[1] };
+      }
+      const shownText = text || (image ? "حلّل صورة السؤال أو الرسم المرفق واشرحه." : "");
+      chat.innerHTML += message("user", shownText + (file ? "\n[مرفق صورة: " + file.name + "]" : hasDrawing ? "\n[رسم الطالب مرفق]" : ""));
       const value = await api("/api/tutor", {
         method: "POST",
-        body: { message: text, conversationId },
+        body: { message: text, image, conversationId },
       });
       if (disposed) return;
       conversationId = value.conversationId;
-      chat.innerHTML += message("assistant", value.text);
+      chat.innerHTML += message("assistant", value.text) + teacherBoardMarkup(value.text);
+      drawTeacherDiagrams(chat);
+      strokes = []; baseImage = null; hasDrawing = false; imageInputReset(); paintDrawing();
       form.message.value = "";
+      form.attachment.value = "";
+      document.querySelector("#tutor-file-name").textContent = "صورة JPG أو PNG أو WebP حتى ٤ ميجابايت";
       document.querySelector("#ai-quota").textContent =
         `المتبقي اليوم: ${value.remaining} طلبات`;
       await load();
@@ -146,10 +283,53 @@ export function mountTutor(toast) {
       button.disabled = false;
     }
   };
+  const imageInput = document.querySelector("#tutor-attachment");
+  const pendingImage = localStorage.getItem("ruzmah-pending-tutor-image");
+  if (pendingImage && imageInput) {
+    fetch(pendingImage).then(response => response.blob()).then(blob => {
+      const file = new File([blob], "lesson-crop.png", { type: "image/png" });
+      const transfer = new DataTransfer(); transfer.items.add(file); imageInput.files = transfer.files;
+      imageInput.dispatchEvent(new Event("change", { bubbles: true }));
+      localStorage.removeItem("ruzmah-pending-tutor-image");
+      const input = document.querySelector("#tutor-input");
+      if (input && !input.value) input.value = "اشرح لي هذه القصاصة من الدرس خطوة بخطوة.";
+    }).catch(() => toast("تعذر تجهيز القصاصة؛ يمكنك إرفاقها يدويًا."));
+  }
+    const imageInputReset = () => { if (imageInput) imageInput.value = ""; };
+  const imageChange = () => {
+    const file = imageInput?.files?.[0];
+    const label = document.querySelector("#tutor-file-name");
+    if (!file) { baseImage = null; hasDrawing = strokes.length > 0; paintDrawing(); if (label) label.textContent = "صورة JPG أو PNG أو WebP حتى ٤ ميجابايت"; return; }
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 4 * 1024 * 1024) {
+      imageInputReset();
+      if (label) label.textContent = "اختر صورة JPG أو PNG أو WebP لا تتجاوز ٤ ميجابايت.";
+      return;
+    }
+    if (label) label.textContent = file.name + " · " + Math.ceil(file.size / 1024) + " KB";
+    imageLoading = new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const image = new Image();
+        image.onload = () => { baseImage = image; hasDrawing = true; paintDrawing(); resolve(); };
+        image.onerror = () => reject(Error("تعذرت قراءة الصورة."));
+        image.src = String(reader.result || "");
+      };
+      reader.onerror = () => reject(Error("تعذرت قراءة الصورة."));
+      reader.readAsDataURL(file);
+    });
+    imageLoading.catch((err) => { if (!disposed) toast(err.message); });
+  };
+  imageInput?.addEventListener("change", imageChange);
   document.addEventListener("click", click);
   document.addEventListener("submit", submit);
   return () => {
     disposed = true;
+    resizeObserver?.disconnect();
+    canvas?.removeEventListener("pointerdown", pointerDown);
+    canvas?.removeEventListener("pointermove", pointerMove);
+    canvas?.removeEventListener("pointerup", pointerEnd);
+    canvas?.removeEventListener("pointercancel", pointerEnd);
+    imageInput?.removeEventListener("change", imageChange);
     document.removeEventListener("click", click);
     document.removeEventListener("submit", submit);
   };
