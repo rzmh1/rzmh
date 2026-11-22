@@ -284,20 +284,18 @@ export function mountTutor(toast) {
     }
   };
   const imageInput = document.querySelector("#tutor-attachment");
-  try {
-    const pendingImage = localStorage.getItem("ruzmah-pending-tutor-image");
-    if (pendingImage && imageInput) {
-      const response = await fetch(pendingImage);
-      const blob = await response.blob();
+  const pendingImage = localStorage.getItem("ruzmah-pending-tutor-image");
+  if (pendingImage && imageInput) {
+    fetch(pendingImage).then(response => response.blob()).then(blob => {
       const file = new File([blob], "lesson-crop.png", { type: "image/png" });
       const transfer = new DataTransfer(); transfer.items.add(file); imageInput.files = transfer.files;
       imageInput.dispatchEvent(new Event("change", { bubbles: true }));
       localStorage.removeItem("ruzmah-pending-tutor-image");
       const input = document.querySelector("#tutor-input");
       if (input && !input.value) input.value = "اشرح لي هذه القصاصة من الدرس خطوة بخطوة.";
-    }
-  } catch (err) { toast("تعذر تجهيز القصاصة؛ يمكنك إرفاقها يدويًا."); }
-  const imageInputReset = () => { if (imageInput) imageInput.value = ""; };
+    }).catch(() => toast("تعذر تجهيز القصاصة؛ يمكنك إرفاقها يدويًا."));
+  }
+    const imageInputReset = () => { if (imageInput) imageInput.value = ""; };
   const imageChange = () => {
     const file = imageInput?.files?.[0];
     const label = document.querySelector("#tutor-file-name");
