@@ -87,7 +87,7 @@ export async function loadPaymentStatus(toast) {
 }
 export function tutorLive() {
   return pageHeading("مدرّسك في رُزمة", "اسأل. ناقش. وشاهد الحل.", "محادثة واحدة واضحة؛ يشرح المدرّس ويرسم الأشكال داخل الرد نفسه.") +
-    '<div class="ai-chat-app-v6"><details class="tutor-history-v6"><summary>' + icon("messages") + " محادثاتي السابقة" + '</summary><div id="conversation-list"></div></details>' +
+    '<div class="ai-chat-app-v6"><details class="tutor-history-v6"><summary>' + icon("messages-square") + " محادثاتي السابقة" + '</summary><div id="conversation-list"></div></details>' +
     '<div id="ai-chat" class="ai-chat ai-chat-v6" aria-live="polite"><div class="chat-welcome">' + icon("spark") + '<h3>وش حاب تفهم اليوم؟</h3><p>اكتب سؤالك أو أرفق صورة. يقدر المدرّس يرسم الأشكال الهندسية ويوضح خطوات الحل داخل المحادثة.</p></div></div>' +
     '<form id="tutor-form" class="tutor-composer-v6"><textarea id="tutor-input" name="message" maxlength="1200" placeholder="اسأل مدرس رُزمة..." aria-label="اكتب سؤالك"></textarea><div class="tutor-composer-actions"><label for="tutor-attachment" class="tutor-round-action" title="إرفاق صورة">' + icon("image") + '</label><input id="tutor-attachment" name="attachment" type="file" accept="image/jpeg,image/png,image/webp" hidden><small id="tutor-file-name" class="muted">إرفاق صورة سؤال</small><span class="spacer"></span><small id="ai-quota" class="muted">يُتحقق من صلاحية الاشتراك والحد اليومي على الخادم.</small><button class="tutor-send-v6" type="submit" aria-label="إرسال السؤال">' + icon("arrow-up") + '</button></div><p id="ai-error" class="form-error" role="alert"></p></form>' +
     '<div class="tutor-draw-storage" aria-hidden="true"><input id="tutor-pen-color" type="color" value="#594775"><input id="tutor-pen-size" type="range" min="2" max="12" value="4"><canvas id="tutor-drawing-canvas" width="900" height="340"></canvas></div></div>';
@@ -284,6 +284,19 @@ export function mountTutor(toast) {
     }
   };
   const imageInput = document.querySelector("#tutor-attachment");
+  try {
+    const pendingImage = localStorage.getItem("ruzmah-pending-tutor-image");
+    if (pendingImage && imageInput) {
+      const response = await fetch(pendingImage);
+      const blob = await response.blob();
+      const file = new File([blob], "lesson-crop.png", { type: "image/png" });
+      const transfer = new DataTransfer(); transfer.items.add(file); imageInput.files = transfer.files;
+      imageInput.dispatchEvent(new Event("change", { bubbles: true }));
+      localStorage.removeItem("ruzmah-pending-tutor-image");
+      const input = document.querySelector("#tutor-input");
+      if (input && !input.value) input.value = "اشرح لي هذه القصاصة من الدرس خطوة بخطوة.";
+    }
+  } catch (err) { toast("تعذر تجهيز القصاصة؛ يمكنك إرفاقها يدويًا."); }
   const imageInputReset = () => { if (imageInput) imageInput.value = ""; };
   const imageChange = () => {
     const file = imageInput?.files?.[0];
