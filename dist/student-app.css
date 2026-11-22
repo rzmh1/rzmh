@@ -822,3 +822,36 @@ body.in-app {
   height: auto;
   transform: none;
 }
+
+/* ChatGPT-like tutor conversation and fixed lesson pen */
+.ai-chat-app-v6{width:min(100%,900px);margin:0 auto;display:flex;flex-direction:column;gap:14px;min-height:calc(100vh - 150px)}
+.tutor-history-v6{align-self:flex-start;font-size:12px;color:var(--muted);position:relative}
+.tutor-history-v6 summary{cursor:pointer;list-style:none;padding:8px 12px;border:1px solid var(--border);border-radius:999px;background:var(--surface)}
+.tutor-history-v6 #conversation-list{position:absolute;z-index:20;top:42px;right:0;width:min(82vw,320px);max-height:45vh;overflow:auto;padding:10px;background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow)}
+.ai-chat-v6{flex:1;min-height:45vh;max-height:calc(100vh - 310px);overflow-y:auto;overscroll-behavior:contain;padding:18px 4px 28px}
+.ai-chat-v6 .chat-welcome{max-width:600px;margin:10vh auto 0;text-align:center}
+.tutor-composer-v6{position:sticky;bottom:8px;z-index:30;width:100%;padding:10px 12px 8px;border:1px solid var(--border);border-radius:22px;background:var(--surface);box-shadow:0 10px 35px #20183b18}
+.tutor-composer-v6 textarea{display:block;width:100%;min-height:54px;max-height:180px;resize:vertical;border:0!important;box-shadow:none!important;background:transparent!important;padding:8px 6px;font:inherit;font-size:14px}
+.tutor-composer-actions{display:flex;align-items:center;gap:10px;min-height:38px}
+.tutor-composer-actions small{font-size:10px}.tutor-composer-actions .spacer{flex:1}
+.tutor-round-action,.tutor-send-v6{width:36px;height:36px;flex:none;border:0;border-radius:50%;display:grid;place-items:center;cursor:pointer;background:var(--soft);color:var(--purple)}
+.tutor-send-v6{background:var(--purple);color:#fff}
+.tutor-draw-storage{position:fixed;left:-1200px;top:0;width:900px;height:340px;overflow:hidden;pointer-events:none}
+.ai-chat-v6 .live-message{max-width:min(88%,760px);padding:15px 18px;border-radius:18px;line-height:1.9;font-size:14px}
+.ai-chat-v6 .live-message.user{margin-inline-start:auto;margin-inline-end:0}
+.ai-chat-v6 .live-message.assistant{margin-inline-end:auto;margin-inline-start:0}
+.ai-chat-v6 .tutor-solution-board{max-width:min(88%,760px);margin:8px 0 24px auto}
+.tutor-solution-board{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px}
+.tutor-board-heading{display:flex;align-items:center;justify-content:space-between;font-weight:700;margin-bottom:10px}
+.tutor-teacher-canvas{display:block;width:100%;height:auto;max-height:420px;background:#fff;border:1px solid var(--border);border-radius:10px}
+.lesson-floating-canvas{position:absolute;inset:0;z-index:8;display:block;pointer-events:none;touch-action:none}
+.lesson-tools-fab{position:fixed;right:22px;bottom:82px;z-index:10020;width:54px;height:54px;border:0;border-radius:50%;background:var(--purple);color:#fff;font-size:28px;line-height:1;box-shadow:0 8px 26px #20183b45;cursor:pointer}
+.lesson-tools-panel{position:fixed;right:20px;bottom:146px;z-index:10021;width:min(290px,calc(100vw - 36px));padding:13px;background:var(--surface);border:1px solid var(--border);border-radius:17px;box-shadow:0 14px 42px #20183b30}
+.lesson-tools-panel[hidden]{display:none}
+.lesson-tools-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.lesson-tools-head button{width:28px;height:28px;border:0;border-radius:50%;background:var(--soft);font-size:20px}
+.lesson-tools-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.lesson-tools-grid button{min-height:38px;border:1px solid var(--border);border-radius:10px;background:var(--bg);font-size:12px;color:var(--text)}
+.lesson-tools-grid button.active{background:var(--purple-light);border-color:var(--purple);color:var(--purple)}
+.lesson-tools-hint{font-size:10px;color:var(--muted);line-height:1.7;margin-top:10px}
+@media(max-width:720px){.ai-chat-app-v6{min-height:calc(100dvh - 140px)}.ai-chat-v6{max-height:calc(100dvh - 290px);min-height:42vh}.tutor-composer-v6{bottom:70px}.lesson-tools-fab{right:16px;bottom:86px;width:50px;height:50px}.lesson-tools-panel{right:12px;bottom:145px}}
