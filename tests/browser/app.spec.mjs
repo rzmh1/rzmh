@@ -161,10 +161,10 @@ test('subscribed student completes onboarding, saves choices and replans real co
       for (const input of await page.locator('input[name=studyDays]').all()) await input.check();
     await page.locator('#welcome-form button[type=submit]').click();
   }
-  await expect(page).toHaveURL(/#\\/choose$/);
+  await expect(page).toHaveURL((url) => url.hash === "#/choose");
   await page.locator('input[name=courseId][value=quant-basics]').check();
   await page.locator('#choices-form button[type=submit]').click();
-  await expect(page).toHaveURL(/#\\/journey$/);
+  await expect(page).toHaveURL((url) => url.hash === "#/journey");
   await expect(page.locator('#learning-root')).toContainText('الأساس الذي تبني عليه');
   for (const route of ['learning-settings', 'bank', 'tests', 'mistakes', 'scratch', 'subscription', 'tutor']) {
     await page.goto(`${app.url}/#/${route}`);
@@ -174,7 +174,7 @@ test('subscribed student completes onboarding, saves choices and replans real co
   await page.goto(`${app.url}/#/learning-settings`);
   await page.locator('#learning-settings input[name=hours]').fill('3');
   await page.locator('#learning-settings button[type=submit]').click();
-  await expect(page).toHaveURL(/#\\/journey$/);
+  await expect(page).toHaveURL((url) => url.hash === "#/journey");
   await page.reload();
   const me = await page.evaluate(() => fetch('/api/learning/me').then(r => r.json()));
   expect(me.profile.dailyMinutes).toBe(180);
