@@ -153,7 +153,7 @@ test('subscribed student completes onboarding, saves choices and replans real co
     const targetChoice = page.locator('[data-choice-teacher="' + targetTeacher + '"]');
     if (await targetChoice.count()) await targetChoice.first().click();
     else await page.locator('[data-choice-skip]').click();
-    await page.waitForTimeout(80);
+    await page.waitForTimeout(250);
   }
   await expect(page).toHaveURL(/#\/journey$/);
   await expect(page.locator('#learning-root')).toContainText('الأساس الذي تبني عليه');
