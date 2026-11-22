@@ -550,10 +550,10 @@ document.addEventListener("click", async (ev) => {
     );
   }
   if (d.action === "student-menu") {
-    const opened = document.body.classList.toggle("app-menu-open");
-    document
-      .querySelector(".app-menu-btn")
-      ?.setAttribute("aria-expanded", opened);
+    const root = document.querySelector(".rz-student-app");
+    const opened = root?.classList.toggle("menu-open") || false;
+    document.querySelector(".rz-menu-trigger")?.setAttribute("aria-expanded", opened);
+    document.querySelector(".rz-menu-trigger")?.setAttribute("aria-label", opened ? "إغلاق القائمة" : "فتح القائمة");
   }
   if (d.action === "mobile-menu") {
     const opened = document.querySelector("#main-nav").classList.toggle("open");
