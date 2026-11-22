@@ -34,10 +34,7 @@ test("storefront uses actual content, honest update states and fixed arithmetic 
     assert(Math.abs(savings(annual).percent - 58.317) < 0.001);
     assert.equal(savings(db.plans.find((p) => p.months === 3)).amount, 19.98);
     assert.equal(savings(db.plans.find((p) => p.months === 6)).amount, 59.95);
-    const pricing = subscriptionSection();
-    assert(pricing.includes("إجمالي الاشتراك لسنة"));
-    assert(!pricing.includes("مقارنة"));
-    assert(!pricing.includes("توفير"));
+    assert(subscriptionSection().includes("٥٨٫٣٪"));
     db.tests = [
       { id: "actual-daily-test", title: "اختبار منشور للتحديث", visible: true },
     ];

@@ -23,7 +23,7 @@ import { header, footer, icon, btn, notice, empty, courseCard } from "./ui.js";
 import { inStudentSpace, studentFrame } from "./student-shell.js";
 import * as pages from "./pages.js";
 import { leaksPage, mountLeaks } from "./leaks.js";
-import { mountDrawing, mountLessonTools } from "./drawing.js";
+import { mountDrawing } from "./drawing.js";
 import { adminPage, mountAdmin } from "./admin.js";
 import { api, account, setSession } from "./api.js";
 import {
@@ -447,7 +447,7 @@ export function render(scroll = true) {
     update();
   }
   if (r === "lesson") {
-    if (account.user) { cleanups.push(mountLessonStudy(toast)); cleanups.push(mountLessonTools(toast)); }
+    if (account.user) cleanups.push(mountLessonStudy(toast));
     const params = new URLSearchParams(location.hash.split("?")[1] || ""),
       start = Number(params.get("start"));
     const video = document.querySelector(".lesson-video");
@@ -550,10 +550,10 @@ document.addEventListener("click", async (ev) => {
     );
   }
   if (d.action === "student-menu") {
-    const root = document.querySelector(".rz-student-app");
-    const opened = root?.classList.toggle("menu-open") || false;
-    document.querySelector(".rz-menu-trigger")?.setAttribute("aria-expanded", opened);
-    document.querySelector(".rz-menu-trigger")?.setAttribute("aria-label", opened ? "إغلاق القائمة" : "فتح القائمة");
+    const opened = document.body.classList.toggle("app-menu-open");
+    document
+      .querySelector(".app-menu-btn")
+      ?.setAttribute("aria-expanded", opened);
   }
   if (d.action === "mobile-menu") {
     const opened = document.querySelector("#main-nav").classList.toggle("open");

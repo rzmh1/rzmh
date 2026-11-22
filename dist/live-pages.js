@@ -86,11 +86,7 @@ export async function loadPaymentStatus(toast) {
   };
 }
 export function tutorLive() {
-  return '<div class="tutor-topbar-v6"><b>مدرّس رُزمة</b><small>اسأل، أرفق صورة، وشاهد خطوات الحل والرسومات داخل المحادثة.</small></div>' +
-    '<div class="ai-chat-app-v6"><details class="tutor-history-v6"><summary>' + icon("messages-square") + " محادثاتي السابقة" + '</summary><div id="conversation-list"></div></details>' +
-    '<div id="ai-chat" class="ai-chat ai-chat-v6" aria-live="polite"><div class="chat-welcome">' + icon("spark") + '<h3>وش حاب تفهم اليوم؟</h3><p>اكتب سؤالك أو أرفق صورة. يقدر المدرّس يرسم الأشكال الهندسية ويوضح خطوات الحل داخل المحادثة.</p></div></div>' +
-    '<form id="tutor-form" class="tutor-composer-v6"><textarea id="tutor-input" name="message" maxlength="1200" placeholder="اسأل مدرس رُزمة..." aria-label="اكتب سؤالك"></textarea><div class="tutor-composer-actions"><label for="tutor-attachment" class="tutor-round-action" title="إرفاق صورة">' + icon("image") + '</label><input id="tutor-attachment" name="attachment" type="file" accept="image/jpeg,image/png,image/webp" hidden><small id="tutor-file-name" class="muted">إرفاق صورة سؤال</small><span class="spacer"></span><small id="ai-quota" class="muted">يُتحقق من صلاحية الاشتراك والحد اليومي على الخادم.</small><button class="tutor-send-v6" type="submit" aria-label="إرسال السؤال">' + icon("arrow-up") + '</button></div><p id="ai-error" class="form-error" role="alert"></p></form>' +
-    '<div class="tutor-draw-storage" aria-hidden="true"><input id="tutor-pen-color" type="color" value="#594775"><input id="tutor-pen-size" type="range" min="2" max="12" value="4"><canvas id="tutor-drawing-canvas" width="900" height="340"></canvas></div></div>';
+  return `<div class="ai-full">${pageHeading("مدرّسك في رُزمة", "اسأل عن سؤال. وشاهد الحل خطوة بخطوة.", "اكتب سؤالًا واحدًا أو أرفق صورته؛ لا ترفع ملفًا كاملًا.")}<div class="notice">${icon("spark")}<p>يركّز المدرس على أسئلة القدرات والتحصيلي وSTEP ومصادر رُزمة. يشرح السؤال على لوحة الحل دون تشغيل شرح محاضرة كاملة.</p></div><div class="tutor-layout"><div class="panel"><div class="admin-bar"><h2>محادثاتك</h2><button class="btn btn-outline btn-sm" data-ai-new>محادثة جديدة ${icon("plus")}</button></div><div id="conversation-list"></div></div><div class="panel"><div id="ai-chat" class="ai-chat" aria-live="polite"><div class="chat-welcome">${icon("spark")}<h3>ما السؤال الذي تريد فهمه؟</h3><p>اكتب السؤال أو أرفق صورته، ويمكنك الرسم في مساحة الحل.</p></div></div><form id="tutor-form"><label for="tutor-input">سؤالك أو موضع استفسارك</label><textarea id="tutor-input" name="message" maxlength="1200" placeholder="اكتب السؤال أو اشرح الجزء الذي لم تفهمه…"></textarea><div class="tutor-attachment"><label for="tutor-attachment" class="btn btn-outline btn-sm">${icon("image")} إرفاق صورة سؤال</label><input id="tutor-attachment" name="attachment" type="file" accept="image/jpeg,image/png,image/webp" hidden><small id="tutor-file-name" class="muted">صورة JPG أو PNG أو WebP حتى ٤ ميجابايت</small></div><section class="tutor-draw-panel"><div class="admin-bar"><div><h3>مساحة رسم الطالب</h3><small class="muted">اكتب خطواتك أو ارسم الجزء الذي تريد شرحه.</small></div><div class="tutor-draw-actions"><input id="tutor-pen-color" type="color" value="#594775" aria-label="لون القلم"><input id="tutor-pen-size" type="range" min="2" max="12" value="4" aria-label="سمك القلم"><button type="button" class="btn btn-outline btn-sm" data-tutor-draw="pen">قلم</button><button type="button" class="btn btn-outline btn-sm" data-tutor-draw="marker">تمييز</button><button type="button" class="btn btn-outline btn-sm" data-tutor-draw="undo">تراجع</button><button type="button" class="btn btn-outline btn-sm" data-tutor-draw="clear">مسح</button></div></div><canvas id="tutor-drawing-canvas" width="900" height="340" aria-label="مساحة رسم السؤال"></canvas><small class="muted">الرسم لا يُرسل إلا عند الضغط على «اسأل المدرس».</small></section><div class="admin-bar spaced"><small id="ai-quota" class="muted">يُتحقق من صلاحية الاشتراك والحد اليومي على الخادم.</small><button class="btn btn-primary" type="submit">اسأل المدرس ${icon("arrow")}</button></div><p id="ai-error" class="form-error" role="alert"></p></form></div></div></div>`;
 }
 export function teacherBoardMarkup(text) {
   const raw = String(text || "");
@@ -284,18 +280,7 @@ export function mountTutor(toast) {
     }
   };
   const imageInput = document.querySelector("#tutor-attachment");
-  const pendingImage = localStorage.getItem("ruzmah-pending-tutor-image");
-  if (pendingImage && imageInput) {
-    fetch(pendingImage).then(response => response.blob()).then(blob => {
-      const file = new File([blob], "lesson-crop.png", { type: "image/png" });
-      const transfer = new DataTransfer(); transfer.items.add(file); imageInput.files = transfer.files;
-      imageInput.dispatchEvent(new Event("change", { bubbles: true }));
-      localStorage.removeItem("ruzmah-pending-tutor-image");
-      const input = document.querySelector("#tutor-input");
-      if (input && !input.value) input.value = "اشرح لي هذه القصاصة من الدرس خطوة بخطوة.";
-    }).catch(() => toast("تعذر تجهيز القصاصة؛ يمكنك إرفاقها يدويًا."));
-  }
-    const imageInputReset = () => { if (imageInput) imageInput.value = ""; };
+  const imageInputReset = () => { if (imageInput) imageInput.value = ""; };
   const imageChange = () => {
     const file = imageInput?.files?.[0];
     const label = document.querySelector("#tutor-file-name");

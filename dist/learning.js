@@ -35,7 +35,7 @@ export function learningPage(kind) {
     }[kind] || "رحلتك في رُزمة";
   const loading = `<div id="learning-root" aria-live="polite"><div class="dash-skeleton"><span></span><span></span><span></span></div></div>`;
   if (kind === "journey") return studentShell(loading, "journey");
-  const body = ["welcome","choose"].includes(kind) ? loading : `${pageHeading(kind === "settings" ? "إعدادات" : "رحلة مذاكرة على مقاسك", title)}${loading}`;
+  const body = `${pageHeading(kind === "settings" ? "إعدادات" : "رحلة مذاكرة على مقاسك", title)}${loading}`;
   return ["settings"].includes(kind) ? studentShell(body, "journey") : body;
 }
 export function teacherCard(t, trackId = "") {
@@ -52,8 +52,6 @@ const consent = (p) =>
   `<label class="checkbox learning-consent"><input name="aiContextConsent" type="checkbox" ${p.aiContextConsent ? "checked" : ""}><span>أسمح للمدرس الذكي بالاطلاع على اختياراتي التعليمية وخطتي وأخطائي ونتائج اختباراتي المسجلة لمساعدتي. يمكن تغيير ذلك لاحقًا.</span></label>`;
 export function mountLearning(kind, id, toast, rerender) {
   let disposed = false,
-    choiceStep = 0,
-    choiceStages = [],
     catalog,
     me,
     progress,
@@ -110,63 +108,137 @@ export function mountLearning(kind, id, toast, rerender) {
   function drawWizard() {
     const p = me.profile;
     const questions = [
-      ["sectionId", "وش اختبارك؟", catalog.sections.filter((s) => s.status !== "coming").map((s) =>
-        option("sectionId", s.id, e(s.title), p.sectionId === s.id)).join("")],
-      ["studyMode", "وش تحتاج في رحلتك؟", [
-        ["both", "تأسيس وتدريب", "أبني الأساس ثم أتدرّب"],
-        ["foundation", "تأسيس فقط", "أحتاج أفهم الأساس أولًا"],
-        ["training", "تدريب فقط", "عندي أساس وأحتاج حل أسئلة"],
-      ].map(([v,t,d]) => `<label class="welcome-choice welcome-choice-v6"><input type="radio" name="studyMode" value="${v}"><span><b>${t}</b><small>${d}</small></span>${icon("check")}</label>`).join("")],
-      ["schedule", "متى اختبارك؟ وكم تقدر تذاكر؟",
-        field("examDate","موعد الاختبار",p.examDate,"date",'required') +
-        field("hours","ساعات المذاكرة يوميًا",p.dailyMinutes ? p.dailyMinutes/60 : 2,"number",'min="0.5" max="12" step="0.5" required') +
-        '<p class="muted">تقدر تعدّل الموعد والساعات لاحقًا من إعدادات خطتك.</p>'],
+      [
+        "sectionId",
+        "ما الاختبار الذي تستعد له؟",
+        catalog.sections
+          .map((s) =>
+            option(
+              "sectionId",
+              s.id,
+              e(s.title) + (s.status === "coming" ? " — المحتوى قادم" : ""),
+              p.sectionId === s.id,
+            ),
+          )
+          .join(""),
+      ],
+      [
+        "foundationStarted",
+        "هل بدأت التأسيس؟",
+        [
+          ["true", "بدأت وأريد أكمل"],
+          ["false", "لم أبدأ بعد"],
+        ]
+          .map(([v, t]) =>
+            option(
+              "foundationStarted",
+              v,
+              t,
+              String(p.foundationStarted) === v,
+            ),
+          )
+          .join(""),
+      ],
+      [
+        "foundationCompleted",
+        "هل أنهيت مرحلة التأسيس؟",
+        [
+          ["true", "نعم، وأحتاج تدريبًا ومراجعة"],
+          ["false", "لا، ما زلت أبني الأساس"],
+        ]
+          .map(([v, t]) =>
+            option(
+              "foundationCompleted",
+              v,
+              t,
+              String(p.foundationCompleted) === v,
+            ),
+          )
+          .join(""),
+      ],
+      [
+        "selfLevel",
+        "كيف تقيّم مستواك؟",
+        [
+          ["beginner", "أبدأ من المفاهيم الأولى"],
+          ["intermediate", "أفهم الأساس وأحتاج تدريبًا"],
+          ["advanced", "أحتاج قياسًا ومراجعة مركّزة"],
+          ["unknown", "أفضل أن أكتشفه بالاختبارات"],
+        ]
+          .map(([v, t]) => option("selfLevel", v, t, p.selfLevel === v))
+          .join(""),
+      ],
+      [
+        "targetScore",
+        "ما الدرجة التي تطمح إليها؟",
+        field(
+          "targetScore",
+          "درجتك المستهدفة",
+          p.targetScore,
+          "number",
+          'min="0" max="100" step="1"',
+        ),
+      ],
+      [
+        "examDate",
+        "متى موعد اختبارك؟",
+        field("examDate", "موعد الاختبار", p.examDate, "date"),
+      ],
+      [
+        "dailyMinutes",
+        "كم وقت تقدر تخصص للمذاكرة يوميًا؟",
+        field(
+          "hours",
+          "عدد الساعات",
+          p.dailyMinutes ? p.dailyMinutes / 60 : "",
+          "number",
+          'min="0.25" max="12" step="0.25"',
+        ) +
+          '<p class="muted">نحسب المقاطع حسب مددها، ونضيف وقتًا للحل والمراجعة والراحة.</p>',
+      ],
+      [
+        "studyDays",
+        "ما الأيام المناسبة لك؟",
+        daysInputs(p.studyDays) + consent(p),
+      ],
     ];
-    step = Math.max(0, Math.min(2, step));
-    const [key,title,body] = questions[step];
-    target.innerHTML = `<div class="welcome-flow-v6">
-      <div class="welcome-flow-top"><span class="eyebrow">إعداد خطتك</span><span class="welcome-flow-progress">${step+1} / 3</span></div>
-      <div class="welcome-flow-progressbar"><span style="width:${((step+1)/3)*100}%"></span></div>
-      <form id="welcome-form" class="panel welcome-flow-card" data-key="${key}">
-        <h1>${title}</h1>
-        <p class="muted">${step===0?"اختر المسار، وسننتقل مباشرة.":step===1?"اختر المرحلة التي تحتاجها، وسننتقل مباشرة.":"حدد الموعد والوقت المناسب لك."}</p>
-        <div class="welcome-answers">${body}</div>
-        <div id="learning-form-error" class="form-error" role="alert"></div>
-        <div class="welcome-actions welcome-actions-v6">
-          ${step ? '<button type="button" class="btn btn-ghost small" data-welcome-back>رجوع</button>' : ""}
-          <button type="button" class="btn btn-ghost small welcome-skip-v6" data-welcome-skip>تخطي</button>
-          ${step===2 ? '<button type="submit" class="btn btn-primary">إنشاء خطتي '+icon("arrow")+'</button>' : ""}
-        </div>
-      </form>
-    </div>`;
+    step = Math.max(0, Math.min(7, step));
+    const [key, title, body] = questions[step];
+    target.innerHTML = `<div class="welcome-layout"><aside><span class="eyebrow">نرتّب البداية، ثم تختار بنفسك</span><h2>وقتك مختلف.<br>ورحلتك تستحق<br>خطة تناسبه.</h2><p>سؤال واحد في كل خطوة. تقدر تتخطى السؤال وتكمل بياناتك لاحقًا.</p><div class="welcome-step-indicator">${step + 1}<small> / ٨</small></div><div class="progress-track"><span style="width:${((step + 1) / 8) * 100}%"></span></div><small>تقييمك الذاتي لا يُعتبر نتيجة اختبار أو دليل إتقان.</small></aside><form id="welcome-form" class="panel" data-key="${key}"><span class="eyebrow">خطوتك ${step + 1} من ٨</span><h2>${title}</h2><div class="welcome-answers">${body}</div><div id="learning-form-error" class="form-error" role="alert"></div><div class="welcome-actions"><button type="button" class="btn btn-outline" data-welcome-back ${step === 0 ? "disabled" : ""}>السابق</button><button type="button" class="btn btn-ghost" data-welcome-skip>تخطي</button><button type="submit" class="btn btn-primary">${step === 7 ? "إلى اختيار الدورات" : "التالي"} ${icon("arrow")}</button></div></form></div>`;
   }
   async function advance(skip = false) {
-    const form = document.querySelector("#welcome-form");
-    if (!form) return;
-    const key = form.dataset.key, fd = new FormData(form);
-    const input = { onboardingStep: Math.min(2, step + 1) };
+    const form = document.querySelector("#welcome-form"),
+      key = form.dataset.key,
+      fd = new FormData(form),
+      input = { onboardingStep: Math.min(7, step + 1) };
     if (!skip) {
       if (!form.reportValidity()) return;
-      if (step === 0) input.sectionId = fd.get("sectionId");
-      if (step === 1) {
-        const mode = fd.get("studyMode");
-        if (!mode) return;
-        input.foundationStarted = mode === "training";
-        input.foundationCompleted = mode === "training";
-        input.selfLevel = mode === "training" ? "advanced" : mode === "foundation" ? "beginner" : "intermediate";
-      }
-      if (step === 2) {
-        input.examDate = fd.get("examDate") || null;
-        input.dailyMinutes = Math.round(Number(fd.get("hours")) * 60);
-        input.onboardingCompleted = true;
-      }
-    } else if (step === 2) {
-      input.onboardingCompleted = true;
+      const value = fd.get(key);
+      if (["foundationStarted", "foundationCompleted"].includes(key)) {
+        if (value !== null) input[key] = value === "true";
+      } else if (key === "dailyMinutes") {
+        const hours = fd.get("hours");
+        input.dailyMinutes = hours ? Math.round(Number(hours) * 60) : null;
+      } else if (key === "studyDays") {
+        input.studyDays = fd.getAll("studyDays").map(Number);
+        input.aiContextConsent = fd.has("aiContextConsent");
+      } else if (key === "targetScore")
+        input.targetScore = value ? Number(value) : null;
+      else if (key === "sectionId" || key === "examDate")
+        input[key] = value || null;
+      else if (value !== null) input[key] = value;
     }
-    const result = await api("/api/learning/profile", { method:"PUT", body:input });
+    if (step === 7) input.onboardingCompleted = true;
+    const result = await api("/api/learning/profile", {
+      method: "PUT",
+      body: input,
+    });
     me.profile = result.profile;
-    if (step === 2) location.hash = "#/choose";
-    else { step++; drawWizard(); }
+    if (step === 7) location.hash = "#/choose";
+    else {
+      step++;
+      drawWizard();
+    }
   }
   function courseChoice(c) {
     const teacher = catalog.instructors.find((t) => t.id === c.instructorId),
@@ -174,17 +246,45 @@ export function mountLearning(kind, id, toast, rerender) {
     return `<label class="course-choice"><input type="checkbox" name="courseId" value="${e(c.id)}" ${chosen.has(c.id) ? "checked" : ""}><span class="course-choice-body"><small>${teacher ? e(teacher.name) : c.instructorId ? "مصدر مؤرشف، والاختيار السابق محفوظ" : "دورة مستقلة — المصدر غير محدد"}</small><b>${e(c.title)}</b><p>${e(c.description)}</p><span class="choice-metrics">${m.videoCount} مقاطع فيديو · ${m.lessonCount - m.videoCount} دروس نصية${m.videoSeconds ? ` · ${minutes(m.videoSeconds)} دقيقة فيديو معروفة` : ""}${m.estimatedSeconds ? ` · ${minutes(m.estimatedSeconds)} دقيقة تقديرية للمحتوى` : ""}</span>${m.unknownVideoCount ? `<em>${m.unknownVideoCount} مقاطع لم تُستخرج مدتها بعد</em>` : ""}<span class="choice-links"><a href="#/course/${c.id}">عرض المحتوى ${icon("arrow")}</a>${teacher ? `<a href="#/instructor/${teacher.id}">عن المدرّس</a>` : ""}</span></span>${icon("check")}</label>`;
   }
   function drawChoices() {
-    const section = me.profile.sectionId;
-    const tracks = catalog.tracks.filter(t => t.visible && (!section || t.sectionId === section));
-    const onlyFoundation = me.profile.selfLevel === "beginner";
-    const onlyTraining = me.profile.foundationStarted && me.profile.foundationCompleted;
-    if (onlyFoundation || onlyTraining) for (const course of catalog.courses) if ((onlyFoundation && course.stage === "training") || (onlyTraining && course.stage === "foundation")) chosen.delete(course.id);
-    choiceStages = tracks.flatMap(track => ["foundation","training"].map(stage => ({track,stage,courses:catalog.courses.filter(course => course.trackId === track.id && course.stage === stage && (!course.instructorId || catalog.instructors.some(t => t.id === course.instructorId && !t.deleted) || chosen.has(course.id)))}))).filter(item => item.courses.length && (!onlyFoundation || item.stage === "foundation") && (!onlyTraining || item.stage === "training"));
-    if (!choiceStages.length) { void api("/api/learning/selections",{method:"PUT",body:{courseIds:[...chosen]}}).catch(error); target.innerHTML = '<div class="welcome-flow-v6"><div class="panel welcome-flow-card"><h2>لا توجد مصادر منشورة حاليًا.</h2><a class="btn btn-primary" href="#/journey">تخطي إلى خطتي</a></div></div>'; return; }
-    choiceStep = Math.min(choiceStep, choiceStages.length - 1);
-    const current = choiceStages[choiceStep];
-    target.innerHTML = '<div class="welcome-flow-v6"><div class="welcome-flow-top"><span class="eyebrow">اختيار المدرس</span><span class="welcome-flow-progress">' + (choiceStep+1) + " / " + choiceStages.length + '</span></div><div class="welcome-flow-progressbar"><span style="width:' + ((choiceStep+1)/choiceStages.length*100) + '%"></span></div><section class="panel welcome-flow-card"><h1>اختر مدرس ' + stageName(current.stage) + " — " + e(current.track.title) + '</h1><p class="muted">اضغط على المدرس للانتقال مباشرة، أو تخطَّ هذه المرحلة.</p><div class="choice-teachers-v6">' + [...new Set(current.courses.map(course => course.instructorId || "independent"))].map(teacherId => { const courses=current.courses.filter(course=>(course.instructorId || "independent")===teacherId); const teacher=courses[0].instructorId?catalog.instructors.find(t=>t.id===courses[0].instructorId):null; return '<button type="button" class="welcome-choice choice-teacher-v6" data-choice-teacher="' + e(teacherId) + '"><span class="choice-teacher-avatar">' + e((teacher?.name || "م").slice(0,1)) + '</span><span><b>' + e(teacher?.name || "مصدر مستقل") + '</b><small>' + e(teacher?.specialty || "مصدر تعليمي") + '</small><small>' + courses.map(course=>e(course.title)).join("، ") + '</small></span>' + icon("arrow") + '</button>'; }).join("") + '</div><div class="welcome-actions welcome-actions-v6">' + (choiceStep ? '<button type="button" class="btn btn-ghost small" data-choice-back>رجوع</button>' : "") + '<button type="button" class="btn btn-ghost small welcome-skip-v6" data-choice-skip>تخطي المرحلة</button></div></section></div>';
-    return;
+    const section = me.profile.sectionId,
+      teacher = document.querySelector("#choice-teacher")?.value || "all";
+    const tracks = catalog.tracks.filter(
+      (t) => t.visible && (!section || t.sectionId === section),
+    );
+    target.innerHTML = `${notice("اختر مدرسًا أو مصدرًا مستقلًا لكل مرحلة. يمكنك اختيار أكثر من دورة، أو ترك أي مسار لتكمله لاحقًا. اختيار الدورة لا يتجاوز صلاحيات الاشتراك.")}<div class="choice-toolbar"><div><h2>المحتوى الذي تختاره، هو أساس خطتك.</h2><p>مدد الفيديو معروفة من ملفاتها، وأوقات الحل والمراجعة تقديرات قابلة للتعديل.</p></div><label>تصفية حسب المصدر<select id="choice-teacher"><option value="all">جميع المدرسين والمصادر</option>${catalog.instructors.map((t) => `<option value="${t.id}" ${teacher === t.id ? "selected" : ""}>${e(t.name)}</option>`).join("")}<option value="independent" ${teacher === "independent" ? "selected" : ""}>الدورات المستقلة</option></select></label></div><form id="choices-form">${(me.unavailableCourseChoices || []).length ? `<fieldset class="choice-lane"><legend>اختيارات سابقة غير متاحة حاليًا</legend><p class="muted">تبقى اختياراتك وتقدمك محفوظة عند إخفاء المحتوى. يمكنك إلغاء الاختيار أو الاحتفاظ به حتى يعود.</p>${me.unavailableCourseChoices.map((c) => `<label class="checkbox"><input type="checkbox" name="courseId" value="${e(c.id)}" ${chosen.has(c.id) ? "checked" : ""}><span>${e(c.title)}</span></label>`).join("")}</fieldset>` : ""}${tracks
+      .map(
+        (t) =>
+          `<section class="choice-track"><div class="admin-bar"><h2>${e(t.title)}</h2><a class="text-link" href="#/track/${t.id}">عن المسار ${icon("arrow")}</a></div>${
+            t.coming
+              ? empty(
+                  "المحتوى قادم",
+                  "تقدر تختار مسارًا آخر الآن وتعود عند إطلاقه.",
+                  "language",
+                )
+              : ["foundation", "training", "review"]
+                  .map((stage) => {
+                    const courses = catalog.courses.filter(
+                      (c) =>
+                        c.trackId === t.id &&
+                        c.stage === stage &&
+                        (!c.instructorId ||
+                          catalog.instructors.some(
+                            (t) => t.id === c.instructorId,
+                          ) ||
+                          chosen.has(c.id)) &&
+                        (teacher === "all" ||
+                          (teacher === "independent" && !c.instructorId) ||
+                          c.instructorId === teacher),
+                    );
+                    if (stage === "review" && !courses.length) return "";
+                    return `<fieldset class="choice-lane"><legend>${stageName(stage)}</legend><div class="course-choices">${courses.map(courseChoice).join("") || '<p class="muted">لم تُنشر دورات في هذه المرحلة أو لهذا المصدر بعد. يمكنك تخطيها.</p>'}</div></fieldset>`;
+                  })
+                  .join("")
+          }</section>`,
+      )
+      .join(
+        "",
+      )}<div id="learning-form-error" role="alert" class="form-error"></div><div class="choice-save-bar"><span id="selection-count">${chosen.size} دورات مختارة</span><a class="btn btn-outline" href="#/journey">أكمل الاختيار لاحقًا</a><button type="submit" class="btn btn-primary">احفظ اختياراتي واحسب خطتي ${icon("calendar")}</button></div></form>`;
   }
   function taskLink(t) {
     const s = t.source;
@@ -393,9 +493,6 @@ ${upcoming.length ? `<section class="dash-card"><div class="dash-card-head"><h2>
     const b = ev.target.closest("button");
     if (!b) return;
     try {
-      if (b.dataset.choiceTeacher !== undefined) { const stage=choiceStages[choiceStep]; if(stage){ for(const x of stage.courses) chosen.delete(x.id); for(const x of stage.courses) if((x.instructorId || "independent")===b.dataset.choiceTeacher) chosen.add(x.id); await api("/api/learning/selections",{method:"PUT",body:{courseIds:[...chosen]}}); choiceStep++; if(choiceStep>=choiceStages.length) location.hash="#/journey"; else drawChoices(); } return; }
-      if (b.hasAttribute("data-choice-skip")) { const stage=choiceStages[choiceStep]; if(stage){for(const x of stage.courses) chosen.delete(x.id); await api("/api/learning/selections",{method:"PUT",body:{courseIds:[...chosen]}}); choiceStep++; if(choiceStep>=choiceStages.length) location.hash="#/journey"; else drawChoices();} return; }
-      if (b.hasAttribute("data-choice-back")) { choiceStep=Math.max(0,choiceStep-1); drawChoices(); return; }
       if (b.hasAttribute("data-welcome-back")) {
         step = Math.max(0, step - 1);
         drawWizard();
@@ -498,9 +595,6 @@ ${upcoming.length ? `<section class="dash-card"><div class="dash-card-head"><h2>
       if (count) count.textContent = chosen.size + " دورات مختارة";
     }
     if (ev.target.id === "choice-teacher") drawChoices();
-    if (kind === "welcome" && ["sectionId","studyMode"].includes(ev.target.name)) {
-      void advance(false).catch(error);
-    }
   };
   const submit = async (ev) => {
     const form = ev.target;
@@ -517,7 +611,7 @@ ${upcoming.length ? `<section class="dash-card"><div class="dash-card-head"><h2>
     const button = form.querySelector("button[type=submit]");
     if (button) button.disabled = true;
     try {
-      if (form.id === "welcome-form" && step === 2) await advance(false);
+      if (form.id === "welcome-form") await advance(false);
       if (form.id === "choices-form") {
         await api("/api/learning/selections", {
           method: "PUT",

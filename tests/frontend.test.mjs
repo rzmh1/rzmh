@@ -28,9 +28,7 @@ test("store, routes, mobile styles, paid lesson gate, owner workspace and paymen
   assert(!html.includes("#/discover"));
   assert(html.includes("اشترك في رُزمة"));
   const tutorHtml = live.tutorLive();
-  assert(tutorHtml.includes("ai-chat-app-v6"));
-  assert(tutorHtml.includes("tutor-composer-v6"));
-  assert(!tutorHtml.includes("tutor-draw-panel"));
+  assert(tutorHtml.includes("مساحة رسم الطالب"));
   assert(tutorHtml.includes("إرفاق صورة سؤال"));
   assert(!tutorHtml.includes("application/pdf"));
   const boardHtml = live.teacherBoardMarkup("الخطوة الأولى\\nس = ٦");
