@@ -32,3 +32,48 @@ body{background:var(--v3-bg);color:var(--v3-ink)}
 @media(max-width:900px){.rz-workspace{display:block;padding:16px 14px}.rz-sidebar{display:none;position:fixed;z-index:101;top:72px;bottom:0;right:0;width:min(310px,86vw);height:auto;border-radius:20px 0 0 20px}.rz-student-app.menu-open .rz-sidebar{display:flex}.rz-student-app.menu-open .rz-mobile-scrim{display:block}.rz-mobile-scrim{position:fixed;inset:72px 0 0;z-index:100;background:#17121e88;border:0}.rz-main-inner{padding:4px 0 92px}.rz-mobile-nav{position:fixed;z-index:90;display:grid;grid-template-columns:repeat(5,1fr);right:0;left:0;bottom:0;padding:8px 8px calc(8px + env(safe-area-inset-bottom));background:var(--v3-panel);border-top:1px solid var(--v3-line)}.rz-mobile-nav a{display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 2px;color:var(--v3-muted);font-size:10px;font-weight:800}.rz-mobile-nav a.is-active{color:var(--v3-brand)}.rz-topbar{height:66px;padding:0 14px;gap:12px}.rz-brand{min-width:0}.rz-top-context{display:none}.rz-profile-name{display:none}.rz-profile{padding:4px;border:0}}
 
 .rz-menu-trigger{display:none}@media(max-width:900px){.rz-menu-trigger{display:grid}}
+
+/* Public storefront and owner console V3 */
+.rz-public-site{--pub-bg:#f8f7f9;--pub-card:#fff;color:#292431;background:var(--pub-bg)}
+.rz-public-site .opening-section{padding:76px 0 42px;background:radial-gradient(ellipse at 78% 20%,#ece5f2 0,transparent 44%),linear-gradient(180deg,#fff 0%,#f8f7f9 100%)}
+.rz-public-site .opening-grid{gap:52px;align-items:center}
+.rz-public-site .opening-copy{max-width:650px}
+.rz-public-site .opening-kicker{display:inline-flex;align-items:center;gap:9px;padding:8px 14px;border:1px solid #e6deec;background:#fff;border-radius:99px;color:#5b4773;font-size:13px;font-weight:800}
+.rz-public-site .opening-kicker i{width:7px;height:7px;background:#67a887;border-radius:50%}
+.rz-public-site .opening-copy h1{font-size:clamp(40px,5.2vw,68px);line-height:1.22;font-weight:950;letter-spacing:-1.5px;color:#292431;margin:20px 0}
+.rz-public-site .opening-copy h1 span{color:#6c5684}
+.rz-public-site .opening-copy>p{font-size:17px;line-height:2;color:#777180;max-width:560px}
+.rz-public-site .opening-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:26px}
+.rz-public-site .opening-actions .btn{min-width:150px;border-radius:13px;min-height:50px}
+.rz-public-site .opening-proof{display:flex;gap:18px;flex-wrap:wrap;margin-top:22px;color:#777180;font-size:12px}
+.rz-public-site .opening-proof span{display:flex;align-items:center;gap:6px}
+.rz-public-site .learning-promise{margin-top:48px;padding:20px 24px;border:1px solid #e9e5ec;border-radius:20px;background:#fff;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;box-shadow:0 12px 34px #30243b08}
+.rz-public-site .learning-promise>span:not(.promise-label){display:flex;align-items:center;gap:8px;color:#5f5968;font-size:13px;font-weight:750}
+.rz-public-site .promise-label{font-size:13px;color:#777180}.rz-public-site .promise-label b{color:#292431}
+.rz-public-site .route-section,.rz-public-site .store-stage-section,.rz-public-site .storefront-faq,.rz-public-site .pricing-section{padding:72px 0}
+.rz-public-site .section-heading{margin-bottom:26px}
+.rz-public-site .section-heading h2{font-size:30px;font-weight:900;color:#292431}
+.rz-public-site .section-grid,.rz-public-site .course-grid,.rz-public-site .tools-grid{gap:18px}
+.rz-public-site .section-card,.rz-public-site .course-card,.rz-public-site .tool-item,.rz-public-site .price-card{border:1px solid #e9e5ec;border-radius:20px;background:#fff;box-shadow:0 10px 32px #30243b08}
+.rz-public-site .section-card:hover,.rz-public-site .course-card:hover,.rz-public-site .tool-item:hover{transform:translateY(-3px);box-shadow:0 18px 42px #30243b12}
+.rz-public-site .storefront-faq-list details{background:#fff;border:1px solid #e9e5ec;border-radius:15px;padding:17px 20px;margin:10px 0}
+.rz-public-site .storefront-faq-list summary{font-weight:800;cursor:pointer}
+.rz-admin-v3{max-width:1600px!important;grid-template-columns:270px minmax(0,1fr)!important;gap:24px!important;margin:24px auto!important}
+.rz-admin-sidebar{background:#211b2d!important;color:#f8f5fb!important;border:0!important;border-radius:22px!important;padding:17px!important;box-shadow:0 18px 50px #211b2d22!important}
+.rz-admin-top{display:flex;align-items:center;gap:12px;padding:10px 9px 23px;border-bottom:1px solid #ffffff20}
+.rz-admin-mark{width:42px;height:42px;display:grid;place-items:center;border-radius:14px;background:#ffffff18;color:#fff}
+.rz-admin-top b{display:block;font-size:18px;color:#fff}.rz-admin-top small{display:block;color:#c5bdcf;font-size:11px}
+.rz-admin-nav-caption{padding:19px 10px 8px;color:#b9afc5;font-size:11px;font-weight:900}
+.rz-admin-nav{display:flex;flex-direction:column;gap:4px}
+.rz-admin-sidebar button{color:#d6cfdf!important;border-radius:11px!important;padding:11px 12px!important;font-size:12px!important}
+.rz-admin-sidebar button.active,.rz-admin-sidebar button:hover{background:#ffffff1b!important;color:#fff!important}
+.rz-admin-foot{margin-top:22px;padding:14px 10px;border-top:1px solid #ffffff20;color:#d6cfdf;font-size:11px}
+.rz-admin-foot small{display:block;color:#aaa1b6;margin-top:4px}
+.rz-admin-content{min-width:0;padding:8px 0}
+.rz-admin-content>.admin-bar,.rz-admin-content>.panel,#live-admin-root>.admin-overview-title{background:var(--v3-panel);border:1px solid var(--v3-line);border-radius:18px;padding:20px;box-shadow:var(--v3-shadow)}
+.rz-admin-content h2,.rz-admin-content h3{font-weight:900;color:var(--v3-ink)}
+.rz-admin-content .admin-table-wrap{border:1px solid var(--v3-line);border-radius:17px;background:var(--v3-panel);overflow:auto;box-shadow:var(--v3-shadow)}
+.rz-admin-content th{background:var(--v3-brand-soft);color:var(--v3-muted)}
+.rz-admin-content td,.rz-admin-content th{border-bottom:1px solid var(--v3-line);padding:14px 16px}
+.rz-admin-content .btn{border-radius:11px}
+@media(max-width:900px){.rz-admin-v3{grid-template-columns:1fr!important;margin:12px auto!important;padding:0 12px!important}.rz-admin-sidebar{position:relative;top:auto;max-height:none;display:block}.rz-admin-nav{flex-direction:row;overflow:auto;white-space:nowrap;padding-bottom:5px}.rz-admin-sidebar button{width:auto;flex:0 0 auto}.rz-admin-foot{display:none}.rz-public-site .opening-section{padding:44px 0 28px}.rz-public-site .opening-grid{grid-template-columns:1fr;gap:28px}.rz-public-site .learning-promise{margin-top:28px}.rz-public-site .route-section,.rz-public-site .store-stage-section,.rz-public-site .storefront-faq,.rz-public-site .pricing-section{padding:48px 0}}
