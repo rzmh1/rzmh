@@ -52,6 +52,8 @@ const consent = (p) =>
   `<label class="checkbox learning-consent"><input name="aiContextConsent" type="checkbox" ${p.aiContextConsent ? "checked" : ""}><span>أسمح للمدرس الذكي بالاطلاع على اختياراتي التعليمية وخطتي وأخطائي ونتائج اختباراتي المسجلة لمساعدتي. يمكن تغيير ذلك لاحقًا.</span></label>`;
 export function mountLearning(kind, id, toast, rerender) {
   let disposed = false,
+    choiceStep = 0,
+    choiceStages = [],
     catalog,
     me,
     progress,
@@ -172,6 +174,14 @@ export function mountLearning(kind, id, toast, rerender) {
     return `<label class="course-choice"><input type="checkbox" name="courseId" value="${e(c.id)}" ${chosen.has(c.id) ? "checked" : ""}><span class="course-choice-body"><small>${teacher ? e(teacher.name) : c.instructorId ? "مصدر مؤرشف، والاختيار السابق محفوظ" : "دورة مستقلة — المصدر غير محدد"}</small><b>${e(c.title)}</b><p>${e(c.description)}</p><span class="choice-metrics">${m.videoCount} مقاطع فيديو · ${m.lessonCount - m.videoCount} دروس نصية${m.videoSeconds ? ` · ${minutes(m.videoSeconds)} دقيقة فيديو معروفة` : ""}${m.estimatedSeconds ? ` · ${minutes(m.estimatedSeconds)} دقيقة تقديرية للمحتوى` : ""}</span>${m.unknownVideoCount ? `<em>${m.unknownVideoCount} مقاطع لم تُستخرج مدتها بعد</em>` : ""}<span class="choice-links"><a href="#/course/${c.id}">عرض المحتوى ${icon("arrow")}</a>${teacher ? `<a href="#/instructor/${teacher.id}">عن المدرّس</a>` : ""}</span></span>${icon("check")}</label>`;
   }
   function drawChoices() {
+    const section = me.profile.sectionId;
+    const tracks = catalog.tracks.filter(t => t.visible && (!section || t.sectionId === section));
+    choiceStages = tracks.flatMap(track => ["foundation","training"].map(stage => ({track,stage,courses:catalog.courses.filter(course => course.trackId === track.id && course.stage === stage && (!course.instructorId || catalog.instructors.some(t => t.id === course.instructorId && !t.deleted) || chosen.has(course.id)))}))).filter(item => item.courses.length);
+    if (!choiceStages.length) { target.innerHTML = '<div class="panel welcome-flow-card"><h2>لا توجد مصادر منشورة حاليًا.</h2><a class="btn btn-primary" href="#/journey">تخطي إلى خطتي</a></div>'; return; }
+    choiceStep = Math.min(choiceStep, choiceStages.length - 1);
+    const current = choiceStages[choiceStep];
+    target.innerHTML = '<div class="welcome-flow-v6"><div class="welcome-flow-top"><span class="eyebrow">اختيار المدرس</span><span class="welcome-flow-progress">' + (choiceStep+1) + " / " + choiceStages.length + '</span></div><div class="welcome-flow-progressbar"><span style="width:' + ((choiceStep+1)/choiceStages.length*100) + '%"></span></div><section class="panel welcome-flow-card"><h1>اختر مدرس ' + stageName(current.stage) + " — " + e(current.track.title) + '</h1><p class="muted">اضغط على المدرس للانتقال مباشرة، أو تخطَّ هذه المرحلة.</p><div class="choice-teachers-v6">' + current.courses.map(course => { const teacher=catalog.instructors.find(t=>t.id===course.instructorId); return '<button type="button" class="welcome-choice choice-teacher-v6" data-choice-course="' + e(course.id) + '"><span class="choice-teacher-avatar">' + e((teacher?.name || "م").slice(0,1)) + '</span><span><b>' + e(teacher?.name || "مصدر مستقل") + '</b><small>' + e(teacher?.specialty || "") + '</small><small>' + e(course.title) + '</small></span>' + icon("arrow") + '</button>'; }).join("") + '</div><div class="welcome-actions welcome-actions-v6">' + (choiceStep ? '<button type="button" class="btn btn-ghost small" data-choice-back>رجوع</button>' : "") + '<button type="button" class="btn btn-ghost small welcome-skip-v6" data-choice-skip>تخطي المرحلة</button></div></section></div>';
+    return;
     const section = me.profile.sectionId,
       teacher = document.querySelector("#choice-teacher")?.value || "all";
     const tracks = catalog.tracks.filter(
@@ -419,6 +429,9 @@ ${upcoming.length ? `<section class="dash-card"><div class="dash-card-head"><h2>
     const b = ev.target.closest("button");
     if (!b) return;
     try {
+      if (b.dataset.choiceCourse) { const stage=choiceStages[choiceStep]; const course=catalog.courses.find(x=>x.id===b.dataset.choiceCourse); if(stage&&course){ for(const x of stage.courses) chosen.delete(x.id); chosen.add(course.id); await api("/api/learning/selections",{method:"PUT",body:{courseIds:[...chosen]}}); choiceStep++; if(choiceStep>=choiceStages.length) location.hash="#/journey"; else drawChoices(); } return; }
+      if (b.hasAttribute("data-choice-skip")) { const stage=choiceStages[choiceStep]; if(stage){for(const x of stage.courses) chosen.delete(x.id); await api("/api/learning/selections",{method:"PUT",body:{courseIds:[...chosen]}}); choiceStep++; if(choiceStep>=choiceStages.length) location.hash="#/journey"; else drawChoices();} return; }
+      if (b.hasAttribute("data-choice-back")) { choiceStep=Math.max(0,choiceStep-1); drawChoices(); return; }
       if (b.hasAttribute("data-welcome-back")) {
         step = Math.max(0, step - 1);
         drawWizard();
@@ -434,7 +447,6 @@ ${upcoming.length ? `<section class="dash-card"><div class="dash-card-head"><h2>
           block: "start",
         });
       if (b.hasAttribute("data-welcome-skip")) await advance(true);
-      if (b.hasAttribute("data-welcome-back")) { step=Math.max(0,step-1); drawWizard(); }
       if (b.dataset.journeyComplete) {
         b.disabled = true;
         await api(
