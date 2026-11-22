@@ -505,6 +505,7 @@ ${upcoming.length ? `<section class="dash-card"><div class="dash-card-head"><h2>
         const custom = document.querySelector("#l-hours-custom");
         if (!custom?.reportValidity() || !custom.value) return;
         const form = document.querySelector("#welcome-form");
+        form.querySelectorAll('input[name="hours"][type="radio"]').forEach((radio) => { radio.checked = false; });
         let hidden = form.querySelector('input[name="hours"][type="hidden"]');
         if (!hidden) {
           hidden = document.createElement("input");
