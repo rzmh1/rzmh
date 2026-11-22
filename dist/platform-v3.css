@@ -77,3 +77,29 @@ body{background:var(--v3-bg);color:var(--v3-ink)}
 .rz-admin-content td,.rz-admin-content th{border-bottom:1px solid var(--v3-line);padding:14px 16px}
 .rz-admin-content .btn{border-radius:11px}
 @media(max-width:900px){.rz-admin-v3{grid-template-columns:1fr!important;margin:12px auto!important;padding:0 12px!important}.rz-admin-sidebar{position:relative;top:auto;max-height:none;display:block}.rz-admin-nav{flex-direction:row;overflow:auto;white-space:nowrap;padding-bottom:5px}.rz-admin-sidebar button{width:auto;flex:0 0 auto}.rz-admin-foot{display:none}.rz-public-site .opening-section{padding:44px 0 28px}.rz-public-site .opening-grid{grid-template-columns:1fr;gap:28px}.rz-public-site .learning-promise{margin-top:28px}.rz-public-site .route-section,.rz-public-site .store-stage-section,.rz-public-site .storefront-faq,.rz-public-site .pricing-section{padding:48px 0}}
+
+/* Compact floating lesson toolbar */
+.lesson-floating-canvas{position:absolute;inset:0;width:100%;height:100%;z-index:25;pointer-events:none;touch-action:none}
+#lesson-tools-fab{position:fixed;right:20px;bottom:calc(92px + env(safe-area-inset-bottom));z-index:120;width:54px;height:54px;border:0;border-radius:50%;display:grid;place-items:center;background:#7058c6;color:#fff;font-size:27px;box-shadow:0 8px 24px #32204b44;cursor:pointer}
+#lesson-tools-fab.is-active{background:#4d3b83}
+.lesson-tools-panel{position:fixed;right:16px;bottom:calc(156px + env(safe-area-inset-bottom));z-index:119;width:min(560px,calc(100vw - 24px));padding:9px;border:1px solid var(--v3-line);border-radius:20px;background:var(--v3-panel);box-shadow:0 16px 55px #0003;color:var(--v3-ink)}
+.lesson-tools-panel[hidden]{display:none}
+.lt-main-tools{display:flex;align-items:center;justify-content:space-between;gap:4px}
+.lt-tool{flex:1;min-width:0;min-height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:0;border-radius:13px;background:transparent;color:var(--v3-ink);font-size:21px;cursor:pointer}
+.lt-tool small{font-size:10px;color:var(--v3-muted);font-weight:750}
+.lt-tool.active{background:var(--v3-brand-soft);color:var(--v3-brand)}
+.lt-tool.active small{color:var(--v3-brand)}
+.lt-close{width:34px;height:34px;border:0;border-radius:50%;background:var(--v3-bg);color:var(--v3-muted);font-size:22px}
+.lt-context{padding:9px 12px 12px;border-bottom:1px solid var(--v3-line);margin-bottom:6px;font-size:12px;color:var(--v3-muted)}
+.lt-context[hidden]{display:none}
+.lt-context b{display:block;color:var(--v3-ink);margin-bottom:7px}
+.lt-colors{display:flex;align-items:center;gap:9px;margin:7px 0}
+.lt-colors button{width:25px;height:25px;border-radius:50%;border:2px solid var(--v3-panel);outline:1px solid var(--v3-line);background:var(--swatch)}
+.lt-colors button.chosen{outline:2px solid var(--v3-brand);outline-offset:2px}
+.lt-custom-color{width:28px;height:28px;display:grid;place-items:center;border:1px dashed var(--v3-line);border-radius:50%;position:relative;font-size:18px}
+.lt-custom-color input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.lt-size{display:flex;align-items:center;gap:12px}.lt-size input{flex:1;accent-color:var(--v3-brand)}
+.lt-context>button,.lt-context .lt-eraser-options button,.lt-more-actions button,.lt-destination button{border:1px solid var(--v3-line);border-radius:10px;padding:8px 12px;background:var(--v3-bg);color:var(--v3-ink);font-size:12px;font-weight:750}
+.lt-eraser-options,.lt-more-actions,.lt-destination{display:flex;align-items:center;justify-content:space-between;gap:9px;flex-wrap:wrap}
+.lt-destination{justify-content:flex-start}
+@media(max-width:560px){#lesson-tools-fab{right:14px;bottom:calc(90px + env(safe-area-inset-bottom));width:50px;height:50px}.lesson-tools-panel{right:8px;bottom:calc(148px + env(safe-area-inset-bottom));width:calc(100vw - 16px);padding:7px;border-radius:17px}.lt-tool{min-height:52px;font-size:19px}.lt-tool small{font-size:9px}.lt-context{padding:8px}.lt-colors{gap:8px}}
