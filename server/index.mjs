@@ -1457,8 +1457,14 @@ export function createApp(cfg = config()) {
         return;
       }
       const status = err.status || 500;
-      if (status === 500) console.error("Server error:", err.code || err.name);
-      res.writeHead(status, {
+    if (status >= 500) {
+  console.error("[SERVER ERROR]", {
+    name: err?.name,
+    message: err?.message,
+    code: err?.code,
+    stack: err?.stack,
+  });
+}      res.writeHead(status, {
         "Content-Type": "application/json; charset=utf-8",
         "Cache-Control": "no-store",
       });
