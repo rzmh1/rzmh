@@ -197,7 +197,9 @@ body.dark-paper .hero{background:linear-gradient(115deg,#302b39,#282432 66%,#352
     screens.forEach(function(s){s.classList.toggle("active",s.id==="screen-"+name)});
     document.querySelectorAll("[data-screen]").forEach(function(b){b.classList.toggle("active",b.dataset.screen===name)});
     window.scrollTo({top:0,behavior:"smooth"});
-    document.querySelector(".mobile-nav").hidden=!["dashboard","plan","courses","tutor","leaks"].includes(name);
+    document.querySelector(".mobile-nav").hidden=!["dashboard","plan","courses","lesson","pdf","quiz","result","tutor","library","leaks","notebook"].includes(name);
+    const mobileActive=({lesson:"courses",pdf:"courses",quiz:"courses",result:"courses",library:"courses",notebook:"courses"})[name]||name;
+    document.querySelectorAll(".mobile-nav [data-screen]").forEach(x=>x.classList.toggle("active",x.dataset.screen===mobileActive));
     document.querySelectorAll("[data-preview-mode]").forEach(b=>b.classList.toggle("active",b.dataset.previewMode===name||((b.dataset.previewMode==="dashboard")&&["dashboard","plan","courses","lesson","pdf","quiz","result","tutor","library","leaks","notebook"].includes(name))));
     updatePenAvailability();
   }
