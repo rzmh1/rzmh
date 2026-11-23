@@ -31,6 +31,7 @@ const tabs = [
   ["uploads", "الفيديوهات والملفات"],
   ["brand", "الهوية والرئيسية"],
   ["storefront", "إدارة واجهة المتجر"],
+  ["policies", "السياسات والاتفاقيات"],
   ["plans", "الباقات والأسعار"],
   ["students", "الطلاب والاشتراكات"],
   ["custom", "التخصيص المتقدم"],
@@ -54,6 +55,7 @@ function content() {
     [
       "overview",
       "storefront",
+      "policies",
       "instructors",
       "learning-tracks",
       "scheduler",

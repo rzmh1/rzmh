@@ -25,6 +25,7 @@ import * as pages from "./pages.js";
 import { leaksPage, mountLeaks } from "./leaks.js";
 import { mountDrawing, mountLessonTools } from "./drawing.js";
 import { adminPage, mountAdmin } from "./admin.js";
+import { policyPage, mountPolicyPage } from "./policies.js";
 import { api, account, setSession } from "./api.js";
 import {
   authLive,
@@ -374,6 +375,12 @@ export function render(scroll = true) {
         case "about":
           content = pages.aboutPage();
           break;
+        case "terms":
+        case "privacy":
+        case "refund":
+        case "cookies":
+          content = policyPage(r);
+          break;
         default:
           content = pages.notFound();
       }
@@ -398,6 +405,8 @@ export function render(scroll = true) {
   if (r === "leaks" && account.user) cleanups.push(mountLeaks(toast));
   if (r === "payment")
     void loadPaymentStatus(toast).then((cleanup) => cleanups.push(cleanup));
+  if (["terms", "privacy", "refund", "cookies"].includes(r))
+    cleanups.push(mountPolicyPage(r));
   void mountCustom(r);
   if (r === "scratch") cleanups.push(mountDrawing(toast));
   const learningKinds = {

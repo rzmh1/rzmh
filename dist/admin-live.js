@@ -119,6 +119,20 @@ export function mountAdminLive(tab, toast, render) {
           ),
         );
       }
+      if (tab === "policies") {
+        const policies = await api("/api/admin/settings/policies");
+        if (disposed) return;
+        const labels = {
+          terms: "الشروط والأحكام",
+          privacy: "سياسة الخصوصية",
+          refund: "سياسة الاسترجاع والإلغاء",
+          cookies: "سياسة ملفات الارتباط",
+        };
+        target.innerHTML = `<h2>السياسات والاتفاقيات</h2>${notice("اكتب النصوص القانونية التي تعتمدها المنصة. لا تنشر أي سياسة قبل مراجعتها والتأكد من توافقها مع نشاطك والأنظمة المطبقة.", "lock")}<div class="policy-admin-grid">${Object.entries(labels).map(([key, label]) => {
+          const item = policies[key] || { title: label, content: "", published: false };
+          return `<form id="policy-form" data-policy-key="${key}" class="panel policy-admin-card"><h3>${label}</h3><div class="field"><label>عنوان الصفحة</label><input name="title" maxlength="100" required value="${e(item.title)}"></div><div class="field"><label>نص السياسة</label><textarea name="content" rows="12" maxlength="12000" required placeholder="اكتب السياسة هنا...">${e(item.content)}</textarea></div>${check("published", "نشر هذه السياسة للزوار", item.published)}<button class="btn btn-primary" type="submit">حفظ ${label}</button></form>`;
+        }).join("")}</div>`;
+      }
       if (tab === "ai" || tab === "payment") {
         const s = await api("/api/admin/settings/" + tab);
         if (disposed) return;
@@ -506,7 +520,7 @@ export function mountAdminLive(tab, toast, render) {
   const submit = async (ev) => {
     const form = ev.target;
     if (
-      !["settings-form", "upload-form", "user-search", "broadcast-form"].includes(form.id) &&
+      !["settings-form", "upload-form", "user-search", "broadcast-form", "policy-form"].includes(form.id) &&
       !form.matches(".grant-sub")
     )
       return;
@@ -534,6 +548,18 @@ export function mountAdminLive(tab, toast, render) {
           },
         });
         toast("اكتمل إرسال " + result.sentCount + " من " + result.recipientCount + " رسالة.");
+        await load();
+      }
+      if (form.id === "policy-form") {
+        const key = form.dataset.policyKey;
+        const all = await api("/api/admin/settings/policies");
+        all[key] = {
+          title: values.title,
+          content: values.content,
+          published: new FormData(form).has("published"),
+        };
+        await api("/api/admin/settings/policies", { method: "PUT", body: all });
+        toast("تم حفظ السياسة وتحديث حالة نشرها.");
         await load();
       }
       if (form.id === "settings-form") {

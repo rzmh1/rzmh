@@ -306,6 +306,12 @@ export function createApp(cfg = config()) {
         return send(sessionResponse(user, session));
       if (path === "/api/content" && method === "GET")
         return send(contentFor(user));
+      if (path === "/api/policies" && method === "GET") {
+        const policies = store.setting("policies");
+        return send(Object.fromEntries(
+          Object.entries(policies).filter(([, value]) => value.published === true)
+        ));
+      }
       if (path === "/api/auth/register" && method === "POST") {
         rate("auth:" + clientIp, 12, 900000);
         const b = await jsonBody(req, 16000),
@@ -1197,6 +1203,31 @@ export function createApp(cfg = config()) {
             ),
           maxUpload: cfg.maxUpload,
         });
+      if (path === "/api/admin/settings/policies") {
+        const current = store.setting("policies");
+        if (method === "GET") return send(current);
+        if (method === "PUT") {
+          const body = await jsonBody(req, 30000);
+          const keys = ["terms", "privacy", "refund", "cookies"];
+          const next = {};
+          for (const key of keys) {
+            const item = body[key];
+            if (!item || typeof item !== "object" ||
+                typeof item.title !== "string" || typeof item.content !== "string" ||
+                item.title.trim().length < 2 || item.title.length > 100 ||
+                item.content.length > 12000)
+              fail(400, "تحقق من عنوان ونص كل سياسة (الحد الأقصى ١٢ ألف حرف).");
+            next[key] = {
+              title: cleanText(item.title, 100),
+              content: item.content.replace(/\u0000/g, "").trim(),
+              published: item.published === true,
+            };
+          }
+          store.saveSetting("policies", next, {});
+          store.audit(user.id, "policies.update", "policies");
+          return send({ ok: true });
+        }
+      }
       const settingMatch = /^\/api\/admin\/settings\/(ai|payment)$/.exec(path);
       if (settingMatch) {
         const name = settingMatch[1],

@@ -154,6 +154,12 @@ export function openDatabase(cfg) {
       cancelPath: "/#/payment/failure",
       connection: null,
     },
+    policies: {
+      terms: { title: "الشروط والأحكام", content: "", published: false },
+      privacy: { title: "سياسة الخصوصية", content: "", published: false },
+      refund: { title: "سياسة الاسترجاع والإلغاء", content: "", published: false },
+      cookies: { title: "سياسة ملفات الارتباط", content: "", published: false },
+    },
   }))
     db.prepare("INSERT OR IGNORE INTO settings(name,json) VALUES(?,?)").run(
       name,
