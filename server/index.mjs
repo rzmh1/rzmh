@@ -25,7 +25,7 @@ import {
   equal,
 } from "./security.mjs";
 import { checkout, handleStripeWebhook, testPayment } from "./payments.mjs";
-import { testAI, tutor } from "./ai.mjs";
+import { testAI, tutor, generateLessonPractice } from "./ai.mjs";
 import { storageService } from "./storage.mjs";
 import { frame, codeInput, saveCode } from "./custom.mjs";
 import { sendEmail, sendBatchEmails, verificationMessage, resetMessage } from "./email.mjs";
@@ -712,6 +712,16 @@ export function createApp(cfg = config()) {
           .get(orderMatch[1], user.id);
         if (!order) fail(404, "الطلب غير موجود");
         return send({ order, entitled: store.entitled(user) });
+      }
+      if (path === "/api/admin/ai/generate-lesson-practice" && method === "POST") {
+        rate("ai-pdf:" + user.id, 3, 60000);
+        return send(
+          await generateLessonPractice(
+            store,
+            user,
+            await jsonBody(req, 12 * 1024 * 1024),
+          ),
+        );
       }
       if (path === "/api/tutor" && method === "POST") {
         required(user);
