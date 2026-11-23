@@ -181,3 +181,22 @@ test('subscribed student completes onboarding, saves choices and replans real co
   expect(me.selectedCourseIds).toContain('quant-basics');
   expect(failures).toEqual([]);
 });
+
+
+test('subscribed student resumes the same quiz question after a full page reload', async ({ page, app }) => {
+  const failures = trackFailures(page);
+  await login(page, app, 'student@example.test');
+  await page.goto(`${app.url}/#/tests`);
+  await page.locator('[data-action=start-quiz]').first().click();
+  await expect(page.locator('#main')).toContainText('السؤال 1 من');
+  await page.locator('[data-action=quiz-next]').click();
+  await expect(page.locator('#main')).toContainText('السؤال 2 من');
+  const stored = await page.evaluate(() => {
+    const key = Object.keys(localStorage).find(k => k.startsWith('ruzmah-quiz-index:'));
+    return key ? localStorage.getItem(key) : null;
+  });
+  expect(stored).toBe('1');
+  await page.reload();
+  await expect(page.locator('#main')).toContainText('السؤال 2 من');
+  expect(failures).toEqual([]);
+});
