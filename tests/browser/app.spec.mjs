@@ -166,6 +166,11 @@ test('subscribed student completes onboarding, saves choices and replans real co
   await page.locator('#choices-form button[type=submit]').click();
   await expect(page).toHaveURL((url) => url.hash === "#/journey");
   await expect(page.locator('#learning-root')).toContainText('الأساس الذي تبني عليه');
+  const shortcuts = page.locator('nav.dash-shortcuts');
+  await expect(shortcuts).toBeVisible();
+  for (const route of ['bank', 'tests', 'mistakes', 'plan']) {
+    await expect(shortcuts.locator(`a[href="#/${route}"]`)).toBeVisible();
+  }
   for (const route of ['learning-settings', 'bank', 'tests', 'mistakes', 'scratch', 'subscription', 'tutor']) {
     await page.goto(`${app.url}/#/${route}`);
     await expect(page.locator('#main')).toBeVisible();
