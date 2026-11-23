@@ -1,5 +1,5 @@
 import { api, account } from "./api.js";
-import { db, escape as e, money, reloadContent } from "./data.js";
+import { db, escape as e, money, reloadContent, saveDb } from "./data.js";
 import { icon, notice, empty } from "./ui.js";
 const field = (name, title, value = "", type = "text", extra = "") =>
   `<div class="field"><label for="a-${name}">${title}</label><input id="a-${name}" name="${name}" type="${type}" value="${e(value ?? "")}" ${extra}></div>`;
@@ -17,7 +17,8 @@ export function mountAdminLive(tab, toast, render) {
     draft = { scope: "home", html: "", css: "", js: "", height: 400 },
     previewTimer,
     liveSeq = 0,
-    activeLanguage = "html";
+    activeLanguage = "html",
+    generatedPractice = null;
   const target = document.querySelector("#live-admin-root");
   if (!target) return () => {};
   const error = (err) => {
@@ -242,7 +243,8 @@ export function mountAdminLive(tab, toast, render) {
     return `<div class="connection-state">${s.connection?.verified ? "آخر اختبار ناجح: " + date(s.connection.checkedAt) : "لم يُثبت اتصال ناجح بهذه الإعدادات."}</div>`;
   }
   function aiForm(s) {
-    return `<h2>إعدادات المدرس الذكي</h2>${notice("الطلبات ترسل إلى OpenAI Responses API من الخادم. المفتاح مشفّر في قاعدة البيانات بمفتاح APP_KEY أو محفوظ في بيئة الخادم. لا يُعاد إلى المتصفح.")}<form id="settings-form" data-type="ai" class="panel"><div class="form-grid">${select("provider", "AI Provider", [["openai", "OpenAI — Responses API"]], "openai")}${secretField("apiKey", "API Key", s)}${field("model", "Model", s.model, "text", "required")}${field("dailyLimit", "Daily Usage Limit", s.dailyLimit, "number", 'min="1" max="1000" required')}${field("maxTokens", "Max Output Tokens", s.maxTokens, "number", 'min="32" max="16000" required')}${field("temperature", "Temperature — فقط للنماذج المدعومة", s.temperature, "number", 'min="0" max="2" step="0.1"')}${field("inputPrice", "سعر مليون Input Tokens بالدولار (اختياري)", s.inputPrice, "number", 'min="0" step="0.001"')}${field("outputPrice", "سعر مليون Output Tokens بالدولار (اختياري)", s.outputPrice, "number", 'min="0" step="0.001"')}</div><div class="field"><label for="ai-instructions">System Instructions</label><textarea name="instructions" id="ai-instructions" rows="8" maxlength="20000">${e(s.instructions)}</textarea></div><p class="muted">API Configuration: POST https://api.openai.com/v1/responses · store:false · سياق آخر ١٦ رسالة ومحتوى رُزمة المتاح. Temperature تُرسل فقط مع GPT-4.1 وGPT-4o.</p>${check("enabled", "تفعيل الخدمة للمشتركين", s.enabled)}<div class="modal-actions"><button type="submit" class="btn btn-primary">حفظ الإعدادات</button><button type="button" class="btn btn-outline" data-test-connection="ai">Test Connection — طلب حقيقي</button></div>${connection(s)}<div id="settings-status" role="status"></div></form><h3 class="spaced">الاستهلاك</h3><p class="muted">التكلفة تقديرية عند إدخال أسعار النموذج. راجع فاتورة OpenAI للمبلغ النهائي.</p><div id="ai-usage" class="spaced"></div>`;
+    return `<h2>إعدادات المدرس الذكي</h2>${notice("الطلبات ترسل إلى OpenAI Responses API من الخادم. المفتاح مشفّر في قاعدة البيانات بمفتاح APP_KEY أو محفوظ في بيئة الخادم. لا يُعاد إلى المتصفح.")}<form id="settings-form" data-type="ai" class="panel"><div class="form-grid">${select("provider", "AI Provider", [["openai", "OpenAI — Responses API"]], "openai")}${secretField("apiKey", "API Key", s)}${field("model", "Model", s.model, "text", "required")}${field("dailyLimit", "Daily Usage Limit", s.dailyLimit, "number", 'min="1" max="1000" required')}${field("maxTokens", "Max Output Tokens", s.maxTokens, "number", 'min="32" max="16000" required')}${field("temperature", "Temperature — فقط للنماذج المدعومة", s.temperature, "number", 'min="0" max="2" step="0.1"')}${field("inputPrice", "سعر مليون Input Tokens بالدولار (اختياري)", s.inputPrice, "number", 'min="0" step="0.001"')}${field("outputPrice", "سعر مليون Output Tokens بالدولار (اختياري)", s.outputPrice, "number", 'min="0" step="0.001"')}</div><div class="field"><label for="ai-instructions">System Instructions</label><textarea name="instructions" id="ai-instructions" rows="8" maxlength="20000">${e(s.instructions)}</textarea></div><p class="muted">API Configuration: POST https://api.openai.com/v1/responses · store:false · سياق آخر ١٦ رسالة ومحتوى رُزمة المتاح. Temperature تُرسل فقط مع GPT-4.1 وGPT-4o.</p>${check("enabled", "تفعيل الخدمة للمشتركين", s.enabled)}<div class="modal-actions"><button type="submit" class="btn btn-primary">حفظ الإعدادات</button><button type="button" class="btn btn-outline" data-test-connection="ai">Test Connection — طلب حقيقي</button></div>${connection(s)}<div id="settings-status" role="status"></div></form><h3 class="spaced">الاستهلاك</h3><p class="muted">التكلفة تقديرية عند إدخال أسعار النموذج. راجع فاتورة OpenAI للمبلغ النهائي.</p><div id="ai-usage" class="spaced"></div>
+</div><section class="panel spaced"><h3>إنشاء تدريب من ملف PDF</h3><p class="muted">ارفع ملف الدرس، وسيجهّز المدرس الذكي أسئلة جديدة مع الإجابات والشرح. ستراجع الأسئلة أولًا؛ لن تُضاف للطلاب إلا بعد اعتمادك.</p><form id="ai-pdf-form"><div class="form-grid">${select("courseId", "الدورة", (db.courses || []).map((c) => [c.id, c.title]), db.courses?.[0]?.id || "")}<div class="field"><label for="ai-pdf-lesson">الدرس</label><select id="ai-pdf-lesson" name="lessonId">${(db.courses?.[0]?.lessons || []).map((l) => `<option value="${e(l.id)}">${e(l.title)}</option>`).join("")}</select></div>${select("count", "عدد الأسئلة", [["5","٥ أسئلة"],["10","١٠ أسئلة"],["15","١٥ سؤالًا"],["20","٢٠ سؤالًا"]], "10")}${select("difficulty", "الصعوبة", [["متنوع","متنوع"],["سهل","سهل"],["متوسط","متوسط"],["صعب","صعب"]], "متنوع")}</div><label class="upload-picker spaced" for="ai-pdf-file">${icon("file-text")}<strong>اختر ملف PDF للدرس</strong><span>PDF فقط · حتى ٨ ميجابايت</span><input id="ai-pdf-file" name="file" type="file" accept="application/pdf,.pdf" required></label><button class="btn btn-primary spaced" type="submit">أنشئ التدريبات من الملف ${icon("spark")}</button><p id="ai-pdf-status" class="muted" role="status"></p></form><div id="ai-pdf-preview"></div></section>`;
   }
   function paymentForm(s) {
     return `<h2>إعدادات الدفع وبوابات الدفع</h2>${notice("Stripe موصل فعلي لإنشاء Checkout والتحقق من Webhook. الرابط الخارجي تحويل فقط، ولا يفعّل اشتراكًا تلقائيًا. وضع Test يسجل العملية دون منح وصول إنتاجي.", "lock")}<form id="settings-form" data-type="payment" class="panel"><div class="form-grid">${select(
@@ -295,6 +297,59 @@ export function mountAdminLive(tab, toast, render) {
       const b = ev.target.closest("button");
       if (!b) return;
       const d = b.dataset;
+      if (d.aiImportPractice !== undefined) {
+        if (!generatedPractice) throw Error("لا توجد مسودة أسئلة لاعتمادها.");
+        if (!confirm("سيُضاف " + generatedPractice.questions.length + " سؤالًا إلى بنك الأسئلة، وتُربط بالدرس، ويُنشأ اختبار للدرس. هل تريد المتابعة؟"))
+          return;
+        await reloadContent();
+        const course = db.courses.find((item) => item.id === generatedPractice.courseId);
+        const lesson = course?.lessons.find((item) => item.id === generatedPractice.lessonId);
+        if (!course || !lesson) throw Error("تغيرت الدورة أو الدرس. أعد إنشاء التدريب.");
+        const ids = generatedPractice.questions.map(() => crypto.randomUUID());
+        const questions = generatedPractice.questions.map((q, i) => ({
+          id: ids[i],
+          sectionId: course.sectionId,
+          trackId: course.trackId,
+          subject: course.subject,
+          topicId: lesson.topicId || "",
+          difficulty: generatedPractice.difficulty,
+          access: course.access || "paid",
+          text: q.text,
+          options: q.options,
+          correct: q.correct,
+          explanation: q.explanation,
+          sourcePage: q.sourcePage,
+        }));
+        db.questions.push(...questions);
+        lesson.practiceQuestionIds = [...new Set([...(lesson.practiceQuestionIds || []), ...ids])];
+        db.tests ||= [];
+        db.tests.push({
+          id: crypto.randomUUID(),
+          title: "اختبار درس: " + lesson.title,
+          level: "lesson",
+          trackIds: [course.trackId],
+          courseId: course.id,
+          topicId: lesson.topicId || "",
+          duration: Math.max(300, questions.length * 60),
+          points: 1,
+          visible: true,
+          access: course.access || "paid",
+          questionIds: ids,
+        });
+        await saveDb();
+        generatedPractice = null;
+        toast("تم اعتماد الأسئلة وربطها بالدرس وإنشاء اختبار له.");
+        await load();
+        return;
+      }
+      if (d.aiDiscardPractice !== undefined) {
+        generatedPractice = null;
+        const preview = document.querySelector("#ai-pdf-preview");
+        if (preview) preview.innerHTML = "";
+        const status = document.querySelector("#ai-pdf-status");
+        if (status) status.textContent = "أُلغيت المسودة ولم تُحفظ.";
+        return;
+      }
       if (b.hasAttribute("data-broadcast-preview")) {
         const form = document.querySelector("#broadcast-form");
         if (!form) return;
@@ -492,6 +547,14 @@ export function mountAdminLive(tab, toast, render) {
       if (sendButton) sendButton.disabled = true;
       if (preview) preview.textContent = "تغيرت الرسالة؛ أعد معاينة عدد المستلمين.";
     }
+    if (ev.target.name === "courseId" && tab === "ai") {
+      const course = db.courses.find((item) => item.id === ev.target.value);
+      const lessonSelect = document.querySelector("#ai-pdf-lesson");
+      if (lessonSelect)
+        lessonSelect.innerHTML = (course?.lessons || []).map((lesson) =>
+          `<option value="${e(lesson.id)}">${e(lesson.title)}</option>`
+        ).join("");
+    }
     if (ev.target.name === "courseId" && tab === "uploads") {
       const c = db.courses.find((c) => c.id === ev.target.value);
       document.querySelector("[name=lessonId]").innerHTML =
@@ -506,7 +569,7 @@ export function mountAdminLive(tab, toast, render) {
   const submit = async (ev) => {
     const form = ev.target;
     if (
-      !["settings-form", "upload-form", "user-search", "broadcast-form"].includes(form.id) &&
+      !["settings-form", "upload-form", "user-search", "broadcast-form", "ai-pdf-form"].includes(form.id) &&
       !form.matches(".grant-sub")
     )
       return;
@@ -535,6 +598,39 @@ export function mountAdminLive(tab, toast, render) {
         });
         toast("اكتمل إرسال " + result.sentCount + " من " + result.recipientCount + " رسالة.");
         await load();
+      }
+      if (form.id === "ai-pdf-form") {
+        const file = form.elements.file.files[0];
+        if (!file) throw Error("اختر ملف PDF أولًا.");
+        if (file.size < 8 || file.size > 8 * 1024 * 1024)
+          throw Error("حجم ملف PDF يجب ألا يتجاوز ٨ ميجابايت.");
+        if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf"))
+          throw Error("الملف يجب أن يكون بصيغة PDF.");
+        const status = document.querySelector("#ai-pdf-status");
+        status.textContent = "يقرأ المدرس الذكي الملف ويُعدّ الأسئلة…";
+        const dataUrl = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result || ""));
+          reader.onerror = () => reject(Error("تعذرت قراءة الملف من جهازك."));
+          reader.readAsDataURL(file);
+        });
+        const generated = await api("/api/admin/ai/generate-lesson-practice", {
+          method: "POST",
+          body: {
+            courseId: values.courseId,
+            lessonId: values.lessonId,
+            count: Number(values.count),
+            difficulty: values.difficulty,
+            file: { name: file.name, data: dataUrl.split(",")[1] },
+          },
+        });
+        generatedPractice = generated;
+        status.textContent = "اكتمل إعداد " + generated.questions.length + " أسئلة. راجعها قبل اعتمادها.";
+        document.querySelector("#ai-pdf-preview").innerHTML =
+          generated.questions.map((q, i) =>
+            `<article class="panel spaced"><b>السؤال ${i + 1} · صفحة ${q.sourcePage}</b><p>${e(q.text)}</p><ol>${q.options.map((option, n) => `${n === q.correct ? "<li><b>" + e(option) + " — الإجابة الصحيحة</b></li>" : "<li>" + e(option) + "</li>" }`).join("")}</ol><p class="muted">${e(q.explanation)}</p></article>`
+          ).join("") +
+          `<div class="modal-actions"><button type="button" class="btn btn-primary" data-ai-import-practice>اعتماد الأسئلة وربطها بالدرس</button><button type="button" class="btn btn-outline" data-ai-discard-practice>إلغاء المسودة</button></div>`;
       }
       if (form.id === "settings-form") {
         values.enabled = new FormData(form).has("enabled");
