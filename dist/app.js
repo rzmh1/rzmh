@@ -63,7 +63,30 @@ const persistStudent = async () => {
     return false;
   }
 };
-function persistQuiz() {}
+const quizIndexKey = (id) => `ruzmah-quiz-index:${id}`;
+function persistQuiz() {
+  if (!quiz?.id || !Number.isInteger(quiz.index)) return;
+  try {
+    localStorage.setItem(quizIndexKey(quiz.id), String(quiz.index));
+  } catch {}
+}
+function restoreQuizIndex() {
+  if (!quiz?.id || !Array.isArray(quiz.questions)) return;
+  try {
+    const saved = localStorage.getItem(quizIndexKey(quiz.id));
+    if (saved === null) return;
+    const index = Number(saved);
+    if (Number.isInteger(index) && index >= 0 && index < quiz.questions.length)
+      quiz.index = index;
+    else localStorage.removeItem(quizIndexKey(quiz.id));
+  } catch {}
+}
+function clearQuizIndex(id) {
+  if (!id) return;
+  try {
+    localStorage.removeItem(quizIndexKey(id));
+  } catch {}
+}
 function quizMarkup() {
   if (!quiz)
     return empty(
@@ -91,6 +114,7 @@ async function finishQuiz() {
       method: "POST",
       body: {},
     });
+    clearQuizIndex(quiz.id);
     setStudent(response.student);
     quiz = null;
     location.hash = "#/results/" + response.result.id;
@@ -622,6 +646,8 @@ document.addEventListener("click", async (ev) => {
         method: "POST",
         body: { id: d.test },
       });
+      quiz.index = 0;
+      persistQuiz();
       location.hash = "#/quiz";
     } catch (err) {
       toast(err.message);
@@ -845,6 +871,7 @@ try {
   if (account.user) {
     try {
       quiz = await api("/api/attempts/current");
+      restoreQuizIndex();
     } catch {}
   }
   render();
