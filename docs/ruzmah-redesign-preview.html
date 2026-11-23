@@ -51,6 +51,7 @@ body.dark-paper .hero{background:linear-gradient(115deg,#302b39,#282432 66%,#352
   <button class="nav-btn" data-screen="courses"><span class="nav-ico">▤</span>دوراتي</button>
   <button class="nav-btn" data-screen="plan"><span class="nav-ico">▦</span>خطتي</button>
   <button class="nav-btn" data-screen="lesson"><span class="nav-ico">▷</span>صفحة الدرس</button>
+  <button class="nav-btn" data-screen="pdf"><span class="nav-ico">▧</span>ملف PDF</button>
   <button class="nav-btn" data-screen="quiz"><span class="nav-ico">✓</span>الاختبار</button>
   <button class="nav-btn" data-screen="result"><span class="nav-ico">◷</span>النتيجة والمراجعة</button>
   <button class="nav-btn" data-screen="tutor"><span class="nav-ico">✧</span>المدرّس والسبورة</button>
@@ -117,8 +118,14 @@ body.dark-paper .hero{background:linear-gradient(115deg,#302b39,#282432 66%,#352
 
 <section class="screen" id="screen-lesson">
   <div class="screen-label"><span>الدورات</span> / <span>أساسيات الرياضيات</span> / الدرس ٤</div>
-  <div class="heading"><div><span class="eyebrow">التأسيس الكمي</span><h1>النسبة والتناسب.</h1><p>شرح الدرس · مصدر: المعاصر · مدة الفيديو ١٨:٣٥</p></div><span class="tag green">٧٠٪ من الدورة</span></div>
+  <div class="heading"><div><span class="eyebrow">التأسيس الكمي</span><h1>النسبة والتناسب.</h1><p>شرح الدرس · مصدر: المعاصر · مدة الفيديو ١٨:٣٥</p></div><span class="tag green">٧٠٪ من الدورة</span><button class="btn secondary small" data-go="pdf">فتح ملف PDF</button></div>
   <div class="grid g2"><div class="stack"><div class="lesson-stage"><div><div class="play">▶</div><b>معاينة مشغل الدرس</b><p style="color:#e1dbe8;font-size:10px">يظهر الفيديو الفعلي هنا عند توفره</p></div></div><div class="card"><h3>ملخص الفكرة</h3><p class="muted" style="font-size:12px">التناسب علاقة بين كميتين تتغيران بالنسبة نفسها. قبل الانتقال للتطبيق، تأكد من فهمك للعلاقة بين البسط والمقام.</p><div class="divider"></div><div class="row"><button class="btn secondary small">الدرس السابق</button><button class="btn primary small" data-go="quiz">اختبر فهمك ←</button></div></div></div><div class="card"><h3>محتويات الدورة</h3><div class="task"><span class="task-dot">✓</span><div style="flex:1"><b>مفهوم النسبة</b><div class="smalltext">١٢ دقيقة</div></div><span class="tag green">مكتمل</span></div><div class="task"><span class="task-dot">✓</span><div style="flex:1"><b>تبسيط النسب</b><div class="smalltext">١٦ دقيقة</div></div><span class="tag green">مكتمل</span></div><div class="task"><span class="task-dot">▶</span><div style="flex:1"><b>النسبة والتناسب</b><div class="smalltext">١٨ دقيقة</div></div><span class="tag goldtag">أنت هنا</span></div><div class="task"><span class="task-dot">◷</span><div style="flex:1"><b>تطبيقات متنوعة</b><div class="smalltext">٢٢ دقيقة</div></div><span class="tag">قادم</span></div></div></div>
+</section>
+
+<section class="screen" id="screen-pdf">
+  <div class="screen-label"><span>الدورات</span> / <span>ملف PDF</span> / صفحة ٤</div>
+  <div class="heading"><div><span class="eyebrow">ملفات الدرس</span><h1>ملزمة التأسيس الكمي.</h1><p>ملف PDF تجريبي · صفحة ٤ من ٢٤ · أدوات القلم تعمل فوق الصفحة دون تعديل الملف.</p></div><span class="tag green">عرض المستند</span></div>
+  <div class="grid g2"><article class="card" style="background:#fff;color:#29243a;min-height:520px;padding:clamp(22px,4vw,48px);border:1px solid #e4ddd4"><div style="display:flex;justify-content:space-between;color:#827c8b;font-size:10px"><b>رُزمة · التأسيس الكمي</b><span>٤ / ٢٤</span></div><hr class="divider"><h2 style="text-align:center;margin:22px 0">النسبة والتناسب</h2><p style="font-size:14px;line-height:2.3">النسبة هي مقارنة بين كميتين باستخدام القسمة. ويمكن تبسيطها بقسمة الطرفين على العامل المشترك الأكبر.</p><div style="padding:25px;background:#f5f2ec;border-radius:14px;text-align:center;margin:24px 0"><b style="font-size:24px">٣ : ٩ = ١ : ٣</b><p style="font-size:11px;margin:10px 0 0">نقسم الطرفين على ٣</p></div><h3>تطبيق</h3><p style="font-size:14px;line-height:2.3">إذا كانت النسبة بين عددين ٢ : ٥ وكان مجموعهما ٢٨، فما قيمة العدد الأكبر؟</p><p style="font-size:12px;line-height:2">أ) ٨　 ب) ١٠　 ج) ٢٠　 د) ٢٤</p><div style="margin-top:60px;border-top:1px solid #e9e3dc;padding-top:12px;color:#827c8b;font-size:10px;text-align:center">المحتوى التعليمي التجريبي — رُزمة</div></article><div class="card"><h3>أدوات الملف</h3><p class="muted" style="font-size:11px">استخدم قلم رُزمة العائم لتحديد نص أو قص السؤال وإرساله للمدرس.</p><div class="task"><span class="task-dot">▧</span><div style="flex:1"><b>صفحة ٤</b><div class="smalltext">النسبة والتناسب</div></div><span class="tag green">مفتوحة</span></div><div class="task"><span class="task-dot">▧</span><div style="flex:1"><b>صفحة ٥</b><div class="smalltext">التناسب الطردي</div></div><span class="tag">قادم</span></div><button class="btn primary" style="width:100%;margin-top:14px" data-go="tutor">اسأل المدرس عن هذه الصفحة</button><button class="btn secondary" style="width:100%;margin-top:8px" data-go="lesson">العودة إلى الفيديو</button></div></div>
 </section>
 
 <section class="screen" id="screen-quiz">
@@ -191,7 +198,7 @@ body.dark-paper .hero{background:linear-gradient(115deg,#302b39,#282432 66%,#352
     document.querySelectorAll("[data-screen]").forEach(function(b){b.classList.toggle("active",b.dataset.screen===name)});
     window.scrollTo({top:0,behavior:"smooth"});
     document.querySelector(".mobile-nav").hidden=!["dashboard","plan","courses","tutor","leaks"].includes(name);
-    document.querySelectorAll("[data-preview-mode]").forEach(b=>b.classList.toggle("active",b.dataset.previewMode===name||((b.dataset.previewMode==="dashboard")&&["dashboard","plan","courses","lesson","quiz","result","tutor","library","leaks","notebook"].includes(name))));
+    document.querySelectorAll("[data-preview-mode]").forEach(b=>b.classList.toggle("active",b.dataset.previewMode===name||((b.dataset.previewMode==="dashboard")&&["dashboard","plan","courses","lesson","pdf","quiz","result","tutor","library","leaks","notebook"].includes(name))));
     updatePenAvailability();
   }
   document.querySelectorAll("[data-screen]").forEach(function(b){b.addEventListener("click",function(){show(b.dataset.screen)})});
@@ -251,7 +258,7 @@ body.dark-paper .hero{background:linear-gradient(115deg,#302b39,#282432 66%,#352
   const fab=document.getElementById("ruzPenFab"),panel=document.getElementById("ruzPenPanel"),penCanvas=document.createElement("canvas"),penCtx=penCanvas.getContext("2d"),penContext=document.getElementById("ruzPenContext"),clipActions=document.getElementById("ruzClipActions");
   document.querySelector(".main").appendChild(penCanvas);
   let penMode="view",penColor="#594775",markerColor="#f4cf43",penSize=3,activeStroke=null,selectionStart=null,cropRect=null,pendingClip=null,redoStack=[],strokesByScreen={};
-  const eligible=()=>["lesson","quiz","tutor","library"].includes(document.querySelector(".screen.active")?.id.replace("screen-",""));
+  const eligible=()=>["lesson","pdf","quiz","tutor","library"].includes(document.querySelector(".screen.active")?.id.replace("screen-",""));
   function updatePenAvailability(){const on=eligible();fab.hidden=!on;if(!on){panel.hidden=true;clipActions.hidden=true;penMode="view";penCanvas.classList.remove("drawing");penCtx.clearRect(0,0,penCanvas.width,penCanvas.height)}else resizePenCanvas()}
   function key(){return document.querySelector(".screen.active")?.id||"screen-lesson"}function strokes(){return strokesByScreen[key()]||(strokesByScreen[key()]=[])}
   function resizePenCanvas(){const main=document.querySelector(".main"),r=main.getBoundingClientRect(),dpr=window.devicePixelRatio||1;penCanvas.width=Math.max(1,Math.round(r.width*dpr));penCanvas.height=Math.max(1,Math.round(r.height*dpr));penCanvas.style.width=r.width+"px";penCanvas.style.height=r.height+"px";penCtx.setTransform(dpr,0,0,dpr,0,0);paintPen()}
