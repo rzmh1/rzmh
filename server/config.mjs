@@ -18,8 +18,9 @@ export function config(env = process.env) {
   const requireEmailVerification =
       production || env.REQUIRE_EMAIL_VERIFICATION === "1",
     mail = {
-      apiKey: env.RESEND_API_KEY || "",
-      from: env.EMAIL_FROM || "",
+apiKey: (env.RESEND_API_KEY || "")
+  .replace(/[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, "")
+  .trim(),      from: env.EMAIL_FROM || "",
     };
   if (mail.apiKey && !mail.from)
     throw Error("EMAIL_FROM is required when RESEND_API_KEY is configured");
