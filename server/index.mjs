@@ -279,8 +279,14 @@ export function createApp(cfg = config()) {
         );
       }
       if (!["GET", "HEAD"].includes(method)) {
-if (origin && origin !== cfg.origin) fail(403, "مصدر الطلب غير موثوق");
-if (!origin && cfg.production) fail(403, "يتطلب الطلب Origin");        if (origin && origin !== cfg.origin) fail(403, "مصدر الطلب غير موثوق");
+        const origin = req.headers.origin;
+        if (origin && origin !== cfg.origin) {
+          console.error("[ORIGIN MISMATCH]", {
+            received: origin,
+            expected: cfg.origin,
+          });
+          fail(403, "مصدر الطلب غير موثوق");
+        }
         if (!origin && cfg.production) fail(403, "يتطلب الطلب Origin");
         if (session && !equal(req.headers["x-csrf-token"], session.csrf))
           fail(403, "رمز حماية الجلسة غير صالح");
