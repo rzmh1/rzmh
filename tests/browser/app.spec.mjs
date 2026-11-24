@@ -157,6 +157,25 @@ test('two Ruzmah accounts retain independent tabs, study data and browser drafts
   await other.close();
 });
 
+test('logout saves a running lesson study timer before revoking the session', async ({ page, app }) => {
+  const failures = trackFailures(page);
+  await login(page, app, 'student@example.test');
+  const course = app.store.getContent().courses[0];
+  await page.goto(`${app.url}/#/lesson/${course.id}/${course.lessons[0].id}`);
+  await page.locator('[data-lesson-study]').click();
+  await expect(page.locator('[data-lesson-study]')).toContainText('أنهِ التوقيت');
+  const session = app.store.db.prepare('SELECT id FROM learning_study_sessions WHERE ended IS NULL ORDER BY started DESC').get();
+  expect(session?.id).toBeTruthy();
+  app.store.db.prepare('UPDATE learning_study_sessions SET started=?,last_seen=? WHERE id=?')
+    .run(Date.now() - 10000, Date.now(), session.id);
+  await page.locator('[data-action=logout]').click();
+  await expect(page.locator('#saved-accounts')).toContainText('لم تُحفظ أي جلسة');
+  const saved = app.store.db.prepare('SELECT seconds,ended FROM learning_study_sessions WHERE id=?').get(session.id);
+  expect(saved.ended).toBeTruthy();
+  expect(saved.seconds).toBeGreaterThanOrEqual(10);
+  expect(failures).toEqual([]);
+});
+
 test('owner dashboard loads every tab and the local CodeMirror editor', async ({ page, app }) => {
   const failures = trackFailures(page);
   await login(page, app, 'admin@example.test');

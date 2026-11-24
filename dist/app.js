@@ -50,10 +50,14 @@ let cleanups = [],
   subjectFilter = "all";
 const route = () =>
   location.hash.split("?")[0].replace(/^#\/?/, "").split("/").filter(Boolean);
-function navigateAccount(id, destination) {
-  changingAccount = true;
-  for (const dispose of cleanups) dispose();
+async function disposeAccountPage() {
+  const disposers = cleanups;
   cleanups = [];
+  await Promise.allSettled(disposers.map((dispose) => Promise.resolve().then(dispose)));
+}
+async function navigateAccount(id, destination) {
+  changingAccount = true;
+  await disposeAccountPage();
   selectAccount(id);
   location.hash = destination;
   location.reload();
@@ -656,14 +660,19 @@ document.addEventListener("click", async (ev) => {
     render(false);
   }
   if (d.action === "switch-account") {
-    navigateAccount(d.account, "#/accounts");
+    await navigateAccount(d.account, "#/accounts");
     return;
   }
   if (d.action === "logout") {
     try {
+      changingAccount = true;
+      // Finish study writes while this account's session is still valid.
+      await disposeAccountPage();
       await api("/api/auth/logout", { method: "POST", body: {} });
-      navigateAccount(null, "#/accounts");
+      await navigateAccount(null, "#/accounts");
     } catch (err) {
+      changingAccount = false;
+      render(false);
       toast(err.message);
     }
   }

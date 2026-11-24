@@ -674,10 +674,10 @@ ${upcoming.length ? `<section class="dash-card"><div class="dash-card-head"><h2>
   void load();
   return () => {
     disposed = true;
-    void stopTimer();
     document.removeEventListener("click", click);
     document.removeEventListener("change", change);
     document.removeEventListener("submit", submit);
     document.removeEventListener("visibilitychange", visibility);
+    return stopTimer();
   };
 }
