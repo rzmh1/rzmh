@@ -8,3 +8,5 @@
 @media(max-width:600px){.preview-switcher{padding:9px 15px;gap:7px}.preview-switcher>span{font-size:.7rem}.preview-switcher nav{gap:5px;width:100%;justify-content:space-between}.preview-switcher a,.preview-switcher button{font-size:.67rem;padding:4px 7px}.public-header .header-actions>.btn.soft{display:none}}
 
 .admin-side-nav{overflow-y:auto;min-height:0;scrollbar-width:thin;padding-bottom:12px}.admin-side-nav button{font-size:.83rem;padding-block:9px}.side-nav[hidden]{display:none}
+
+@font-face{font-family:'IBM Plex Sans Arabic';src:url('../assets/arabic-regular.ttf') format('truetype');font-weight:400 550;font-display:swap}@font-face{font-family:'IBM Plex Sans Arabic';src:url('../assets/arabic-bold.ttf') format('truetype');font-weight:600 700;font-display:swap}

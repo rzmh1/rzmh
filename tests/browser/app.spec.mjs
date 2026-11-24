@@ -36,7 +36,7 @@ async function login(page, app, email) {
   const owner = email === "admin@example.test";
   const route = owner ? "admin-login" : "login";
   const form = owner ? "#admin-auth-form" : "#auth-form";
-  await page.goto(`${app.url}/#/${route}`);
+  await page.goto(`${app.url}/platform.html#/${route}`);
   await page.locator(`${form} input[name=email]`).fill(email);
   await page.locator(`${form} input[name=password]`).fill(app.password);
   await page.locator(`${form} button[type=submit]`).click();
@@ -56,7 +56,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
     const failures = trackFailures(page);
     await page.setViewportSize(viewport);
     for (const route of ['', 'sections', 'section/qudrat', 'section/tahsili', 'section/step', 'instructors', 'course/quant-basics', 'pricing', 'subscription/year', 'updates', 'about', 'login', 'signup', 'admin-login']) {
-      await page.goto(`${app.url}/#/${route}`);
+      await page.goto(`${app.url}/platform.html#/${route}`);
       await expect(page.locator('#main')).toBeVisible();
       await expect(page.locator('#main')).not.toContainText('تعذر الاتصال');
       expect(await page.locator('#main').innerText()).not.toHaveLength(0);
@@ -64,7 +64,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
       expect(await page.evaluate(() => getComputedStyle(document.body).direction)).toBe('rtl');
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
     }
-    await page.goto(app.url);
+    await page.goto(`${app.url}/platform.html`);
     await page.locator('[data-action=theme]').click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
     await page.reload();
@@ -87,7 +87,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
 test('registration, session persistence, login/logout and unpaid subscription gate', async ({ page, app }) => {
   const failures = trackFailures(page);
   const email = `${randomUUID()}@example.test`;
-  await page.goto(`${app.url}/#/signup`);
+  await page.goto(`${app.url}/platform.html#/signup`);
   await page.locator('#auth-form input[name=name]').fill('طالب تسجيل جديد');
   await page.locator('#auth-form input[name=email]').fill(email);
   await page.locator('#auth-form input[name=password]').fill(app.password);
@@ -95,15 +95,15 @@ test('registration, session persistence, login/logout and unpaid subscription ga
   await expect(page).toHaveURL(/#\/sections$/);
   await page.reload();
   await expect(page.locator('[data-action=logout]')).toBeVisible();
-  await page.goto(`${app.url}/#/journey`);
+  await page.goto(`${app.url}/platform.html#/journey`);
   await expect(page.locator('#main')).toContainText('منصة الطالب ضمن اشتراكك الشامل');
-  await page.goto(`${app.url}/#/subscription/year`);
+  await page.goto(`${app.url}/platform.html#/subscription/year`);
   await expect(page.locator('.order-total')).toContainText('99.99');
   await expect(page.locator('#subscription-form button[type=submit]')).toBeDisabled();
   await page.locator('[data-action=logout]').click();
   await expect(page.locator('[data-action=logout]')).toHaveCount(0);
   await login(page, app, email);
-  await page.goto(`${app.url}/#/admin`);
+  await page.goto(`${app.url}/platform.html#/admin`);
   await expect(page.locator('.admin-shell')).toHaveCount(0);
   expect(failures).toEqual([]);
 });
@@ -111,7 +111,7 @@ test('registration, session persistence, login/logout and unpaid subscription ga
 test('owner dashboard loads every tab and the local CodeMirror editor', async ({ page, app }) => {
   const failures = trackFailures(page);
   await login(page, app, 'admin@example.test');
-  await page.goto(`${app.url}/#/admin`);
+  await page.goto(`${app.url}/platform.html#/admin`);
   await expect(page.locator('.admin-shell')).toBeVisible();
   const tabs = await page.locator('[data-admin-tab]').evaluateAll(nodes => nodes.map(n => n.dataset.adminTab));
   expect(tabs.length).toBeGreaterThan(15);
@@ -135,7 +135,7 @@ test('owner dashboard loads every tab and the local CodeMirror editor', async ({
 test('subscribed student completes onboarding, saves choices and replans real content', async ({ page, app }) => {
   const failures = trackFailures(page);
   await login(page, app, 'student@example.test');
-  await page.goto(`${app.url}/#/welcome`);
+  await page.goto(`${app.url}/platform.html#/welcome`);
   const keys = ['sectionId', 'foundationStarted', 'foundationCompleted', 'selfLevel', 'targetScore', 'examDate', 'dailyMinutes', 'studyDays'];
   for (let i = 0; i < keys.length; i++) {
     const key = keys[i];
@@ -172,11 +172,11 @@ test('subscribed student completes onboarding, saves choices and replans real co
     await expect(shortcuts.locator(`a[href="#/${route}"]`)).toBeVisible();
   }
   for (const route of ['learning-settings', 'bank', 'tests', 'mistakes', 'scratch', 'subscription', 'tutor']) {
-    await page.goto(`${app.url}/#/${route}`);
+    await page.goto(`${app.url}/platform.html#/${route}`);
     await expect(page.locator('#main')).toBeVisible();
     await expect(page.locator('#main')).not.toContainText('تعذر الاتصال');
   }
-  await page.goto(`${app.url}/#/learning-settings`);
+  await page.goto(`${app.url}/platform.html#/learning-settings`);
   await page.locator('#learning-settings input[name=hours]').fill('3');
   await page.locator('#learning-settings button[type=submit]').click();
   await expect(page).toHaveURL((url) => url.hash === "#/journey");
@@ -191,7 +191,7 @@ test('subscribed student completes onboarding, saves choices and replans real co
 test('subscribed student resumes the same quiz question after a full page reload', async ({ page, app }) => {
   const failures = trackFailures(page);
   await login(page, app, 'student@example.test');
-  await page.goto(`${app.url}/#/tests`);
+  await page.goto(`${app.url}/platform.html#/tests`);
   await page.locator('[data-action=start-quiz]').first().click();
   await expect(page.locator('#main')).toContainText('السؤال 1 من');
   await page.locator('[data-action=quiz-next]').click();
