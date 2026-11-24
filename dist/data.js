@@ -216,12 +216,10 @@ const emptyStudent = {
 };
 export let student = structuredClone(emptyStudent);
 export async function initialize() {
-  const [content, session] = await Promise.all([
-    api("/api/content"),
-    api("/api/session"),
-  ]);
-  db = content;
+  const session = await api("/api/session");
   setSession(session);
+  // Pin this tab before any account-dependent content requests.
+  db = await api("/api/content");
   student = { ...structuredClone(emptyStudent), ...(session.student || {}) };
   return session;
 }

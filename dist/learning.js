@@ -1,3 +1,4 @@
+import { mediaUrl } from "./api.js";
 import { api, account } from "./api.js";
 import { db, escape as e, safeUrl } from "./data.js";
 import { icon, btn, notice, empty, pageHeading } from "./ui.js";
@@ -40,7 +41,7 @@ export function learningPage(kind) {
 }
 export function teacherCard(t, trackId = "") {
   const image = t.imageAssetId
-    ? "/api/media/" + e(t.imageAssetId)
+    ? mediaUrl("/api/media/" + e(t.imageAssetId))
     : safeUrl(t.imageUrl);
   return `<a href="#/instructor/${e(t.id)}${trackId ? "?track=" + encodeURIComponent(trackId) : ""}" class="teacher-card"><div class="teacher-portrait">${image ? `<img src="${image}" alt="${e(t.name)}" loading="lazy">` : `<span aria-hidden="true">${e(t.name.slice(0, 1))}</span>`}</div><div><span class="badge">${t.kind === "source" ? "مصدر تعليمي" : "مدرّس"}</span><h3>${e(t.name)}</h3><p>${e(t.specialty)}</p><small>${t.courseIds.length} دورات منشورة · ${t.videoCount} مقاطع${t.videoSeconds ? ` · ${minutes(t.videoSeconds)} دقيقة فيديو معروفة` : ""}</small></div>${icon("arrow")}</a>`;
 }
@@ -435,7 +436,7 @@ ${upcoming.length ? `<section class="dash-card"><div class="dash-card-head"><h2>
         ${[...groups.entries()].map(([name, items]) => `<section class="journey-section"><h3>${e(name)}</h3><div class="teacher-courses">${items.map((course) => `<article class="panel"><span class="badge">${e(catalog.tracks.find((track) => track.id === course.trackId)?.title || course.subject)}</span><h3 class="spaced">${e(course.title)}</h3><p>${e(course.description)}</p><p>${course.metrics.videoCount} مقاطع · ${course.metrics.lessonCount} دروس · ${course.metrics.attachments} مرفقات</p><div class="stack spaced">${course.lessons.map((lesson) => `<a class="list-row" href="#/lesson/${course.id}/${lesson.id}"><span>${icon(lesson.video ? "play-circle" : "book-open")} ${e(lesson.title)}</span>${icon("arrow")}</a>`).join("")}</div><div class="spaced">${btn("فتح الدورة كاملة", "#/course/" + course.id, "outline")}</div></article>`).join("")}</div></section>`).join("") || empty("لا توجد دروس منشورة لهذا المصدر في هذا المسار.", "يمكن للإدارة إضافة الدورات وربطها بهذا المصدر من لوحة المالك.") }
       </section>
       <section id="teacher-files" class="panel spaced"><h2>الملفات التعليمية</h2>
-        ${linkedFiles.map((file) => `<a class="list-row" href="/api/media/${e(file.id)}" target="_blank" rel="noopener noreferrer"><span>${icon("file-pdf")} ملف ${file.index} · ${e(file.lesson)}<br><small>${e(file.course)}</small></span>${icon("external-link")}</a>`).join("") || "<p>لا توجد ملفات مرتبطة بدروس هذا المصدر بعد.</p>"}
+        ${linkedFiles.map((file) => `<a class="list-row" href="${mediaUrl("/api/media/" + e(file.id))}" target="_blank" rel="noopener noreferrer"><span>${icon("file-pdf")} ملف ${file.index} · ${e(file.lesson)}<br><small>${e(file.course)}</small></span>${icon("external-link")}</a>`).join("") || "<p>لا توجد ملفات مرتبطة بدروس هذا المصدر بعد.</p>"}
       </section>
       <section id="teacher-tests" class="panel spaced"><h2>الاختبارات</h2>
         ${tests.map((test) => `<a class="list-row" href="#/tests/${test.id}"><span>${e(test.title)}<br><small>${test.count} أسئلة · ${minutes(test.duration)} دقائق</small></span>${icon("arrow")}</a>`).join("") || "<p>لم تُنشر اختبارات مرتبطة بهذا المصدر بعد.</p>"}
@@ -673,10 +674,10 @@ ${upcoming.length ? `<section class="dash-card"><div class="dash-card-head"><h2>
   void load();
   return () => {
     disposed = true;
-    void stopTimer();
     document.removeEventListener("click", click);
     document.removeEventListener("change", change);
     document.removeEventListener("submit", submit);
     document.removeEventListener("visibilitychange", visibility);
+    return stopTimer();
   };
 }

@@ -28,7 +28,7 @@ export function safeNext(value) {
   if (
     typeof value !== "string" ||
     value.length > 600 ||
-    !/^\/(?:course\/[\w-]+(?:\?preview=[\w-]+)?|subscription(?:\/[\w-]+)?|sections|section\/[\w-]+|track\/[\w-]+|instructors|instructor\/[\w-]+)?$/.test(
+    !/^\/(?:course\/[\w-]+(?:\?preview=[\w-]+)?|subscription(?:\/[\w-]+)?|accounts|sections|section\/[\w-]+|track\/[\w-]+|instructors|instructor\/[\w-]+)?$/.test(
       value,
     )
   )

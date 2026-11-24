@@ -4393,3 +4393,16 @@ textarea {
 .tutor-teacher-canvas{display:block;width:100%;height:auto;aspect-ratio:5/3;margin:12px 0 16px;border:1px solid var(--border);border-radius:12px;background:#fff;touch-action:pan-y}
 
 .tutor-draw-actions [data-tutor-draw].active{border-color:var(--purple);background:var(--purple-light);color:var(--purple);font-weight:800}
+
+.accounts-page { max-width: 780px; margin: 0 auto; }
+.accounts-page > p { line-height: 1.8; margin-block: 1rem 1.5rem; }
+.account-card { display: flex; align-items: center; gap: 1rem; }
+.account-details { flex: 1; min-width: 0; }
+.account-details h2 { font-size: 1.15rem; }
+.account-details p { text-align: start; overflow-wrap: anywhere; }
+.accounts-actions { display: flex; gap: .75rem; flex-wrap: wrap; margin-block: 1.5rem; align-items: center; }
+@media (max-width: 520px) { .account-card { flex-wrap: wrap; } .account-card > button { width: 100%; } }
+
+@media (max-width: 520px) { .site-header .header-actions > .account-switch-link { display: none; } }
+
+.footer-links { flex-wrap: wrap; min-width: 0; }

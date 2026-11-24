@@ -104,8 +104,8 @@ export function mountLessonStudy(toast) {
   document.addEventListener("visibilitychange", hide);
   return () => {
     disposed = true;
-    void stop();
     button.removeEventListener("click", click);
     document.removeEventListener("visibilitychange", hide);
+    return stop();
   };
 }
