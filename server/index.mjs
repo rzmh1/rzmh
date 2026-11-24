@@ -1437,6 +1437,7 @@ export function createApp(cfg = config()) {
       return;
     }
     if (!["GET", "HEAD"].includes(method)) fail(405, "طريقة الطلب غير مسموحة");
+    if (path === "/") { res.writeHead(302, { Location: "/preview/", "Cache-Control": "no-store" }); res.end(); return; }
     let requested;
     try {
       requested = decodeURIComponent(path);
