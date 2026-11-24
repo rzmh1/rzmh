@@ -1,3 +1,4 @@
+import { accountSessions, accountCookieName, cookies } from "./account-sessions.mjs";
 import { canReadLesson, isPreview } from "../dist/course-policy.js";
 import { learningService } from "./learning.mjs";
 import {
@@ -60,22 +61,7 @@ export function createApp(cfg = config()) {
         "INSERT INTO rate_limits VALUES(?,1,?) ON CONFLICT(key) DO UPDATE SET count=1,expires=excluded.expires",
       ).run(key, now + window);
   };
-  function authenticate(req) {
-    const cookie = req.headers.cookie
-      ?.split(";")
-      .map((c) => c.trim())
-      .find((c) => c.startsWith("ruzmah_session="))
-      ?.split("=")[1];
-    if (!cookie) return {};
-    const session = db
-      .prepare("SELECT * FROM sessions WHERE hash=? AND expires>?")
-      .get(hash(cookie), Date.now());
-    if (!session) return {};
-    const user = db
-      .prepare("SELECT * FROM users WHERE id=? AND disabled=0")
-      .get(session.user_id);
-    return user ? { user, session } : {};
-  }
+  const sessions = accountSessions(db, cfg);
   const required = (user) => {
     if (!user) fail(401, "سجّل الدخول للمتابعة");
     return user;
@@ -213,7 +199,13 @@ export function createApp(cfg = config()) {
       learning: user ? learning.me(user) : null,
     };
   }
-  function createSession(user, res) {
+  function sessionSlot(req, userId) {
+    const known = sessions.list(req);
+    if (known.length >= 5 && !known.some((u) => u.id === userId))
+      fail(400, "يمكن حفظ خمسة حسابات في هذا المتصفح. سجّل الخروج من أحدها أولًا.");
+  }
+  function createSession(user, res, req) {
+    sessionSlot(req, user.id);
     db.prepare("DELETE FROM sessions WHERE expires<?").run(Date.now());
     const t = token(),
       csrf = token(),
@@ -226,7 +218,7 @@ export function createApp(cfg = config()) {
     );
     res.setHeader(
       "Set-Cookie",
-      `ruzmah_session=${t}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800${cfg.production ? "; Secure" : ""}`,
+      [sessions.cookie("ruzmah_session", t), sessions.cookie(accountCookieName(user.id), t)],
     );
     return sessionResponse(user, { csrf });
   }
@@ -259,7 +251,9 @@ export function createApp(cfg = config()) {
       cfg.trustProxy && typeof req.headers["x-real-ip"] === "string"
         ? req.headers["x-real-ip"]
         : req.socket.remoteAddress;
-    const { user, session } = authenticate(req);
+    const selectedAccount = req.headers["x-ruzmah-account"] ??
+      (path.startsWith("/api/media/") ? url.searchParams.get("account") : null);
+    const { user, session, token: sessionToken } = sessions.authenticate(req, selectedAccount);
     const send = (value, status = 200) => {
       res.writeHead(status, {
         "Content-Type": "application/json; charset=utf-8",
@@ -302,8 +296,17 @@ export function createApp(cfg = config()) {
           return;
       }
       if (path === "/api/health") return send({ ok: true, version: "3.1.0" });
-      if (path === "/api/session" && method === "GET")
+      if (path === "/api/auth/accounts" && method === "GET")
+        return send({ accounts: sessions.list(req) });
+      if (path === "/api/session" && method === "GET") {
+        // Preserve existing browser sessions when upgrading to account switching.
+        if (user && !cookies(req).has(accountCookieName(user.id)))
+          res.setHeader("Set-Cookie", [
+            sessions.cookie("ruzmah_session", sessionToken, Math.max(0, Math.floor((session.expires - Date.now()) / 1000))),
+            sessions.cookie(accountCookieName(user.id), sessionToken, Math.max(0, Math.floor((session.expires - Date.now()) / 1000))),
+          ]);
         return send(sessionResponse(user, session));
+      }
       if (path === "/api/content" && method === "GET")
         return send(contentFor(user));
       if (path === "/api/policies" && method === "GET") {
@@ -320,6 +323,7 @@ export function createApp(cfg = config()) {
         if (!name) fail(400, "أدخل اسم العرض");
         if (cfg.requireEmailVerification && (!cfg.mail?.apiKey || !cfg.mail?.from))
           fail(503, "التسجيل يحتاج إعداد خدمة البريد أولًا. لم يُنشأ الحساب؛ تواصل مع إدارة رُزمة.");
+        sessionSlot(req);
         const pass = await passwordHash(b.password),
           id = randomUUID(),
           verified = cfg.requireEmailVerification ? 0 : 1;
@@ -342,7 +346,7 @@ export function createApp(cfg = config()) {
           return send({ verificationRequired: true, email: mail }, 201);
         }
         store.audit(u.id, "auth.register", u.id);
-        return send(createSession(u, res));
+        return send(createSession(u, res, req));
       }
       if (path === "/api/auth/admin-login" && method === "POST") {
         rate("admin-auth:" + clientIp, 8, 900000);
@@ -356,7 +360,7 @@ export function createApp(cfg = config()) {
         if (!u.email_verified)
           fail(403, "تحقق من بريد المالك أولًا، ثم حاول تسجيل الدخول.");
         store.audit(u.id, "auth.admin_login", u.id);
-        return send(createSession(u, res));
+        return send(createSession(u, res, req));
       }
       if (path === "/api/auth/login" && method === "POST") {
         rate("auth:" + clientIp, 12, 900000);
@@ -370,7 +374,7 @@ export function createApp(cfg = config()) {
         if (!u.email_verified)
           fail(403, "تحقق من بريدك الإلكتروني أولًا، ثم سجّل الدخول.");
         store.audit(u.id, "auth.login", u.id);
-        return send(createSession(u, res));
+        return send(createSession(u, res, req));
       }
       if (path === "/api/auth/verify-email" && method === "POST") {
         rate("verify-ip:" + clientIp, 20, 900000);
@@ -393,11 +397,12 @@ export function createApp(cfg = config()) {
             db.prepare("UPDATE email_verification_codes SET attempts=attempts+1 WHERE user_id=?").run(u.id);
           fail(400, "رمز التحقق غير صحيح.");
         }
+        sessionSlot(req, u.id);
         db.prepare("UPDATE users SET email_verified=1 WHERE id=?").run(u.id);
         db.prepare("DELETE FROM email_verification_codes WHERE user_id=?").run(u.id);
         store.audit(u.id, "auth.email_verified", u.id);
         const verifiedUser = db.prepare("SELECT * FROM users WHERE id=?").get(u.id);
-        return send(createSession(verifiedUser, res));
+        return send(createSession(verifiedUser, res, req));
       }
       if (path === "/api/auth/resend-verification" && method === "POST") {
         rate("verify-resend-ip:" + clientIp, 5, 900000);
@@ -455,11 +460,11 @@ export function createApp(cfg = config()) {
       if (path === "/api/auth/logout" && method === "POST") {
         if (session)
           db.prepare("DELETE FROM sessions WHERE hash=?").run(session.hash);
-        res.setHeader(
-          "Set-Cookie",
-          "ruzmah_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0" +
-            (cfg.production ? "; Secure" : ""),
-        );
+        const clear = [];
+        if (user) clear.push(sessions.cookie(accountCookieName(user.id), "", 0));
+        if (cookies(req).get("ruzmah_session") === sessionToken)
+          clear.push(sessions.cookie("ruzmah_session", "", 0));
+        if (clear.length) res.setHeader("Set-Cookie", clear);
         return send({ ok: true });
       }
       if (path === "/api/student/state" && method === "PUT") {

@@ -93,6 +93,7 @@ test('registration, session persistence, login/logout and unpaid subscription ga
   await page.locator('#auth-form input[name=password]').fill(app.password);
   await page.locator('#auth-form button[type=submit]').click();
   await expect(page).toHaveURL(/#\/sections$/);
+  await expect(page.locator('#auth-form')).toHaveCount(0);
   await page.reload();
   await expect(page.locator('[data-action=logout]')).toBeVisible();
   await page.goto(`${app.url}/#/journey`);
@@ -106,6 +107,54 @@ test('registration, session persistence, login/logout and unpaid subscription ga
   await page.goto(`${app.url}/#/admin`);
   await expect(page.locator('.admin-shell')).toHaveCount(0);
   expect(failures).toEqual([]);
+});
+
+test('two Ruzmah accounts retain independent tabs, study data and browser drafts', async ({ page, context, app }) => {
+  const failures = trackFailures(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await login(page, app, 'student@example.test');
+  const first = await page.evaluate(async () => {
+    const { api, account, accountStorageKey } = await import('/api.js');
+    await api('/api/student/state', { method: 'PUT', body: { tasks: [{ id: crypto.randomUUID(), text: 'مهمة الحساب الأول', done: true }] } });
+    localStorage.setItem(accountStorageKey('ruzmah-lesson-notebook'), JSON.stringify([{ title: 'دفتر الأول' }]));
+    return account.user.id;
+  });
+  // A second tab remains on A while this tab signs into B.
+  const other = await context.newPage();
+  await other.goto(`${app.url}/#/accounts`);
+  await expect(other.locator('.account-card')).toHaveCount(1);
+  await page.goto(`${app.url}/#/accounts`);
+  await page.getByRole('link', { name: 'إضافة حساب آخر' }).click();
+  await page.locator('.auth-switch a').click();
+  await page.locator('#display-name').fill('حساب ثانٍ');
+  await page.locator('#auth-email').fill(`${randomUUID()}@example.test`);
+  await page.locator('#auth-password').fill(app.password);
+  await page.locator('#auth-form button[type=submit]').click();
+  await expect(page.locator('.account-card')).toHaveCount(2);
+  expect(await page.evaluate(async () => {
+    const { api, accountStorageKey } = await import('/api.js');
+    return { tasks: (await api('/api/session')).student.tasks, notebook: localStorage.getItem(accountStorageKey('ruzmah-lesson-notebook')) };
+  })).toEqual({ tasks: [], notebook: null });
+  await other.reload();
+  await expect(other.locator('.account-card').filter({ hasText: 'طالب الاختبار' })).toContainText('الحساب الحالي');
+  await expect(page.locator('.account-card').filter({ hasText: 'حساب ثانٍ' })).toContainText('الحساب الحالي');
+  await page.screenshot({ path: 'test-results/independent-accounts-mobile.png', fullPage: true });
+  await page.locator(`button[data-account="${first}"]`).click();
+  await expect(page.locator('.account-card').filter({ hasText: 'طالب الاختبار' })).toContainText('الحساب الحالي');
+  expect(await page.evaluate(async () => {
+    const { api, accountStorageKey } = await import('/api.js');
+    return { task: (await api('/api/session')).student.tasks[0].text, notebook: JSON.parse(localStorage.getItem(accountStorageKey('ruzmah-lesson-notebook')))[0].title };
+  })).toEqual({ task: 'مهمة الحساب الأول', notebook: 'دفتر الأول' });
+  // Log out B without revoking A, then verify both tabs keep their own choice.
+  await page.getByRole('button', { name: 'التبديل إلى هذا الحساب' }).click();
+  await expect(page.locator('.account-card').filter({ hasText: 'حساب ثانٍ' })).toContainText('الحساب الحالي');
+  await page.locator('#saved-accounts [data-action=logout]').click();
+  await expect(page.locator('.account-card')).toHaveCount(1);
+  await other.reload();
+  await expect(other.locator('.account-card')).toContainText('الحساب الحالي');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+  expect(failures).toEqual([]);
+  await other.close();
 });
 
 test('owner dashboard loads every tab and the local CodeMirror editor', async ({ page, app }) => {
@@ -141,19 +190,19 @@ test('subscribed student completes onboarding, saves choices and replans real co
     const key = keys[i];
     await expect(page.locator('#welcome-form')).toHaveAttribute('data-key', key);
     if (key === 'sectionId') {
-      await page.locator('input[name=sectionId][value=qudrat]').check();
+      await page.locator('input[name=sectionId][value=qudrat]').click();
       await expect(page.locator('#welcome-form')).toHaveAttribute('data-key', keys[i + 1]);
       continue;
     }
     if (key === 'foundationStarted' || key === 'foundationCompleted' || key === 'selfLevel') {
-      await page.locator(`input[name="${key}"]`).first().check();
+      await page.locator(`input[name="${key}"]`).first().click();
       await expect(page.locator('#welcome-form')).toHaveAttribute('data-key', keys[i + 1]);
       continue;
     }
     if (key === 'targetScore') await page.locator('input[name=targetScore]').fill('90');
     if (key === 'examDate') await page.locator('input[name=examDate]').fill('2027-01-15');
     if (key === 'dailyMinutes') {
-      await page.locator('input[name=hours][value="2"]').check();
+      await page.locator('input[name=hours][value="2"]').click();
       await expect(page.locator('#welcome-form')).toHaveAttribute('data-key', keys[i + 1]);
       continue;
     }

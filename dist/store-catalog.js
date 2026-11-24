@@ -1,3 +1,4 @@
+import { mediaUrl } from "./api.js";
 import {
   db,
   visibleCourses,
@@ -74,7 +75,7 @@ export function publicTeacherCard(t, options = {}) {
     metrics = courses.map(courseMetrics),
     seconds = metrics.reduce((n, m) => n + m.seconds, 0),
     photo = t.imageAssetId
-      ? "/api/media/" + e(t.imageAssetId)
+      ? mediaUrl("/api/media/" + e(t.imageAssetId))
       : safeUrl(t.imageUrl);
   return `<${tag} class="store-teacher" ${profile ? "" : `href="#/instructor/${e(t.id)}"`}><div class="store-teacher-photo">${photo ? `<img src="${photo}" alt="${e(t.name)}" loading="lazy">` : `<span aria-hidden="true">${e(t.name.slice(0, 1))}</span>`}<i>${icon(t.kind === "source" ? "book" : "user")}</i></div><div><small>${t.kind === "source" ? "مصدر تعليمي" : "مدرّس"} · ${e(t.specialty || "محتوى تعليمي")}</small><${nameTag}>${e(t.name)}</${nameTag}><p>${e(t.bio || "تعرّف على الدورات المنشورة لهذا المصدر.")}</p><span>${courses.length} دورات · ${metrics.reduce((n, m) => n + m.clips, 0)} مقاطع${seconds ? " · " + clipTime(seconds) + " مدة معروفة" : ""}</span></div>${profile ? "" : icon("arrow")}</${tag}>`;
 }
@@ -173,9 +174,9 @@ function previewPane(c, l) {
   if (!can || l.locked)
     return `<section id="course-preview" class="catalog-preview-gate">${icon("lock")}<h2>بقية الشرح، داخل رُزمتك.</h2><p>حسابك المجاني يتيح معاينة المقطع المحدد. الاشتراك الشامل يفتح بقية محتوى الدورة والمسارات.</p>${btn("شاهد الباقات", "#/pricing")}${previewLessonId(c) ? btn("العودة للمعاينة", "#/course/" + c.id + "?preview=" + previewLessonId(c), "outline") : ""}</section>`;
   const video = l.videoAssetId
-    ? "/api/media/" + e(l.videoAssetId)
+    ? mediaUrl("/api/media/" + e(l.videoAssetId))
     : safeUrl(l.videoUrl);
-  return `<section id="course-preview" class="catalog-preview-player"><div class="preview-player-heading"><div>${badge(preview ? "معاينة مجانية" : "محتوى متاح بحسابك", "badge-purple")}<h2>${e(l.title)}</h2></div><span dir="ltr">${l.durationSeconds ? clipTime(l.durationSeconds) : ""}</span></div>${video && (!l.videoStatus || l.videoStatus === "ready") ? `<video class="store-preview-video" controls playsinline preload="metadata" src="${video}" ${l.posterAssetId ? `poster="/api/media/${e(l.posterAssetId)}"` : ""}></video>` : l.video ? '<div class="preview-processing">الفيديو غير جاهز للمشاهدة حاليًا. يمكنك العودة عند اكتمال تجهيزه.</div>' : `<div class="preview-reading"><p>${e(l.body || "لم يُضف محتوى لهذا الدرس بعد.")}</p>${l.example ? `<blockquote>${e(l.example)}</blockquote>` : ""}</div>`}<p id="preview-feedback" role="alert"></p>${l.fileAssetIds?.length ? `<div class="preview-files">${l.fileAssetIds.map((id, i) => `<a href="/api/media/${e(id)}" target="_blank" rel="noopener noreferrer">${icon("file")}${e(l.attachmentNames?.[i] || "ملف الدرس " + (i + 1))}</a>`).join("")}</div>` : ""}${!account.entitled && c.access !== "free" ? `<div class="preview-upsell"><p>أعجبك أسلوب الشرح؟ الاشتراك يفتح بقية الدورة وكل المسارات.</p>${btn("اختر اشتراكك", "#/pricing", "outline")}</div>` : `<div class="preview-upsell">${btn("أكمل في منصة الطالب", "#/lesson/" + c.id + "/" + l.id, "outline")}</div>`}</section>`;
+  return `<section id="course-preview" class="catalog-preview-player"><div class="preview-player-heading"><div>${badge(preview ? "معاينة مجانية" : "محتوى متاح بحسابك", "badge-purple")}<h2>${e(l.title)}</h2></div><span dir="ltr">${l.durationSeconds ? clipTime(l.durationSeconds) : ""}</span></div>${video && (!l.videoStatus || l.videoStatus === "ready") ? `<video class="store-preview-video" controls playsinline preload="metadata" src="${video}" ${l.posterAssetId ? `poster="${mediaUrl("/api/media/" + e(l.posterAssetId))}"` : ""}></video>` : l.video ? '<div class="preview-processing">الفيديو غير جاهز للمشاهدة حاليًا. يمكنك العودة عند اكتمال تجهيزه.</div>' : `<div class="preview-reading"><p>${e(l.body || "لم يُضف محتوى لهذا الدرس بعد.")}</p>${l.example ? `<blockquote>${e(l.example)}</blockquote>` : ""}</div>`}<p id="preview-feedback" role="alert"></p>${l.fileAssetIds?.length ? `<div class="preview-files">${l.fileAssetIds.map((id, i) => `<a href="${mediaUrl("/api/media/" + e(id))}" target="_blank" rel="noopener noreferrer">${icon("file")}${e(l.attachmentNames?.[i] || "ملف الدرس " + (i + 1))}</a>`).join("")}</div>` : ""}${!account.entitled && c.access !== "free" ? `<div class="preview-upsell"><p>أعجبك أسلوب الشرح؟ الاشتراك يفتح بقية الدورة وكل المسارات.</p>${btn("اختر اشتراكك", "#/pricing", "outline")}</div>` : `<div class="preview-upsell">${btn("أكمل في منصة الطالب", "#/lesson/" + c.id + "/" + l.id, "outline")}</div>`}</section>`;
 }
 export function storeCoursePage(id, selected = null) {
   const c = visibleCourses().find((c) => c.id === id);

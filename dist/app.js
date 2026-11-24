@@ -1,3 +1,4 @@
+import { accountsPage, mountAccounts } from "./accounts.js";
 import {
   storeTeachersPage,
   storeTrackPage,
@@ -26,7 +27,7 @@ import { leaksPage, mountLeaks } from "./leaks.js";
 import { mountDrawing, mountLessonTools } from "./drawing.js";
 import { adminPage, mountAdmin } from "./admin.js";
 import { policyPage, mountPolicyPage } from "./policies.js";
-import { api, account, setSession } from "./api.js";
+import { api, account, setSession, selectAccount, accountStorageKey } from "./api.js";
 import {
   authLive,
   adminAuthLive,
@@ -41,6 +42,7 @@ import {
 } from "./live-pages.js";
 const app = document.querySelector("#app");
 let trackedPage = null;
+let changingAccount = false;
 let cleanups = [],
   toastTimer,
   quiz = null,
@@ -48,6 +50,14 @@ let cleanups = [],
   subjectFilter = "all";
 const route = () =>
   location.hash.split("?")[0].replace(/^#\/?/, "").split("/").filter(Boolean);
+function navigateAccount(id, destination) {
+  changingAccount = true;
+  for (const dispose of cleanups) dispose();
+  cleanups = [];
+  selectAccount(id);
+  location.hash = destination;
+  location.reload();
+}
 export function toast(message) {
   const t = document.querySelector("#toast");
   t.textContent = message;
@@ -64,7 +74,7 @@ const persistStudent = async () => {
     return false;
   }
 };
-const quizIndexKey = (id) => `ruzmah-quiz-index:${id}`;
+const quizIndexKey = (id) => accountStorageKey(`ruzmah-quiz-index:${id}`);
 function persistQuiz() {
   if (!quiz?.id || !Number.isInteger(quiz.index)) return;
   try {
@@ -74,7 +84,7 @@ function persistQuiz() {
 function restoreQuizIndex() {
   if (!quiz?.id || !Array.isArray(quiz.questions)) return;
   try {
-    const saved = localStorage.getItem(quizIndexKey(quiz.id));
+    const saved = localStorage.getItem(quizIndexKey(quiz.id)) ?? localStorage.getItem(`ruzmah-quiz-index:${quiz.id}`);
     if (saved === null) return;
     const index = Number(saved);
     if (Number.isInteger(index) && index >= 0 && index < quiz.questions.length)
@@ -126,6 +136,7 @@ async function finishQuiz() {
   }
 }
 export function render(scroll = true) {
+  if (changingAccount) return;
   for (const dispose of cleanups) dispose();
   cleanups = [];
   let [r, id, lid] = route();
@@ -146,6 +157,7 @@ export function render(scroll = true) {
     tutor: "المدرس الذكي",
     leaks: "التسريبات",
     login: "تسجيل الدخول",
+    accounts: "تبديل الحساب",
     signup: "إنشاء حساب",
     "verify-email": "تأكيد البريد",
     "forgot-password": "استعادة كلمة المرور",
@@ -340,6 +352,9 @@ export function render(scroll = true) {
               ? adminPage()
               : adminAuthLive();
           break;
+        case "accounts":
+          content = accountsPage();
+          break;
         case "login":
           content = authLive();
           break;
@@ -399,6 +414,7 @@ export function render(scroll = true) {
   app.innerHTML = appSpace
     ? studentFrame(content, r)
     : `${header()}<main id="main" tabindex="-1" ${wrapped ? 'class="container page-content"' : ""}>${content}</main>${footer()}`;
+  if (r === "accounts") cleanups.push(mountAccounts());
   if (r === "admin" && account.user?.role === "admin")
     cleanups.push(mountAdmin(toast, render));
   if (r === "tutor" && account.user) cleanups.push(mountTutor(toast));
@@ -639,12 +655,14 @@ document.addEventListener("click", async (ev) => {
     persistStudent();
     render(false);
   }
+  if (d.action === "switch-account") {
+    navigateAccount(d.account, "#/accounts");
+    return;
+  }
   if (d.action === "logout") {
     try {
       await api("/api/auth/logout", { method: "POST", body: {} });
-      await initialize();
-      location.hash = "#/";
-      render();
+      navigateAccount(null, "#/accounts");
     } catch (err) {
       toast(err.message);
     }
@@ -734,11 +752,7 @@ document.addEventListener("submit", async (ev) => {
       });
       if (result.user?.role !== "admin")
         throw Error("هذا الحساب غير مخوّل لدخول لوحة الإدارة.");
-      await initialize();
-      if (account.user?.role !== "admin")
-        throw Error("تعذر التحقق من صلاحية المالك. حاول مرة أخرى.");
-      location.hash = "#/admin";
-      render();
+      navigateAccount(result.user.id, "#/admin");
       toast("أهلًا بك في إدارة رُزمة");
     } catch (err) {
       const error = document.querySelector("#admin-form-error");
@@ -767,9 +781,7 @@ document.addEventListener("submit", async (ev) => {
         toast("أرسلنا رمز التحقق إلى بريدك الإلكتروني.");
         return;
       }
-      await initialize();
-      location.hash = afterAuthRoute(account, next);
-      render();
+      navigateAccount(result.user.id, afterAuthRoute(result, next));
       toast("أهلًا بك في رُزمة");
     } catch (err) {
       document.querySelector("#form-error").textContent = err.message;
@@ -784,10 +796,8 @@ document.addEventListener("submit", async (ev) => {
       next = new URLSearchParams(location.hash.split("?")[1] || "").get("next");
     button.disabled = true;
     try {
-      await api("/api/auth/verify-email", { method: "POST", body: values });
-      await initialize();
-      location.hash = afterAuthRoute(account, next);
-      render();
+      const result = await api("/api/auth/verify-email", { method: "POST", body: values });
+      navigateAccount(result.user.id, afterAuthRoute(result, next));
       toast("تم تأكيد بريدك. أهلًا بك في رُزمة.");
     } catch (err) {
       document.querySelector("#verify-error").textContent = err.message;

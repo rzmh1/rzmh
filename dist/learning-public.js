@@ -1,3 +1,4 @@
+import { mediaUrl } from "./api.js";
 import { db, escape as e } from "./data.js";
 import { icon, btn, empty } from "./ui.js";
 export function trackDoors() {
@@ -18,7 +19,7 @@ export function instructorsSpotlight() {
           .slice(0, 6)
           .map(
             (t) =>
-              `<a href="#/instructor/${t.id}" class="source-tile"><span>${t.imageAssetId ? `<img src="/api/media/${e(t.imageAssetId)}" alt="${e(t.name)}" loading="lazy">` : t.imageUrl ? `<img src="${e(t.imageUrl)}" alt="${e(t.name)}" loading="lazy">` : e(t.name.slice(0, 1))}</span><h3>${e(t.name)}</h3><p>${e(t.specialty)}</p><small>${t.courseIds.length} دورات منشورة</small>${icon("arrow")}</a>`,
+              `<a href="#/instructor/${t.id}" class="source-tile"><span>${t.imageAssetId ? `<img src="${mediaUrl("/api/media/" + e(t.imageAssetId))}" alt="${e(t.name)}" loading="lazy">` : t.imageUrl ? `<img src="${e(t.imageUrl)}" alt="${e(t.name)}" loading="lazy">` : e(t.name.slice(0, 1))}</span><h3>${e(t.name)}</h3><p>${e(t.specialty)}</p><small>${t.courseIds.length} دورات منشورة</small>${icon("arrow")}</a>`,
           )
           .join("")}</div>`
       : empty(

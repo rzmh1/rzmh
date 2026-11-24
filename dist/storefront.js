@@ -1,3 +1,4 @@
+import { mediaUrl } from "./api.js";
 import { catalogShowcase, stageComparison } from "./store-catalog.js";
 import { storeConfig } from "./store-config.js";
 import { previewLessonId } from "./course-policy.js";
@@ -117,7 +118,7 @@ function updateRows(type = "all", limit = 3) {
         fileUrl = u.courseId
           ? "#/course/" + e(u.courseId)
           : u.free || account.entitled
-            ? "/api/media/" + e(u.assetId)
+            ? mediaUrl("/api/media/" + e(u.assetId))
             : "#/pricing";
       return `<article class="feed-entry"><span class="feed-entry-mark">${icon(classify(u) === "tests" ? "clock" : classify(u) === "weekly" ? "chart" : "file")}</span><div class="feed-entry-body"><div class="feed-entry-meta">${badge(u.type, "badge-purple")}${date ? `<time datetime="${e(u.updatedAt)}">${date}</time>` : ""}</div><h3>${e(u.title)}</h3><p>${e(u.body)}</p>${test ? `<a class="feed-entry-link" href="${account.entitled ? "#/tests/" + e(test.id) : "#/pricing"}">${icon("clock")} ${account.entitled ? "اختبر فهمك:" : "ضمن الاشتراك:"} ${e(test.title)} ${icon("arrow")}</a>` : ""}${u.courseId && visibleCourses().some((c) => c.id === u.courseId) ? `<a class="feed-entry-link" href="#/course/${e(u.courseId)}">${icon("book")} افتح المحتوى ${icon("arrow")}</a>` : ""}${u.assetId ? `<a class="feed-entry-link" href="${fileUrl}" ${fileUrl.startsWith("/api/media/") ? 'target="_blank" rel="noopener noreferrer"' : ""}>${icon("file")} افتح الملف التعليمي ${icon("arrow")}</a>` : ""}</div></article>`;
     })

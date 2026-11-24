@@ -1,4 +1,4 @@
-import { api, account } from "./api.js";
+import { api, account, accountHeaders, mediaUrl } from "./api.js";
 import { db, escape as e, money, reloadContent } from "./data.js";
 import { icon, notice, empty } from "./ui.js";
 const field = (name, title, value = "", type = "text", extra = "") =>
@@ -115,7 +115,7 @@ export function mountAdminLive(tab, toast, render) {
           ["الملف", "الحجم", "الحالة", "الربط", "الإجراءات"],
           assets.map(
             (a) =>
-              `<tr><td>${e(a.name)}<br><small>${e(a.mime)}</small>${a.error ? `<p class="danger">${e(a.error)}</p>` : ""}</td><td>${(a.size / 1048576).toFixed(1)} MB</td><td>${e({ uploading: "جارٍ الرفع", processing: "معالجة 720p", ready: "جاهز", failed: "تعذرت المعالجة" }[a.status] || a.status)}</td><td>${e(db.courses.find((c) => c.id === a.course_id)?.title || "غير مرتبط")}<br><small>${e(db.courses.flatMap((c) => c.lessons).find((l) => l.id === a.lesson_id)?.title || "")}</small></td><td><div class="table-actions">${a.status === "ready" ? `${a.mime.startsWith("video/") ? `<span class="badge">${a.duration_seconds ? Math.ceil(a.duration_seconds / 60) + " دقيقة مستخرجة" : "مدة غير معروفة"}</span> <button class="btn btn-outline btn-sm" data-probe-video="${a.id}">استخراج المدة</button>` : ""}<a class="btn btn-outline btn-sm" href="/api/media/${a.id}" target="_blank" rel="noopener noreferrer">فتح</a>` : ""}<button class="btn btn-outline btn-sm danger" data-asset-delete="${a.id}" ${a.status === "processing" ? "disabled" : ""}>حذف</button></div></td></tr>`,
+              `<tr><td>${e(a.name)}<br><small>${e(a.mime)}</small>${a.error ? `<p class="danger">${e(a.error)}</p>` : ""}</td><td>${(a.size / 1048576).toFixed(1)} MB</td><td>${e({ uploading: "جارٍ الرفع", processing: "معالجة 720p", ready: "جاهز", failed: "تعذرت المعالجة" }[a.status] || a.status)}</td><td>${e(db.courses.find((c) => c.id === a.course_id)?.title || "غير مرتبط")}<br><small>${e(db.courses.flatMap((c) => c.lessons).find((l) => l.id === a.lesson_id)?.title || "")}</small></td><td><div class="table-actions">${a.status === "ready" ? `${a.mime.startsWith("video/") ? `<span class="badge">${a.duration_seconds ? Math.ceil(a.duration_seconds / 60) + " دقيقة مستخرجة" : "مدة غير معروفة"}</span> <button class="btn btn-outline btn-sm" data-probe-video="${a.id}">استخراج المدة</button>` : ""}<a class="btn btn-outline btn-sm" href="${mediaUrl("/api/media/" + a.id)}" target="_blank" rel="noopener noreferrer">فتح</a>` : ""}<button class="btn btn-outline btn-sm danger" data-asset-delete="${a.id}" ${a.status === "processing" ? "disabled" : ""}>حذف</button></div></td></tr>`,
           ),
         );
       }
@@ -614,6 +614,7 @@ export function mountAdminLive(tab, toast, render) {
             if (upload.driver === "local") {
               x.withCredentials = true;
               x.setRequestHeader("X-CSRF-Token", account.csrf);
+              for (const [key, value] of Object.entries(accountHeaders())) x.setRequestHeader(key, value);
             }
             x.upload.onprogress = (event) => {
               const n = Math.round(((offset + event.loaded) / file.size) * 100);
